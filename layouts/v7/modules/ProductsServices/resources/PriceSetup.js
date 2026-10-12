@@ -3,9 +3,7 @@
 	'use strict';
 
 	var LADDERS = [
-		{ key: 'kl_value', title: 'Khách lẻ — theo giá trị đơn', unit: 'Từ (đồng)', hint: 'Tổng tiền hàng đạt mốc này thì áp % tương ứng. Báo giá KL so với bậc theo số lượng và lấy cách khách trả ít hơn.' },
-		{ key: 'kl_qty', title: 'Khách lẻ — theo số lượng', unit: 'Từ (sản phẩm)', hint: 'Tổng số lượng trên đơn đạt mốc này thì áp % tương ứng.' },
-		{ key: 'miutea_value', title: 'Miutea — theo giá trị đơn', unit: 'Từ (đồng)', hint: 'Miutea chỉ dùng bậc theo giá trị. Giá bán nhập ở cột Giá Miutea trên từng hàng hoá.' }
+		{ key: 'miutea_value', title: 'Miutea — theo giá trị đơn', unit: 'Từ (đồng)', hint: 'Chỉ trừ trên món được phép chiết khấu. Món Không chiết khấu giữ nguyên Giá Miutea.' }
 	];
 
 	function parseNum(raw) {
@@ -50,7 +48,11 @@
 			'<button type="button" class="mk-ps-setup__x" data-close="1" aria-label="Đóng">×</button>' +
 			'</header>' +
 			'<div class="mk-ps-setup__body">' +
-			'<p class="mk-ps-setup__lead">Nhập bậc chiết khấu tại đây. Giá Tuibao và Giá Miutea nhập trên từng hàng hoá. Tuibao không dùng bậc tự động — nhân viên nhập chiết khấu trên dòng báo giá.</p>' +
+			'<p class="mk-ps-setup__lead">Giá Tuibao và Giá Miutea nhập trên từng hàng hoá. Tuibao không tự trừ phần trăm. Món Không chiết khấu giữ nguyên giá bán.</p>' +
+			'<section class="mk-ps-setup__ladder">' +
+			'<h3>Khách lẻ</h3>' +
+			'<p class="mk-ps-setup__hint">Đơn giá lấy trên từng hàng hoá: dưới 1 triệu, trên 1 triệu, trên 3 triệu, trên 5 triệu, trên 7 triệu. Số lượng từng món có thể chuyển sang cột giá cao hơn. Báo giá so hai cách và lấy giá thấp hơn. Không dùng phần trăm trên tổng số món.</p>' +
+			'</section>' +
 			ladders +
 			'<p class="mk-ps-setup__error" id="mkPsSetupError" hidden></p>' +
 			'</div>' +

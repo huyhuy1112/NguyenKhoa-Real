@@ -27,7 +27,7 @@ class Inventory_ProductCatalog_Helper {
 		$tierCols = array();
 		foreach (array(
 			'price_lt_1m', 'price_gte_1m', 'price_gte_3m', 'price_gte_5m', 'price_gte_7m',
-			'price_tuibao', 'price_miutea', 'product_group',
+			'price_tuibao', 'price_miutea', 'product_group', 'kl_qty_rules', 'mk_no_discount',
 		) as $col) {
 			if (self::columnExists($db, 'vtiger_productsservices', $col)) {
 				$tierCols[] = 'ps.' . $col;
@@ -95,6 +95,8 @@ class Inventory_ProductCatalog_Helper {
 					? (float) $row['price_tuibao'] : null,
 				'price_miutea' => isset($row['price_miutea']) && $row['price_miutea'] !== null && $row['price_miutea'] !== ''
 					? (float) $row['price_miutea'] : null,
+				'kl_qty_rules' => self::decodeQtyRules(isset($row['kl_qty_rules']) ? $row['kl_qty_rules'] : ''),
+				'mk_no_discount' => !empty($row['mk_no_discount']) ? 1 : 0,
 			);
 			$out[] = $item;
 		}
@@ -117,6 +119,18 @@ class Inventory_ProductCatalog_Helper {
 		unset($item);
 
 		return $out;
+	}
+
+	protected static function decodeQtyRules($raw) {
+		$raw = trim((string) $raw);
+		if ($raw === '') {
+			return null;
+		}
+		$data = json_decode($raw, true);
+		if (!is_array($data) || empty($data['rules']) || !is_array($data['rules'])) {
+			return null;
+		}
+		return $data;
 	}
 
 	protected static function columnExists(PearDatabase $db, $table, $column) {

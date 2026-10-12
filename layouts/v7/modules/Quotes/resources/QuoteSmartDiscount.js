@@ -316,7 +316,95 @@
 			'<div class="is-total"><dt>Tổng thanh toán</dt><dd>' + money(total) + ' đ</dd></div>';
 	}
 
-	function applyPercent(percent) {
+	function tierLabel(tierKey) {
+		var labels = {
+			lt_1m: 'Giá dưới 1 triệu',
+			gte_1m: 'Giá trên 1 triệu',
+			gte_3m: 'Giá trên 3 triệu',
+			gte_5m: 'Giá trên 5 triệu',
+			gte_7m: 'Giá trên 7 triệu'
+		};
+		return labels[tierKey] || 'Giá dưới 1 triệu';
+	}
+
+	function retailQuoteFacts(lines) {
+		var engine = window.MkInventoryOdooEdit;
+		var $form = $('#EditView');
+		var invoiceTier = engine && engine.currentRetailInvoiceTier ? engine.currentRetailInvoiceTier($form) : 'lt_1m';
+		var listBase = 0;
+		var invoiceSaving = 0;
+		var qtySaving = 0;
+		$('#lineItemTab tr.lineItemRow').each(function () {
+			var $row = $(this);
+			var q = parseMoney($row.find('input.qty, .qty').first().val());
+			if (!(q > 0)) {
+				return;
+			}
+			var $opt = $row.find('.mk-inv-product-select option:selected').first();
+			var meta = {
+				price_lt_1m: $opt.attr('data-price-lt-1m'),
+				price_gte_1m: $opt.attr('data-price-gte-1m'),
+				price_gte_3m: $opt.attr('data-price-gte-3m'),
+				price_gte_5m: $opt.attr('data-price-gte-5m'),
+				price_gte_7m: $opt.attr('data-price-gte-7m'),
+				price: $opt.attr('data-price'),
+				unit: $opt.attr('data-unit') || '',
+				kl_qty_rules: $opt.attr('data-kl-qty-rules')
+			};
+			var base = parseMoney(meta.price_lt_1m);
+			if (!(base > 0)) {
+				base = parseMoney(meta.price);
+			}
+			var unit = parseMoney($row.find('input.listPrice').first().val());
+			if (!(base > 0)) {
+				base = unit;
+			}
+			var invoicePrice = base;
+			var qtyPrice = 0;
+			if (engine && engine.priceForTier) {
+				var fromInvoice = engine.priceForTier(meta, invoiceTier);
+				if (fromInvoice > 0) {
+					invoicePrice = fromInvoice;
+				}
+				if (engine.qtyTierForLine) {
+					var qtyTier = engine.qtyTierForLine(meta, q);
+					qtyPrice = qtyTier ? engine.priceForTier(meta, qtyTier) : 0;
+				}
+			}
+			var qtyPick = qtyPrice > 0 && qtyPrice < invoicePrice ? qtyPrice : invoicePrice;
+			listBase += q * base;
+			invoiceSaving += Math.max(0, base - invoicePrice) * q;
+			qtySaving += Math.max(0, base - qtyPick) * q;
+		});
+		if (!(listBase > 0)) {
+			listBase = lines.subtotal;
+		}
+		var chosenSaving = Math.max(invoiceSaving, qtySaving);
+		var why = 'Giá dưới 1 triệu là giá gốc. ';
+		if (qtySaving > invoiceSaving) {
+			why += 'Một số món đủ mốc số lượng nên lấy cột giá thấp hơn cột theo tổng đơn. Đã giảm ' + money(chosenSaving) + ' đ so với giá dưới 1 triệu.';
+		} else if (chosenSaving > 0) {
+			why += 'Đang dùng ' + tierLabel(invoiceTier) + ' theo tổng đơn. Đã giảm ' + money(chosenSaving) + ' đ so với giá dưới 1 triệu.';
+		} else {
+			why += 'Đơn chưa chạm mốc nào, hoặc các món này không giảm khi tổng đơn và số lượng tăng.';
+		}
+		return {
+			listBase: listBase,
+			invoiceSaving: invoiceSaving,
+			qtySaving: qtySaving,
+			chosenSaving: chosenSaving,
+			invoiceLabel: tierLabel(invoiceTier),
+			why: why
+		};
+	}
+
+	function rowSkipsDiscount($row) {
+		var $opt = $row.find('.mk-inv-product-select option:selected').first();
+		return String($opt.attr('data-mk-no-discount') || '') === '1';
+	}
+
+	function applyPercent(percent, opts) {
+		opts = opts || {};
 		if (applying) {
 			return;
 		}
@@ -329,8 +417,12 @@
 				if (!(q > 0)) {
 					return;
 				}
+				var linePercent = percent;
+				if (opts.respectNoDiscount && rowSkipsDiscount($row)) {
+					linePercent = 0;
+				}
 				var current = parseMoney($row.find('.discount_percentage').first().val());
-				if (current === percent && String($row.data('mkDiscountPct')) === String(percent)) {
+				if (current === linePercent && String($row.data('mkDiscountPct')) === String(linePercent)) {
 					return;
 				}
 				changed = true;
@@ -339,7 +431,7 @@
 				var rowNo = rowMatch ? rowMatch[1] : '';
 				$row.data('mkDiscountMode', 'percentage');
 				$row.data('mkDiscUserSet', true);
-				$row.data('mkDiscountPct', percent);
+				$row.data('mkDiscountPct', linePercent);
 				var $pct = $row.find('.discount_percentage').first();
 				if (!$pct.length && rowNo) {
 					$pct = $('<input type="hidden" class="discount_percentage discountVal" />')
@@ -347,7 +439,7 @@
 						.attr('name', 'discount_percentage' + rowNo);
 					$row.append($pct);
 				}
-				$pct.val(String(percent));
+				$pct.val(String(linePercent));
 				var $type = $row.find('input.discount_type, .discount_type').first();
 				if (!$type.length && rowNo) {
 					$type = $('<input type="hidden" class="discount_type" />')
@@ -355,13 +447,13 @@
 						.attr('name', 'discount_type' + rowNo);
 					$row.append($type);
 				}
-				$type.val(percent > 0 ? 'percentage' : 'zero');
-				$row.find('input.discounts[data-discount-type="percentage"]').prop('checked', percent > 0);
-				$row.find('input.discounts[data-discount-type="zero"]').prop('checked', percent <= 0);
+				$type.val(linePercent > 0 ? 'percentage' : 'zero');
+				$row.find('input.discounts[data-discount-type="percentage"]').prop('checked', linePercent > 0);
+				$row.find('input.discounts[data-discount-type="zero"]').prop('checked', linePercent <= 0);
 				$row.find('input.discounts[data-discount-type="amount"]').prop('checked', false);
 				var $custom = $row.find('.mk-inv-discount-custom, .mk-inv-discount-pct').first();
 				if ($custom.length && document.activeElement !== $custom[0]) {
-					$custom.val(String(percent)).trigger('change');
+					$custom.val(String(linePercent)).trigger('change');
 				}
 			});
 			if (changed && window.MkInventoryOdooEdit && typeof window.MkInventoryOdooEdit.refreshTotals === 'function') {
@@ -400,8 +492,14 @@
 		}
 
 		if (segment === 'kl') {
-			state.subtitle = 'Khách lẻ — đơn giá lấy theo mức tổng đơn trên từng hàng hoá.';
-			state.decisionHtml = '<p class="mk-qt-smart__why">Không trừ thêm phần trăm. Giá dưới 1 triệu, trên 1 triệu, 3 triệu, 5 triệu và 7 triệu nằm ở từng hàng hoá. Mức được chọn theo tổng số lượng nhân giá dưới 1 triệu.</p>';
+			var retail = retailQuoteFacts(lines);
+			state.lines = { subtotal: retail.listBase, qty: lines.qty, vat: lines.vat };
+			state.saving = retail.chosenSaving;
+			state.subtitle = 'Khách lẻ — so giá theo tổng đơn với giá theo số lượng từng món, lấy giá thấp hơn.';
+			state.cardsHtml =
+				card('value', state.lines, { label: retail.invoiceLabel, saving: retail.invoiceSaving, percent: 0 }, retail.invoiceSaving >= retail.qtySaving) +
+				card('quantity', state.lines, { label: 'Mốc số lượng từng món', saving: retail.qtySaving, percent: 0 }, retail.qtySaving > retail.invoiceSaving);
+			state.decisionHtml = '<p class="mk-qt-smart__why">' + retail.why + '</p>';
 			paint(state);
 			applyPercent(0);
 			return;
@@ -416,7 +514,7 @@
 				? 'Áp ' + only.percent + '% theo tổng giá trị ' + money(lines.subtotal) + ' đ. Không so với chiết khấu theo số lượng.'
 				: (lines.subtotal <= 0 ? 'Đơn hàng chưa có sản phẩm hợp lệ.' : 'Chưa đạt bậc chiết khấu theo giá trị.')) + '</p>';
 			paint(state);
-			applyPercent(only.percent);
+			applyPercent(only.percent, { respectNoDiscount: true });
 			return;
 		}
 

@@ -15,7 +15,13 @@ class ProductsServices_SalePriceApply_Helper {
 		}
 		$ran = true;
 		try {
+			$db = PearDatabase::getInstance();
+			self::ensurePriceColumns($db);
+			self::ensureExtraColumns($db);
+			self::ensureLogTable($db);
 			self::applyOnce();
+			self::applyQtyOnce();
+			self::applyChainOnce();
 		} catch (Exception $e) {
 			// Báo giá vẫn mở được nếu ghi giá lỗi.
 		}
@@ -149,6 +155,170 @@ class ProductsServices_SalePriceApply_Helper {
 		);
 	}
 
+	protected static function applyQtyOnce() {
+		$db = PearDatabase::getInstance();
+		if (self::alreadyApplied($db, 'sale_nl_qty_150926')) {
+			return;
+		}
+		$sheet = self::loadNamedJson('sale_nl_150926_qty.json');
+		$products = self::loadProducts($db);
+		$matched = self::matchRows($sheet, $products);
+		if (!$matched['updates']) {
+			return;
+		}
+		foreach ($matched['updates'] as $item) {
+			$row = $item[1];
+			$payload = json_encode(array(
+				'sell_unit' => isset($row['sell_unit']) ? $row['sell_unit'] : '',
+				'per_thung' => isset($row['per_thung']) ? (int) $row['per_thung'] : 0,
+				'rules' => isset($row['rules']) && is_array($row['rules']) ? $row['rules'] : array(),
+			), JSON_UNESCAPED_UNICODE);
+			$db->pquery(
+				'UPDATE vtiger_productsservices SET kl_qty_rules = ? WHERE productsservicesid = ?',
+				array($payload, $item[0])
+			);
+		}
+		self::markApplied($db, 'sale_nl_qty_150926', $matched, $sheet);
+	}
+
+	protected static function applyChainOnce() {
+		$db = PearDatabase::getInstance();
+		if (self::alreadyApplied($db, 'chain_tb_mt_t926')) {
+			return;
+		}
+		$sheet = self::loadNamedJson('chain_tb_mt_t9_26.json');
+		$products = self::loadProducts($db);
+		$matched = self::matchRows($sheet, $products);
+		if (!$matched['updates']) {
+			return;
+		}
+		foreach ($matched['updates'] as $item) {
+			$row = $item[1];
+			$price = self::money(isset($row['price']) ? $row['price'] : 0);
+			$noDiscount = !empty($row['no_discount']) ? 1 : 0;
+			$db->pquery(
+				'UPDATE vtiger_productsservices
+				 SET price_tuibao = ?, price_miutea = ?, mk_no_discount = ?
+				 WHERE productsservicesid = ?',
+				array($price, $price, $noDiscount, $item[0])
+			);
+		}
+		self::markApplied($db, 'chain_tb_mt_t926', $matched, $sheet);
+	}
+
+	protected static function alreadyApplied(PearDatabase $db, $key) {
+		$done = $db->pquery(
+			'SELECT apply_key FROM vtiger_mk_sale_price_apply WHERE apply_key = ? LIMIT 1',
+			array($key)
+		);
+		return $done && $db->num_rows($done) > 0;
+	}
+
+	protected static function markApplied(PearDatabase $db, $key, array $matched, array $sheet) {
+		$unmatched = array();
+		foreach ($sheet as $index => $row) {
+			if (empty($matched['used'][$index])) {
+				$unmatched[] = $row['name'];
+			}
+		}
+		$note = implode("\n", $unmatched);
+		if (function_exists('mb_substr')) {
+			$note = mb_substr($note, 0, 4000, 'UTF-8');
+		} else {
+			$note = substr($note, 0, 4000);
+		}
+		$db->pquery(
+			'INSERT IGNORE INTO vtiger_mk_sale_price_apply (apply_key, updated_rows, unmatched_count, unmatched_names, applied_at)
+			 VALUES (?, ?, ?, ?, ?)',
+			array($key, count($matched['updates']), count($unmatched), $note, date('Y-m-d H:i:s'))
+		);
+	}
+
+	/**
+	 * @param array $sheet rows with name
+	 * @param array $products
+	 * @return array{updates:array,used:array}
+	 */
+	protected static function matchRows(array $sheet, array $products) {
+		$byExact = array();
+		$byLoose = array();
+		foreach ($sheet as $index => $row) {
+			if (empty($row['name'])) {
+				continue;
+			}
+			$exact = self::fold($row['name']);
+			$loose = self::loose($row['name']);
+			if ($exact !== '') {
+				$byExact[$exact][] = $index;
+			}
+			if ($loose !== '') {
+				$byLoose[$loose][] = $index;
+			}
+		}
+		$looseProductCount = array();
+		foreach ($products as $product) {
+			$loose = self::loose($product['name']);
+			if ($loose === '') {
+				continue;
+			}
+			if (!isset($looseProductCount[$loose])) {
+				$looseProductCount[$loose] = 0;
+			}
+			$looseProductCount[$loose]++;
+		}
+		$used = array();
+		$updates = array();
+		$matchedIds = array();
+		foreach ($products as $product) {
+			$exact = self::fold($product['name']);
+			if ($exact !== '' && isset($byExact[$exact]) && count($byExact[$exact]) === 1) {
+				$index = $byExact[$exact][0];
+				$updates[] = array($product['id'], $sheet[$index]);
+				$used[$index] = true;
+				$matchedIds[$product['id']] = true;
+			}
+		}
+		foreach ($products as $product) {
+			if (isset($matchedIds[$product['id']])) {
+				continue;
+			}
+			$loose = self::loose($product['name']);
+			if ($loose === '' || empty($byLoose[$loose]) || count($byLoose[$loose]) !== 1) {
+				continue;
+			}
+			if (empty($looseProductCount[$loose]) || $looseProductCount[$loose] !== 1) {
+				continue;
+			}
+			$index = $byLoose[$loose][0];
+			if (!empty($used[$index])) {
+				continue;
+			}
+			$updates[] = array($product['id'], $sheet[$index]);
+			$used[$index] = true;
+		}
+		return array('updates' => $updates, 'used' => $used);
+	}
+
+	protected static function loadNamedJson($fileName) {
+		$path = dirname(__FILE__) . '/data/' . $fileName;
+		if (!is_file($path)) {
+			return array();
+		}
+		$data = json_decode(file_get_contents($path), true);
+		if (!is_array($data)) {
+			return array();
+		}
+		$out = array();
+		foreach ($data as $row) {
+			if (!is_array($row) || empty($row['name'])) {
+				continue;
+			}
+			$row['name'] = trim((string) $row['name']);
+			$out[] = $row;
+		}
+		return $out;
+	}
+
 	protected static function loadSheet() {
 		$path = dirname(__FILE__) . '/data/sale_nl_150926.json';
 		if (!is_file($path)) {
@@ -198,6 +368,30 @@ class ProductsServices_SalePriceApply_Helper {
 			);
 		}
 		return $out;
+	}
+
+	protected static function ensureExtraColumns(PearDatabase $db) {
+		$check = $db->pquery('SHOW COLUMNS FROM vtiger_productsservices LIKE ?', array('kl_qty_rules'));
+		if (!$check || $db->num_rows($check) < 1) {
+			$db->pquery('ALTER TABLE vtiger_productsservices ADD COLUMN kl_qty_rules TEXT NULL', array());
+		}
+		$check = $db->pquery('SHOW COLUMNS FROM vtiger_productsservices LIKE ?', array('mk_no_discount'));
+		if (!$check || $db->num_rows($check) < 1) {
+			$db->pquery(
+				'ALTER TABLE vtiger_productsservices ADD COLUMN mk_no_discount TINYINT(1) NOT NULL DEFAULT 0',
+				array()
+			);
+		}
+		foreach (array('price_tuibao', 'price_miutea') as $col) {
+			$check = $db->pquery('SHOW COLUMNS FROM vtiger_productsservices LIKE ?', array($col));
+			if ($check && $db->num_rows($check) > 0) {
+				continue;
+			}
+			$db->pquery(
+				"ALTER TABLE vtiger_productsservices ADD COLUMN `$col` DECIMAL(25,8) DEFAULT NULL",
+				array()
+			);
+		}
 	}
 
 	protected static function ensurePriceColumns(PearDatabase $db) {

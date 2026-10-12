@@ -955,6 +955,81 @@
     return "lt_1m";
   }
 
+  function encodeQtyRulesAttr(rules) {
+    if (!rules) {
+      return "";
+    }
+    try {
+      var text = typeof rules === "string" ? rules : JSON.stringify(rules);
+      return encodeURIComponent(text);
+    } catch (e) {
+      return "";
+    }
+  }
+
+  function decodeQtyRulesAttr(raw) {
+    if (!raw) {
+      return null;
+    }
+    if (typeof raw === "object") {
+      return raw;
+    }
+    var text = String(raw);
+    try {
+      text = decodeURIComponent(text);
+    } catch (e) {}
+    try {
+      var data = JSON.parse(text);
+      return data && typeof data === "object" ? data : null;
+    } catch (e2) {
+      return null;
+    }
+  }
+
+  function normalizeSellUnit(raw) {
+    var s = String(raw || "").toLowerCase();
+    if (s.indexOf("thùng") >= 0 || s.indexOf("thung") >= 0) {
+      return "thung";
+    }
+    if (s.indexOf("bịch") >= 0 || s.indexOf("bich") >= 0) {
+      return "bich";
+    }
+    if (s.indexOf("hộp") >= 0 || s.indexOf("hop") >= 0) {
+      return "hop";
+    }
+    if (s.indexOf("lon") >= 0) {
+      return "lon";
+    }
+    if (s.indexOf("bao") >= 0) {
+      return "bao";
+    }
+    return "";
+  }
+
+  function qtyTierForLine(meta, qty) {
+    var pack = decodeQtyRulesAttr(meta && meta.kl_qty_rules);
+    if (!pack || !pack.rules || !pack.rules.length) {
+      return "";
+    }
+    var sell = normalizeSellUnit((meta && meta.unit) || pack.sell_unit);
+    var rank = { gte_3m: 2, gte_5m: 3, gte_7m: 4 };
+    var best = "";
+    var bestRank = 0;
+    pack.rules.forEach(function (rule) {
+      var need = Number(rule.min) || 0;
+      var ruleUnit = normalizeSellUnit(rule.unit);
+      if (ruleUnit === "thung" && sell !== "thung" && Number(pack.per_thung) > 0) {
+        need = need * Number(pack.per_thung);
+      }
+      var ruleRank = rank[rule.tier] || 0;
+      if (qty >= need && ruleRank > bestRank) {
+        best = rule.tier;
+        bestRank = ruleRank;
+      }
+    });
+    return best;
+  }
+
   function invoiceTierLabel(tierKey) {
     var label = tierKey || "";
     INVOICE_TIER_OPTIONS.some(function (item) {
@@ -1056,13 +1131,28 @@
       $listPrice.attr("data-mk-price-manual", "1");
       return false;
     }
-    var price = resolveInvoiceTierPrice(getProductMetaForRow($row), tierKey);
+    var meta = getProductMetaForRow($row);
+    var tierForPrice = tierKey;
+    var tierSource = "invoice";
+    if (getPriceChannel() === "retail" && getInvoiceTierSelection($form) === "auto") {
+      var lineQty = parseMoney($row.find("input.qty, .qty").first().val());
+      var qtyTier = qtyTierForLine(meta, lineQty);
+      var invoicePrice = resolveInvoiceTierPrice(meta, tierKey);
+      var qtyPrice = qtyTier ? resolveInvoiceTierPrice(meta, qtyTier) : 0;
+      if (qtyPrice > 0 && (!(invoicePrice > 0) || qtyPrice < invoicePrice)) {
+        tierForPrice = qtyTier;
+        tierSource = "qty";
+      }
+    }
+    var price = resolveInvoiceTierPrice(meta, tierForPrice);
     // Don't wipe a good price with a zero catalog/tier default.
     if (price <= 0 && existingPrice > 0) {
       return false;
     }
     setListPriceValue($listPrice, price);
-    $listPrice.attr("data-mk-invoice-tier", tierKey);
+    $listPrice.attr("data-mk-invoice-tier", tierForPrice);
+    $listPrice.attr("data-mk-tier-source", tierSource);
+    $listPrice.attr("data-mk-tier-key", tierForPrice);
     if (opts.force && tierChanged) {
       $listPrice.removeAttr("data-mk-price-manual");
     }
@@ -1127,7 +1217,7 @@
       $wrap.find(".mk-inv-price-tier__label").text("Bảng giá");
       $wrap
         .find(".mk-inv-price-tier__hint")
-        .text("Đơn giá lấy theo mức tổng đơn. Tổng tính bằng giá dưới 1 triệu của từng món.");
+        .text("So giá theo tổng đơn với mốc số lượng từng món, lấy giá thấp hơn. Tổng tính bằng giá dưới 1 triệu.");
     }
     if ($select.length && String($select.val() || "") !== String(selectedValue || "")) {
       $select.val(selectedValue);
@@ -2169,6 +2259,8 @@
           .attr("data-price-gte-7m", p.price_gte_7m)
           .attr("data-price-tuibao", p.price_tuibao)
           .attr("data-price-miutea", p.price_miutea)
+          .attr("data-kl-qty-rules", encodeQtyRulesAttr(p.kl_qty_rules))
+          .attr("data-mk-no-discount", String(p.mk_no_discount) === "1" || p.mk_no_discount === 1 ? "1" : "0")
           .attr("data-product-group", p.product_group || "")
           .attr("data-sku", p.sku || "")
           .attr("data-unit", p.unit || "")
@@ -5633,6 +5725,8 @@
         .attr("data-price-gte-7m", meta.price_gte_7m)
         .attr("data-price-tuibao", meta.price_tuibao)
         .attr("data-price-miutea", meta.price_miutea)
+        .attr("data-kl-qty-rules", encodeQtyRulesAttr(meta.kl_qty_rules))
+        .attr("data-mk-no-discount", String(meta.mk_no_discount) === "1" || meta.mk_no_discount === 1 ? "1" : "0")
         .attr("data-product-group", meta.product_group || "")
         .attr("data-sku", meta.sku || "")
         .attr("data-unit", meta.unit || "")
@@ -5822,6 +5916,8 @@
       price_gte_7m: $opt.attr("data-price-gte-7m"),
       price_tuibao: $opt.attr("data-price-tuibao"),
       price_miutea: $opt.attr("data-price-miutea"),
+      kl_qty_rules: decodeQtyRulesAttr($opt.attr("data-kl-qty-rules")),
+      mk_no_discount: $opt.attr("data-mk-no-discount"),
       product_group: $opt.attr("data-product-group") || "",
       sku: $opt.attr("data-sku") || "",
       unit: $opt.attr("data-unit") || "",
@@ -7479,6 +7575,13 @@
     integrateCommerceIntoQuoteInfo: integrateCommerceIntoQuoteInfo,
     getPriceChannel: getPriceChannel,
     setPriceChannel: setPriceChannel,
+    qtyTierForLine: qtyTierForLine,
+    priceForTier: function (meta, tierKey) {
+      return resolveInvoiceTierPrice(meta, tierKey);
+    },
+    currentRetailInvoiceTier: function ($form) {
+      return resolveInvoiceTierFromTotal(tierBasisTotal($form));
+    },
     applyInvoiceTierPricing: applyInvoiceTierPricing,
     onInvoicePriceTierUserChange: onInvoicePriceTierUserChange,
     refreshTotals: function ($form) {

@@ -72,9 +72,14 @@ class ProductsServices_PriceSetup_Helper {
 			throw new AppException(vtranslate('LBL_PERMISSION_DENIED'));
 		}
 		self::ensure();
+		$existing = self::getPolicy(false);
 		$clean = array(
-			'kl_value' => self::cleanTiers(isset($input['kl_value']) ? $input['kl_value'] : array()),
-			'kl_qty' => self::cleanTiers(isset($input['kl_qty']) ? $input['kl_qty'] : array()),
+			'kl_value' => array_key_exists('kl_value', $input)
+				? self::cleanTiers($input['kl_value'])
+				: (isset($existing['kl_value']) ? $existing['kl_value'] : array()),
+			'kl_qty' => array_key_exists('kl_qty', $input)
+				? self::cleanTiers($input['kl_qty'])
+				: (isset($existing['kl_qty']) ? $existing['kl_qty'] : array()),
 			'miutea_value' => self::cleanTiers(isset($input['miutea_value']) ? $input['miutea_value'] : array()),
 		);
 		foreach ($clean as $key => $rows) {
