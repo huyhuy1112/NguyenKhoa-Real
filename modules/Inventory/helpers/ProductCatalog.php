@@ -126,6 +126,20 @@ class Inventory_ProductCatalog_Helper {
 		if ($raw === '') {
 			return null;
 		}
+		// fetchByAssoc chạy to_html, nên dấu " trong JSON thành &quot; và json_decode trả về rỗng.
+		if (function_exists('decode_html')) {
+			$raw = decode_html($raw);
+		} else {
+			$prev = $raw;
+			for ($i = 0; $i < 5; $i++) {
+				$decoded = html_entity_decode($prev, ENT_QUOTES, 'UTF-8');
+				if (!is_string($decoded) || $decoded === $prev) {
+					break;
+				}
+				$prev = $decoded;
+			}
+			$raw = $prev;
+		}
 		$data = json_decode($raw, true);
 		if (!is_array($data) || empty($data['rules']) || !is_array($data['rules'])) {
 			return null;

@@ -53,8 +53,11 @@ class ProductsServices_GetCatalog_Action extends Vtiger_Action_Controller {
 					: (float) $row['price'];
 				$qtyRules = null;
 				if ($hasQtyRules && !empty($row['kl_qty_rules'])) {
-					$decoded = json_decode(html_entity_decode((string) $row['kl_qty_rules'], ENT_QUOTES, 'UTF-8'), true);
-					$qtyRules = is_array($decoded) ? $decoded : null;
+					$rawRules = function_exists('decode_html')
+						? decode_html((string) $row['kl_qty_rules'])
+						: html_entity_decode((string) $row['kl_qty_rules'], ENT_QUOTES, 'UTF-8');
+					$decoded = json_decode($rawRules, true);
+					$qtyRules = (is_array($decoded) && !empty($decoded['rules'])) ? $decoded : null;
 				}
 				$items[] = array(
 					'id' => $id,
