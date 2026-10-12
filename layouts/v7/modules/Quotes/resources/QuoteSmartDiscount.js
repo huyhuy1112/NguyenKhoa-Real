@@ -302,8 +302,6 @@
 		}
 		var lines = state.lines;
 		var after = Math.max(0, lines.subtotal - state.saving);
-		var vatAmt = Math.round((after * lines.vat) / 100);
-		var total = after + vatAmt;
 		sub.textContent = state.subtitle;
 		cards.innerHTML = state.cardsHtml;
 		decision.innerHTML = state.decisionHtml || '';
@@ -311,9 +309,7 @@
 		sum.innerHTML =
 			'<div><dt>Tạm tính</dt><dd>' + money(lines.subtotal) + ' đ</dd></div>' +
 			'<div><dt>Chiết khấu</dt><dd class="is-off">- ' + money(state.saving) + ' đ</dd></div>' +
-			'<div><dt>Sau chiết khấu</dt><dd>' + money(after) + ' đ</dd></div>' +
-			'<div><dt>VAT ' + lines.vat + '%</dt><dd>' + money(vatAmt) + ' đ</dd></div>' +
-			'<div class="is-total"><dt>Tổng thanh toán</dt><dd>' + money(total) + ' đ</dd></div>';
+			'<div class="is-total"><dt>Sau chiết khấu</dt><dd>' + money(after) + ' đ</dd></div>';
 	}
 
 	function tierLabel(tierKey) {
@@ -506,15 +502,9 @@
 		}
 
 		if (segment === 'miutea') {
-			var only = offer(lines.subtotal, findTier(lines.subtotal, MIUTEA_VALUE_TIERS), 'Chưa đạt bậc chiết khấu');
-			state.saving = only.saving;
-			state.subtitle = 'Miutea — chỉ chiết khấu theo tổng giá trị đơn.';
-			state.cardsHtml = card('value', lines, only, true);
-			state.decisionHtml = '<p class="mk-qt-smart__why">' + (only.saving > 0
-				? 'Áp ' + only.percent + '% theo tổng giá trị ' + money(lines.subtotal) + ' đ. Không so với chiết khấu theo số lượng.'
-				: (lines.subtotal <= 0 ? 'Đơn hàng chưa có sản phẩm hợp lệ.' : 'Chưa đạt bậc chiết khấu theo giá trị.')) + '</p>';
+			state.subtitle = 'Miutea — một bảng giá, chiết khấu nhập tay trên từng dòng.';
+			state.decisionHtml = '<p class="mk-qt-smart__why">Không tự trừ phần trăm. Đơn giá lấy Giá Miutea. Nhân viên nhập chiết khấu trên dòng hàng.</p>';
 			paint(state);
-			applyPercent(only.percent, { respectNoDiscount: true });
 			return;
 		}
 

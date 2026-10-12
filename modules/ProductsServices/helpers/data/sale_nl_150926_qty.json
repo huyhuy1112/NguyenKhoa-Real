@@ -110,6 +110,50 @@
     ]
   },
   {
+    "name": "Hạt Nổ Củ Năng hồng",
+    "sell_unit": "lon",
+    "per_thung": 12,
+    "rules": [
+      {
+        "min": 2,
+        "unit": "thung",
+        "tier": "gte_3m"
+      },
+      {
+        "min": 4,
+        "unit": "thung",
+        "tier": "gte_5m"
+      },
+      {
+        "min": 6,
+        "unit": "thung",
+        "tier": "gte_7m"
+      }
+    ]
+  },
+  {
+    "name": "Hạt nổ củ năng hồng Zestty",
+    "sell_unit": "lon",
+    "per_thung": 12,
+    "rules": [
+      {
+        "min": 2,
+        "unit": "thung",
+        "tier": "gte_3m"
+      },
+      {
+        "min": 4,
+        "unit": "thung",
+        "tier": "gte_5m"
+      },
+      {
+        "min": 6,
+        "unit": "thung",
+        "tier": "gte_7m"
+      }
+    ]
+  },
+  {
     "name": "Bột sữa Nguyên Khoa M32 ( 20Kg/bao)",
     "sell_unit": "bao",
     "per_thung": 0,
@@ -331,6 +375,94 @@
   },
   {
     "name": "Sốt Đào Resso 1L",
+    "sell_unit": "binh",
+    "per_thung": 12,
+    "rules": [
+      {
+        "min": 2,
+        "unit": "thung",
+        "tier": "gte_3m"
+      },
+      {
+        "min": 4,
+        "unit": "thung",
+        "tier": "gte_5m"
+      },
+      {
+        "min": 6,
+        "unit": "thung",
+        "tier": "gte_7m"
+      }
+    ]
+  },
+  {
+    "name": "Sốt Xoài Resso 1L",
+    "sell_unit": "binh",
+    "per_thung": 12,
+    "rules": [
+      {
+        "min": 2,
+        "unit": "thung",
+        "tier": "gte_3m"
+      },
+      {
+        "min": 4,
+        "unit": "thung",
+        "tier": "gte_5m"
+      },
+      {
+        "min": 6,
+        "unit": "thung",
+        "tier": "gte_7m"
+      }
+    ]
+  },
+  {
+    "name": "Sốt Dâu Tây Resso 1L",
+    "sell_unit": "binh",
+    "per_thung": 12,
+    "rules": [
+      {
+        "min": 2,
+        "unit": "thung",
+        "tier": "gte_3m"
+      },
+      {
+        "min": 4,
+        "unit": "thung",
+        "tier": "gte_5m"
+      },
+      {
+        "min": 6,
+        "unit": "thung",
+        "tier": "gte_7m"
+      }
+    ]
+  },
+  {
+    "name": "Sốt Vải Resso 1L",
+    "sell_unit": "binh",
+    "per_thung": 12,
+    "rules": [
+      {
+        "min": 2,
+        "unit": "thung",
+        "tier": "gte_3m"
+      },
+      {
+        "min": 4,
+        "unit": "thung",
+        "tier": "gte_5m"
+      },
+      {
+        "min": 6,
+        "unit": "thung",
+        "tier": "gte_7m"
+      }
+    ]
+  },
+  {
+    "name": "Sốt Việt Quất Resso 1L",
     "sell_unit": "binh",
     "per_thung": 12,
     "rules": [

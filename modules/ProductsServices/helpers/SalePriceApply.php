@@ -21,6 +21,8 @@ class ProductsServices_SalePriceApply_Helper {
 			self::ensureLogTable($db);
 			self::applyOnce();
 			self::applyQtyOnce();
+			self::applyQtyPackOnce();
+			self::applyUnitsOnce();
 			self::applyChainOnce();
 		} catch (Exception $e) {
 			// Báo giá vẫn mở được nếu ghi giá lỗi.
@@ -179,6 +181,60 @@ class ProductsServices_SalePriceApply_Helper {
 			);
 		}
 		self::markApplied($db, 'sale_nl_qty_150926', $matched, $sheet);
+	}
+
+	protected static function applyQtyPackOnce() {
+		$db = PearDatabase::getInstance();
+		if (self::alreadyApplied($db, 'sale_nl_qty_pack2')) {
+			return;
+		}
+		$sheet = self::loadNamedJson('sale_nl_150926_qty.json');
+		$products = self::loadProducts($db);
+		$matched = self::matchRows($sheet, $products);
+		if (!$matched['updates']) {
+			return;
+		}
+		foreach ($matched['updates'] as $item) {
+			$row = $item[1];
+			$payload = json_encode(array(
+				'sell_unit' => isset($row['sell_unit']) ? $row['sell_unit'] : '',
+				'per_thung' => isset($row['per_thung']) ? (int) $row['per_thung'] : 0,
+				'rules' => isset($row['rules']) && is_array($row['rules']) ? $row['rules'] : array(),
+			), JSON_UNESCAPED_UNICODE);
+			$db->pquery(
+				'UPDATE vtiger_productsservices SET kl_qty_rules = ? WHERE productsservicesid = ?',
+				array($payload, $item[0])
+			);
+		}
+		self::markApplied($db, 'sale_nl_qty_pack2', $matched, $sheet);
+	}
+
+	protected static function applyUnitsOnce() {
+		$db = PearDatabase::getInstance();
+		if (self::alreadyApplied($db, 'sale_nl_units_150926')) {
+			return;
+		}
+		$check = $db->pquery('SHOW COLUMNS FROM vtiger_productsservices LIKE ?', array('unit'));
+		if (!$check || $db->num_rows($check) < 1) {
+			return;
+		}
+		$sheet = self::loadNamedJson('sale_nl_units.json');
+		$products = self::loadProducts($db);
+		$matched = self::matchRows($sheet, $products);
+		if (!$matched['updates']) {
+			return;
+		}
+		foreach ($matched['updates'] as $item) {
+			$unit = trim((string) (isset($item[1]['unit']) ? $item[1]['unit'] : ''));
+			if ($unit === '') {
+				continue;
+			}
+			$db->pquery(
+				'UPDATE vtiger_productsservices SET unit = ? WHERE productsservicesid = ?',
+				array($unit, $item[0])
+			);
+		}
+		self::markApplied($db, 'sale_nl_units_150926', $matched, $sheet);
 	}
 
 	protected static function applyChainOnce() {
