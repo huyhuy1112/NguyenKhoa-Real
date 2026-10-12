@@ -1022,6 +1022,62 @@
     );
   }
 
+  function addressCellHtml(value, recordId) {
+    var full = String(value || "").trim();
+    if (!full) {
+      return editableCellHtml("address", "", recordId, "Nhập địa chỉ");
+    }
+    return (
+      '<div class="mk-ct-address">' +
+      '<button type="button" class="mk-leads-inline-edit mk-ct-address__text" data-field="address" data-contact-id="' +
+      esc(recordId) +
+      '" title="Nhấn để sửa"><span class="mk-ct-address__clip">' +
+      esc(full) +
+      "</span></button>" +
+      '<button type="button" class="mk-ct-address__more" hidden data-address="' +
+      esc(full) +
+      '" aria-label="Xem đủ địa chỉ">…</button></div>'
+    );
+  }
+
+  function closeAddressPopover() {
+    var pop = document.getElementById("mkCtAddressPop");
+    if (pop) pop.remove();
+    var open = document.querySelectorAll(".mk-ct-address__more.is-open");
+    for (var i = 0; i < open.length; i++) open[i].classList.remove("is-open");
+  }
+
+  function toggleAddressPopover(btn) {
+    if (btn.classList.contains("is-open")) {
+      closeAddressPopover();
+      return;
+    }
+    closeAddressPopover();
+    var pop = document.createElement("div");
+    pop.id = "mkCtAddressPop";
+    pop.className = "mk-ct-address-pop";
+    pop.setAttribute("role", "dialog");
+    pop.textContent = btn.getAttribute("data-address") || "";
+    document.body.appendChild(pop);
+    var rect = btn.getBoundingClientRect();
+    var left = Math.max(8, Math.min(rect.left, window.innerWidth - 372));
+    pop.style.left = left + "px";
+    pop.style.top = rect.bottom + 6 + "px";
+    btn.classList.add("is-open");
+  }
+
+  function syncAddressOverflow() {
+    var boxes = document.querySelectorAll(".mk-ct-address");
+    for (var i = 0; i < boxes.length; i++) {
+      var clip = boxes[i].querySelector(".mk-ct-address__clip");
+      var more = boxes[i].querySelector(".mk-ct-address__more");
+      if (!clip || !more) continue;
+      more.hidden = true;
+      if (clip.clientWidth < 8) continue;
+      more.hidden = !(clip.scrollWidth > clip.clientWidth + 1);
+    }
+  }
+
   function editableCellHtml(field, value, recordId, placeholder) {
     var shown = value;
     if (field === "phone" && value && window.MkPhoneFormat && typeof window.MkPhoneFormat.format === "function") {
@@ -2107,8 +2163,8 @@
             '<td class="mk-leads-td">' +
             editableCellHtml("phone", c.phone, c.crmid || c.id, "Nhập SĐT") +
             "</td>" +
-            '<td class="mk-leads-td">' +
-            editableCellHtml("address", c.address, c.crmid || c.id, "Nhập địa chỉ") +
+            '<td class="mk-leads-td mk-leads-td--address">' +
+            addressCellHtml(c.address, c.crmid || c.id) +
             "</td>" +
             '<td class="mk-leads-td mk-leads-td--biz">' +
             businessModelSelectHtml(c.crmid || c.id, c.business_model) +
@@ -2186,6 +2242,11 @@
       });
     }
     renderBulkBar();
+    if (window.requestAnimationFrame) {
+      window.requestAnimationFrame(syncAddressOverflow);
+    } else {
+      syncAddressOverflow();
+    }
   }
 
   function selectedCount() {
@@ -2610,6 +2671,16 @@
             });
         });
         return;
+      }
+      var moreBtn = e.target.closest && e.target.closest(".mk-ct-address__more");
+      if (moreBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleAddressPopover(moreBtn);
+        return;
+      }
+      if (!e.target.closest || !e.target.closest(".mk-ct-address-pop")) {
+        closeAddressPopover();
       }
       var editBtn = e.target.closest && e.target.closest(".mk-leads-inline-edit[data-contact-id]");
       if (editBtn) {

@@ -775,3 +775,65 @@ body.mk-gd14-panel-open { overflow: hidden; }
 .mk-tag--miutea { background: #fdf4ff; color: #a21caf; }
 .mk-contacts-page .mk-tag--khach-le,
 .mk-tag--khach-le { background: #ecfeff; color: #0e7490; }
+
+.mk-contacts-page td.mk-leads-td--address {
+	width: 240px;
+	max-width: 240px;
+}
+.mk-contacts-page .mk-ct-address {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	min-width: 0;
+	max-width: 240px;
+}
+.mk-contacts-page .mk-ct-address__text.mk-leads-inline-edit {
+	display: block;
+	flex: 1 1 auto;
+	width: auto;
+	min-width: 0;
+	max-width: 100%;
+	overflow: hidden;
+}
+.mk-contacts-page .mk-ct-address__clip {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.mk-contacts-page .mk-ct-address__more {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: 0 0 auto;
+	height: 20px;
+	padding: 0 6px;
+	border: 0;
+	border-radius: 999px;
+	background: #e7f3ec;
+	color: #1f4d32;
+	font-weight: 700;
+	line-height: 1;
+	cursor: pointer;
+}
+.mk-contacts-page .mk-ct-address__more[hidden] {
+	display: none !important;
+}
+.mk-contacts-page .mk-ct-address__more.is-open {
+	background: #0b1f17;
+	color: #fff;
+}
+.mk-ct-address-pop {
+	position: fixed;
+	z-index: 4000;
+	max-width: 360px;
+	padding: 10px 12px;
+	background: #fff;
+	border: 1px solid #d7e5db;
+	border-radius: 10px;
+	box-shadow: 0 8px 24px rgba(20, 35, 26, 0.14);
+	color: #14231a;
+	font-size: 13px;
+	line-height: 1.45;
+	white-space: normal;
+}
