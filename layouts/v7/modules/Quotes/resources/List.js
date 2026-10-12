@@ -97,7 +97,7 @@
       '<div class="mk-quote-convert-modal__body">' +
       '<div class="mk-quote-convert-modal__icon" aria-hidden="true"><i class="fa fa-shopping-cart"></i></div>' +
       '<p class="mk-quote-convert-modal__title">Chuyển báo giá thành đơn hàng?</p>' +
-      '<p class="mk-quote-convert-modal__hint">Hệ thống sẽ tạo phiếu đơn hàng tạm và ẩn báo giá này khỏi danh sách.</p>' +
+      '<p class="mk-quote-convert-modal__hint">Hệ thống sẽ tạo đơn hàng ở trạng thái Đã thanh toán và ẩn báo giá này khỏi danh sách.</p>' +
       "</div>";
 
     if (typeof bootbox !== "undefined" && bootbox.dialog) {
@@ -213,7 +213,7 @@
           app.helper.showSuccessNotification({
             message: result.already_exists
               ? "Đơn hàng đã tồn tại. Đang mở danh sách đơn hàng..."
-              : "Đã tạo đơn hàng (Phiếu tạm). Đang mở danh sách đơn hàng...",
+              : "Đã tạo đơn hàng (Đã thanh toán). Đang mở danh sách đơn hàng...",
           });
         }
         window.location.href = soUrl;
@@ -1492,6 +1492,96 @@
       window.location.href = editUrl;
     });
 
+    $panel.on("click", ".mk-so-inline-detail__cancel-quote-btn", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!recordId) {
+        return;
+      }
+      var $btn = $(this);
+      if ($btn.data("mkBusy")) {
+        return;
+      }
+      var deferred = $.Deferred();
+      if (typeof bootbox !== "undefined" && bootbox.dialog) {
+        bootbox.dialog({
+          title: "Huỷ báo giá",
+          message:
+            '<div class="mk-quote-convert-modal__body">' +
+            '<p class="mk-quote-convert-modal__title">Huỷ báo giá này?</p>' +
+            '<p class="mk-quote-convert-modal__hint">Báo giá chuyển sang trạng thái Huỷ và vẫn nằm trong danh sách.</p>' +
+            "</div>",
+          className: "mk-quote-convert-modal",
+          closeButton: true,
+          buttons: {
+            cancel: {
+              label: "Không",
+              className:
+                "btn mk-quote-convert-modal__btn mk-quote-convert-modal__btn--ghost",
+              callback: function () {
+                deferred.reject();
+              },
+            },
+            confirm: {
+              label: "Huỷ đơn",
+              className:
+                "btn mk-quote-convert-modal__btn mk-quote-convert-modal__btn--primary",
+              callback: function () {
+                deferred.resolve();
+              },
+            },
+          },
+          onEscape: function () {
+            deferred.reject();
+          },
+        });
+      } else if (window.confirm("Huỷ báo giá này?")) {
+        deferred.resolve();
+      } else {
+        deferred.reject();
+      }
+      deferred
+        .then(function () {
+          $btn.data("mkBusy", 1).prop("disabled", true);
+          var postData = {
+            module: "Quotes",
+            action: "CancelQuote",
+            record: recordId,
+          };
+          var csrf = "";
+          if (typeof app !== "undefined" && typeof app.getCsrfToken === "function") {
+            csrf = app.getCsrfToken();
+          } else if (typeof csrfMagicToken !== "undefined") {
+            csrf = csrfMagicToken;
+          }
+          if (csrf) {
+            postData.__vtrftk = csrf;
+          }
+          $.ajax({
+            url: "index.php",
+            type: "POST",
+            dataType: "json",
+            data: postData,
+          })
+            .done(function (resp) {
+              var result = resp && resp.result ? resp.result : resp;
+              if (!result || result.success === false) {
+                var msg =
+                  (result && result.message) || "Không huỷ được báo giá.";
+                $btn.data("mkBusy", 0).prop("disabled", false);
+                window.alert(String(msg));
+                return;
+              }
+              window.location.reload();
+            })
+            .fail(function () {
+              $btn.data("mkBusy", 0).prop("disabled", false);
+              window.alert("Không huỷ được báo giá.");
+            });
+        })
+        .fail(function () {});
+    });
+
     $panel.on("click", ".mk-so-inline-detail__confirm-order-btn", function (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -1510,11 +1600,11 @@
         ) {
           app.helper.showErrorNotification({
             message:
-              "Chỉ báo giá ở trạng thái Báo giá mới được xác nhận đơn hàng.",
+              "Chỉ báo giá ở trạng thái Phiếu tạm mới được chuyển thành đơn hàng.",
           });
         } else {
           window.alert(
-            "Chỉ báo giá ở trạng thái Báo giá mới được xác nhận đơn hàng.",
+            "Chỉ báo giá ở trạng thái Phiếu tạm mới được chuyển thành đơn hàng.",
           );
         }
         return;
@@ -2865,16 +2955,22 @@
 
   function enhanceQuoteStage(context) {
     var STAGE_LABELS = {
-      Created: "Nháp",
-      Draft: "Nháp",
-      "Đã tạo": "Nháp",
-      Nháp: "Nháp",
-      "Báo giá": "Báo giá",
-      Accepted: "Báo giá",
-      Confirmed: "Báo giá",
-      "Chấp nhận": "Báo giá",
-      "Xác nhận": "Báo giá",
-      Delivered: "Báo giá",
+      Created: "Phiếu tạm",
+      Draft: "Phiếu tạm",
+      "Đã tạo": "Phiếu tạm",
+      Nháp: "Phiếu tạm",
+      "Báo giá": "Phiếu tạm",
+      Accepted: "Phiếu tạm",
+      Confirmed: "Phiếu tạm",
+      "Chấp nhận": "Phiếu tạm",
+      "Xác nhận": "Phiếu tạm",
+      Delivered: "Phiếu tạm",
+      Rejected: "Huỷ",
+      "Huỷ": "Huỷ",
+      "Hủy": "Huỷ",
+      Cancelled: "Huỷ",
+      "Đã hủy": "Huỷ",
+      "Đã huỷ": "Huỷ",
     };
     $(context)
       .find('td[data-name="quotestage"] .value')

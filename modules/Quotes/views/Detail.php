@@ -350,16 +350,22 @@ class Quotes_Detail_View extends Inventory_Detail_View {
 
 	protected function getQuoteStageLabelMap() {
 		return array(
-			'Created' => 'Nháp',
-			'Nháp' => 'Nháp',
-			'Draft' => 'Nháp',
-			'Đã tạo' => 'Nháp',
-			'Báo giá' => 'Báo giá',
-			'Accepted' => 'Báo giá',
-			'Confirmed' => 'Báo giá',
-			'Xác nhận' => 'Báo giá',
-			'Chấp nhận' => 'Báo giá',
-			'Delivered' => 'Báo giá',
+			'Created' => 'Phiếu tạm',
+			'Nháp' => 'Phiếu tạm',
+			'Draft' => 'Phiếu tạm',
+			'Đã tạo' => 'Phiếu tạm',
+			'Báo giá' => 'Phiếu tạm',
+			'Accepted' => 'Phiếu tạm',
+			'Confirmed' => 'Phiếu tạm',
+			'Xác nhận' => 'Phiếu tạm',
+			'Chấp nhận' => 'Phiếu tạm',
+			'Delivered' => 'Phiếu tạm',
+			'Rejected' => 'Huỷ',
+			'Huỷ' => 'Huỷ',
+			'Hủy' => 'Huỷ',
+			'Cancelled' => 'Huỷ',
+			'Đã hủy' => 'Huỷ',
+			'Đã huỷ' => 'Huỷ',
 		);
 	}
 

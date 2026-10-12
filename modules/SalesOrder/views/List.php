@@ -250,47 +250,54 @@ class SalesOrder_List_View extends Inventory_List_View {
 	protected function getPosStatusLabelMap() {
 		return array(
 			'Created' => 'Phiếu tạm',
-			'Approved' => 'Đã xác nhận',
-			'Delivered' => 'Hoàn thành',
-			'Cancelled' => 'Đã hủy',
-			'Pending' => 'Đang chờ',
-			'Paid' => 'Đã thanh toán',
-			'Sent' => 'Đã gửi',
-			'Rejected' => 'Từ chối',
-			'waiting_print' => 'Chờ soạn',
-			'picking' => 'Đang soạn',
-			'packed' => 'Đã soạn',
-			'shipped' => 'Đã giao',
-			'rejected' => 'Từ chối',
-			'Đã duyệt' => 'Đã xác nhận',
 			'Đã tạo' => 'Phiếu tạm',
-			'Đang chờ xử lý' => 'Đang chờ',
-			'Đang giao hàng' => 'Đang giao hàng',
-			'Hoàn thành' => 'Hoàn thành',
-			'Đã gửi' => 'Đã gửi',
+			'Draft' => 'Phiếu tạm',
+			'Nháp' => 'Phiếu tạm',
+			'Phiếu tạm' => 'Phiếu tạm',
+			'Paid' => 'Đã thanh toán',
+			'Approved' => 'Đã thanh toán',
+			'Đã xác nhận' => 'Đã thanh toán',
+			'Đã duyệt' => 'Đã thanh toán',
 			'Đã thanh toán' => 'Đã thanh toán',
+			'Delivered' => 'Đã hoàn thành',
+			'waiting_print' => 'Đã hoàn thành',
+			'picking' => 'Đã hoàn thành',
+			'packed' => 'Đã hoàn thành',
+			'Chờ soạn' => 'Đã hoàn thành',
+			'Đang soạn' => 'Đã hoàn thành',
+			'Đã soạn' => 'Đã hoàn thành',
+			'Hoàn thành' => 'Đã hoàn thành',
+			'Đã hoàn thành' => 'Đã hoàn thành',
+			'shipped' => 'Đã hoàn thành',
+			'Đã giao' => 'Đã hoàn thành',
+			'Đang giao hàng' => 'Đã hoàn thành',
+			'Cancelled' => 'Đã hủy',
 			'Đã hủy' => 'Đã hủy',
-			'Từ chối' => 'Từ chối',
-			'Chờ soạn' => 'Chờ soạn',
-			'Đang soạn' => 'Đang soạn',
-			'Đã soạn' => 'Đã soạn',
-			'Đã giao' => 'Đã giao',
+			'Đã huỷ' => 'Đã hủy',
 		);
 	}
 
 	protected function mapPosStatusFilterOptions(array $options) {
 		$map = $this->getPosStatusLabelMap();
-		$mapped = array();
+		$preferred = array(
+			'Phiếu tạm' => 'Created',
+			'Đã thanh toán' => 'Paid',
+			'Đã hoàn thành' => 'Delivered',
+		);
+		$byLabel = array();
 		foreach ($options as $key => $label) {
-			if (isset($map[$key])) {
-				$mapped[$key] = $map[$key];
-			} elseif (isset($map[$label])) {
-				$mapped[$key] = $map[$label];
-			} else {
-				$mapped[$key] = $label;
+			$shown = isset($map[$key]) ? $map[$key] : (isset($map[$label]) ? $map[$label] : $label);
+			if (!isset($preferred[$shown]) || isset($byLabel[$shown])) {
+				continue;
 			}
+			$byLabel[$shown] = $key;
 		}
-		return $mapped;
+		$out = array();
+		foreach ($preferred as $shown => $fallbackKey) {
+			$key = isset($byLabel[$shown]) ? $byLabel[$shown] : $fallbackKey;
+			$out[$key] = $shown;
+		}
+		return $out;
 	}
 
 	protected function assignSalesListPosTemplateVars(Vtiger_Viewer $viewer, $posMeta) {

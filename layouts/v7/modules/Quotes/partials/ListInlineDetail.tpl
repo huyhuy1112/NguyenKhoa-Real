@@ -143,6 +143,16 @@
 				<i class="fa fa-copy" aria-hidden="true"></i>
 				<span>Nhân bản</span>
 			</a>
+			{assign var=QT_IS_CANCELLED value=(
+				$INLINE_QUOTE_STAGE eq 'Rejected' || $INLINE_QUOTE_STAGE eq 'Huỷ' || $INLINE_QUOTE_STAGE eq 'Hủy'
+				|| $INLINE_QUOTE_STAGE eq 'Cancelled' || $INLINE_QUOTE_STAGE eq 'Đã hủy' || $INLINE_QUOTE_STAGE eq 'Đã huỷ'
+			)}
+			{if !$QT_IS_CANCELLED}
+			<button type="button" class="mk-so-inline-detail__action mk-so-inline-detail__action--outline mk-so-inline-detail__cancel-quote-btn" data-record-id="{$RECORD->getId()}" title="Huỷ báo giá này">
+				<i class="fa fa-ban" aria-hidden="true"></i>
+				<span>Huỷ đơn</span>
+			</button>
+			{/if}
 			<button type="button" class="mk-so-inline-detail__action mk-so-inline-detail__action--primary mk-so-inline-detail__confirm-order-btn{if empty($INLINE_CAN_CONFIRM_ORDER)} is-hidden{/if}" data-confirm-url="{$INLINE_CONFIRM_URL|escape}" title="Xác nhận và chuyển thành đơn hàng">
 				<i class="fa fa-shopping-cart" aria-hidden="true"></i>
 				<span>Xác nhận đơn hàng</span>

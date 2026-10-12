@@ -147,19 +147,14 @@
 				<i class="fa fa-times" aria-hidden="true"></i>
 				<span>Hủy sửa</span>
 			</button>
-			<button type="button" class="mk-so-inline-detail__action mk-so-inline-detail__action--ghost mk-so-inline-detail__view-full-btn">
-				<i class="fa fa-expand" aria-hidden="true"></i>
-				<span>Xem đầy đủ</span>
-			</button>
 		</div>
 		<div class="mk-so-inline-detail__actions-right">
 			{assign var=SO_ALREADY_CONFIRMED value=(
-				$INLINE_SOSTATUS eq 'Approved' || $INLINE_SOSTATUS eq 'Đã xác nhận' || $INLINE_SOSTATUS eq 'Đã duyệt'
-				|| $INLINE_SOSTATUS eq 'waiting_print' || $INLINE_SOSTATUS eq 'picking' || $INLINE_SOSTATUS eq 'packed'
-				|| $INLINE_SOSTATUS eq 'shipped' || $INLINE_SOSTATUS eq 'rejected'
+				$INLINE_SOSTATUS eq 'waiting_print' || $INLINE_SOSTATUS eq 'picking' || $INLINE_SOSTATUS eq 'packed'
+				|| $INLINE_SOSTATUS eq 'shipped'
 				|| $INLINE_SOSTATUS eq 'Delivered' || $INLINE_SOSTATUS eq 'Đã giao' || $INLINE_SOSTATUS eq 'Hoàn thành'
+				|| $INLINE_SOSTATUS eq 'Đã hoàn thành'
 				|| $INLINE_SOSTATUS eq 'Chờ soạn' || $INLINE_SOSTATUS eq 'Đang soạn' || $INLINE_SOSTATUS eq 'Đã soạn'
-				|| $INLINE_SOSTATUS eq 'Từ chối'
 			)}
 			{assign var=SO_CAN_CANCEL value=(
 				$INLINE_SOSTATUS neq 'shipped' && $INLINE_SOSTATUS neq 'Delivered' && $INLINE_SOSTATUS neq 'Đã giao'
@@ -176,15 +171,15 @@
 				<i class="fa fa-share-square-o" aria-hidden="true"></i>
 				<span>Chuyển qua MISA</span>
 			</button>
-			{if $SO_CAN_CANCEL}
-			<button type="button" class="mk-so-inline-detail__action mk-so-inline-detail__action--outline mk-so-inline-detail__cancel-order-btn" title="Huỷ đơn và hoàn kho (nếu đã trừ tồn)">
-				<i class="fa fa-ban" aria-hidden="true"></i>
-				<span>Huỷ đơn</span>
+			{if !$SO_ALREADY_CONFIRMED}
+			<button type="button" class="mk-so-inline-detail__action mk-so-inline-detail__action--outline mk-so-inline-detail__recall-payment-btn" data-record-id="{$RECORD->getId()}" title="Đưa đơn về báo giá, trạng thái Phiếu tạm">
+				<i class="fa fa-undo" aria-hidden="true"></i>
+				<span>Thu hồi thanh toán</span>
 			</button>
 			{/if}
-			<button type="button" class="mk-so-inline-detail__action mk-so-inline-detail__action--outline mk-so-inline-detail__process-btn" title="Mở form chỉnh sửa">
+			<button type="button" class="mk-so-inline-detail__action mk-so-inline-detail__action--outline mk-so-inline-detail__process-btn" title="Xem đơn chi tiết">
 				<i class="fa fa-pencil" aria-hidden="true"></i>
-				<span>Sửa đơn</span>
+				<span>Xem đơn chi tiết</span>
 			</button>
 			<a class="mk-so-inline-detail__action mk-so-inline-detail__action--outline mk-so-inline-detail__dup-btn" href="#" data-record-id="{$RECORD->getId()}" title="Nhân bản đơn hàng">
 				<i class="fa fa-copy" aria-hidden="true"></i>

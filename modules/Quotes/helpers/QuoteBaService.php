@@ -619,8 +619,22 @@ class Quotes_QuoteBaService_Helper {
 		return false;
 	}
 
+	public static function isCancelledQuoteStage($stage) {
+		$stage = trim((string) $stage);
+		if ($stage === '') {
+			return false;
+		}
+		$cancelled = array('Rejected', 'Huỷ', 'Hủy', 'Cancelled', 'Đã hủy', 'Đã huỷ');
+		foreach ($cancelled as $value) {
+			if (strcasecmp($stage, $value) === 0) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	public static function isConfirmedQuoteStage($stage) {
-		if (self::isDraftQuoteStage($stage)) {
+		if (self::isDraftQuoteStage($stage) || self::isCancelledQuoteStage($stage)) {
 			return false;
 		}
 		$stage = trim((string) $stage);
@@ -642,16 +656,22 @@ class Quotes_QuoteBaService_Helper {
 			return '';
 		}
 		$map = array(
-			'Created' => 'Nháp',
-			'Nháp' => 'Nháp',
-			'Draft' => 'Nháp',
-			'Đã tạo' => 'Nháp',
-			'Báo giá' => 'Báo giá',
-			'Accepted' => 'Báo giá',
-			'Confirmed' => 'Báo giá',
-			'Xác nhận' => 'Báo giá',
-			'Chấp nhận' => 'Báo giá',
-			'Delivered' => 'Báo giá',
+			'Created' => 'Phiếu tạm',
+			'Nháp' => 'Phiếu tạm',
+			'Draft' => 'Phiếu tạm',
+			'Đã tạo' => 'Phiếu tạm',
+			'Báo giá' => 'Phiếu tạm',
+			'Accepted' => 'Phiếu tạm',
+			'Confirmed' => 'Phiếu tạm',
+			'Xác nhận' => 'Phiếu tạm',
+			'Chấp nhận' => 'Phiếu tạm',
+			'Delivered' => 'Phiếu tạm',
+			'Rejected' => 'Huỷ',
+			'Huỷ' => 'Huỷ',
+			'Hủy' => 'Huỷ',
+			'Cancelled' => 'Huỷ',
+			'Đã hủy' => 'Huỷ',
+			'Đã huỷ' => 'Huỷ',
 		);
 		if (isset($map[$stage])) {
 			return $map[$stage];

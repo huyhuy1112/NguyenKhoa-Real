@@ -241,31 +241,29 @@
 
   var STATUS_VI_LABELS = {
     Created: "Phiếu tạm",
-    Approved: "Đã xác nhận",
-    Delivered: "Đã giao",
-    Cancelled: "Đã hủy",
-    Pending: "Đang chờ",
-    Paid: "Đã thanh toán",
-    Sent: "Đã gửi",
-    Rejected: "Từ chối",
-    waiting_print: "Chờ soạn",
-    picking: "Đang soạn",
-    packed: "Đã soạn",
-    shipped: "Đã giao",
-    rejected: "Từ chối",
-    "Chờ soạn": "Chờ soạn",
-    "Đang soạn": "Đang soạn",
-    "Đã soạn": "Đã soạn",
-    "Đã giao": "Đã giao",
-    "Đã duyệt": "Đã xác nhận",
+    Draft: "Phiếu tạm",
+    Nháp: "Phiếu tạm",
+    "Phiếu tạm": "Phiếu tạm",
     "Đã tạo": "Phiếu tạm",
-    "Đang chờ xử lý": "Đang chờ",
-    "Đang giao hàng": "Đang giao hàng",
-    "Hoàn thành": "Hoàn thành",
-    "Đã gửi": "Đã gửi",
+    Paid: "Đã thanh toán",
+    Approved: "Đã thanh toán",
+    "Đã xác nhận": "Đã thanh toán",
+    "Đã duyệt": "Đã thanh toán",
     "Đã thanh toán": "Đã thanh toán",
+    Delivered: "Đã hoàn thành",
+    "Hoàn thành": "Đã hoàn thành",
+    "Đã hoàn thành": "Đã hoàn thành",
+    shipped: "Đã hoàn thành",
+    "Đã giao": "Đã hoàn thành",
+    "Đang giao hàng": "Đã hoàn thành",
+    waiting_print: "Đã hoàn thành",
+    picking: "Đã hoàn thành",
+    packed: "Đã hoàn thành",
+    "Chờ soạn": "Đã hoàn thành",
+    "Đang soạn": "Đã hoàn thành",
+    "Đã soạn": "Đã hoàn thành",
+    Cancelled: "Đã hủy",
     "Đã hủy": "Đã hủy",
-    "Từ chối": "Từ chối",
   };
 
   var POS_COL_CLASS_BY_FIELD = {
@@ -1100,6 +1098,63 @@
     return text;
   }
 
+  function recallSalesOrderPayment($panel, recordId, $btn) {
+    $btn.data("mkBusy", 1).prop("disabled", true).addClass("is-busy");
+    var postData = {
+      module: "SalesOrder",
+      action: "RecallPayment",
+      record: recordId,
+      app: "SALES",
+    };
+    var csrf = getCsrfToken();
+    if (csrf) {
+      postData.__vtrftk = csrf;
+    }
+    $.ajax({
+      url: "index.php",
+      type: "POST",
+      dataType: "json",
+      data: postData,
+    })
+      .done(function (resp) {
+        var result = resp && resp.result ? resp.result : resp;
+        if (!result || result.success === false) {
+          var msg =
+            (result && result.message) ||
+            (resp && resp.error && (resp.error.message || resp.error)) ||
+            "Không thu hồi được thanh toán.";
+          $btn.data("mkBusy", 0).prop("disabled", false).removeClass("is-busy");
+          if (
+            typeof app !== "undefined" &&
+            app.helper &&
+            app.helper.showErrorNotification
+          ) {
+            app.helper.showErrorNotification({ message: String(msg) });
+          } else {
+            window.alert(String(msg));
+          }
+          return;
+        }
+        if (
+          typeof app !== "undefined" &&
+          app.helper &&
+          app.helper.showSuccessNotification
+        ) {
+          app.helper.showSuccessNotification({
+            message:
+              result.message ||
+              "Đã thu hồi thanh toán. Báo giá quay lại Phiếu tạm.",
+          });
+        }
+        window.location.href =
+          result.list_url || "index.php?module=Quotes&view=List&app=SALES";
+      })
+      .fail(function () {
+        $btn.data("mkBusy", 0).prop("disabled", false).removeClass("is-busy");
+        window.alert("Không thu hồi được thanh toán.");
+      });
+  }
+
   function confirmSalesOrderWithWarehouse($panel, recordId, $btn) {
     var $modal = ensureSoConfirmWarehouseModal();
     var $err = $("#mkSoConfirmWarehouseError");
@@ -1774,7 +1829,7 @@
         var btn =
           ev.target && ev.target.closest
             ? ev.target.closest(
-                ".mk-so-inline-detail__confirm-order-btn, .mk-so-inline-detail__cancel-order-btn, .mk-so-inline-detail__misa-btn",
+                ".mk-so-inline-detail__confirm-order-btn, .mk-so-inline-detail__recall-payment-btn, .mk-so-inline-detail__cancel-order-btn, .mk-so-inline-detail__misa-btn",
               )
             : null;
         if (!btn || !$panel[0].contains(btn)) {
@@ -1808,11 +1863,25 @@
           showOrderActionConfirm({
             title: "Xác nhận đơn hàng",
             question: "Xác nhận đơn hàng này?",
-            hint: "Sau khi xác nhận, chọn kho để tạo phiếu xuất kho.",
+            hint: "Sau khi xác nhận, chọn kho để tạo phiếu xuất kho. Trạng thái đơn thành Đã hoàn thành.",
             icon: "fa-check",
           }).then(
             function () {
               confirmSalesOrderWithWarehouse($panel, id, $btn);
+            },
+            function () {},
+          );
+          return;
+        }
+        if ($btn.hasClass("mk-so-inline-detail__recall-payment-btn")) {
+          showOrderActionConfirm({
+            title: "Thu hồi thanh toán",
+            question: "Đưa đơn này về báo giá?",
+            hint: "Đơn hàng sẽ biến mất. Báo giá gốc quay lại trạng thái Phiếu tạm.",
+            icon: "fa-undo",
+          }).then(
+            function () {
+              recallSalesOrderPayment($panel, id, $btn);
             },
             function () {},
           );
@@ -3981,7 +4050,7 @@
       return "danger";
     }
     if (t.indexOf("paid") >= 0 || t.indexOf("thanh toán") >= 0) {
-      return "success";
+      return "confirmed";
     }
     return "neutral";
   }
