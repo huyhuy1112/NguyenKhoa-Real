@@ -1003,31 +1003,114 @@
     if (s.indexOf("bao") >= 0) {
       return "bao";
     }
+    if (s.indexOf("bình") >= 0 || s.indexOf("binh") >= 0) {
+      return "binh";
+    }
+    if (s.indexOf("chai") >= 0) {
+      return "chai";
+    }
+    if (s.indexOf("gói") >= 0 || s.indexOf("goi") >= 0) {
+      return "goi";
+    }
     return "";
   }
 
-  function qtyTierForLine(meta, qty) {
-    var pack = decodeQtyRulesAttr(meta && meta.kl_qty_rules);
-    if (!pack || !pack.rules || !pack.rules.length) {
+  var QTY_UNIT_WORD = {
+    lon: "lon",
+    bich: "bịch",
+    hop: "hộp",
+    bao: "bao",
+    thung: "thùng",
+    binh: "bình",
+    chai: "chai",
+    goi: "gói",
+  };
+  var QTY_TIER_PHRASE = {
+    gte_3m: "giá trên 3 triệu",
+    gte_5m: "giá trên 5 triệu",
+    gte_7m: "giá trên 7 triệu",
+  };
+
+  function qtySellUnit(meta, pack) {
+    return normalizeSellUnit((meta && meta.unit) || (pack && pack.sell_unit));
+  }
+
+  function qtyRuleNeed(rule, pack, sell) {
+    var min = Number(rule.min) || 0;
+    var need = min;
+    var ruleUnit = normalizeSellUnit(rule.unit);
+    var converted = false;
+    if (ruleUnit === "thung" && sell !== "thung" && Number(pack.per_thung) > 0) {
+      need = min * Number(pack.per_thung);
+      converted = true;
+    }
+    return { need: need, min: min, ruleUnit: ruleUnit, converted: converted };
+  }
+
+  function formatQtyStep(rule, pack, sell) {
+    var info = qtyRuleNeed(rule, pack, sell);
+    var phrase = QTY_TIER_PHRASE[rule.tier] || "";
+    if (!phrase || !(info.min > 0)) {
       return "";
     }
-    var sell = normalizeSellUnit((meta && meta.unit) || pack.sell_unit);
+    if (info.converted) {
+      var sellWord = QTY_UNIT_WORD[sell] || "đơn vị";
+      return "Từ " + info.need + " " + sellWord + " (" + info.min + " thùng): " + phrase;
+    }
+    var word = QTY_UNIT_WORD[info.ruleUnit] || QTY_UNIT_WORD[sell] || "đơn vị";
+    return "Từ " + info.min + " " + word + ": " + phrase;
+  }
+
+  function qtyPackHit(meta, qty) {
+    var pack = decodeQtyRulesAttr(meta && meta.kl_qty_rules);
+    if (!pack || !pack.rules || !pack.rules.length) {
+      return null;
+    }
+    var sell = qtySellUnit(meta, pack);
     var rank = { gte_3m: 2, gte_5m: 3, gte_7m: 4 };
-    var best = "";
+    var best = null;
     var bestRank = 0;
     pack.rules.forEach(function (rule) {
-      var need = Number(rule.min) || 0;
-      var ruleUnit = normalizeSellUnit(rule.unit);
-      if (ruleUnit === "thung" && sell !== "thung" && Number(pack.per_thung) > 0) {
-        need = need * Number(pack.per_thung);
-      }
+      var info = qtyRuleNeed(rule, pack, sell);
       var ruleRank = rank[rule.tier] || 0;
-      if (qty >= need && ruleRank > bestRank) {
-        best = rule.tier;
+      if (qty >= info.need && ruleRank > bestRank) {
+        best = rule;
         bestRank = ruleRank;
       }
     });
-    return best;
+    return { pack: pack, sell: sell, rule: best };
+  }
+
+  function qtyTierForLine(meta, qty) {
+    var hit = qtyPackHit(meta, qty);
+    return hit && hit.rule ? hit.rule.tier : "";
+  }
+
+  function describeQtyTier(meta, qty) {
+    var hit = qtyPackHit(meta, qty);
+    if (!hit) {
+      return "";
+    }
+    if (!hit.rule) {
+      return "Chưa tới mốc số lượng";
+    }
+    return formatQtyStep(hit.rule, hit.pack, hit.sell);
+  }
+
+  function describeQtySchedule(raw) {
+    var pack = decodeQtyRulesAttr(raw && raw.kl_qty_rules ? raw.kl_qty_rules : raw);
+    if (!pack || !pack.rules || !pack.rules.length) {
+      return "";
+    }
+    var sell = normalizeSellUnit(pack.sell_unit);
+    var parts = [];
+    pack.rules.forEach(function (rule) {
+      var text = formatQtyStep(rule, pack, sell);
+      if (text) {
+        parts.push(text);
+      }
+    });
+    return parts.join(". ");
   }
 
   function invoiceTierLabel(tierKey) {
@@ -1132,6 +1215,10 @@
       return false;
     }
     var meta = getProductMetaForRow($row);
+    var lineUnit = String($row.find(".mk-inv-unit-select").first().val() || "").trim();
+    if (lineUnit) {
+      meta.unit = lineUnit;
+    }
     var tierForPrice = tierKey;
     var tierSource = "invoice";
     if (getPriceChannel() === "retail" && getInvoiceTierSelection($form) === "auto") {
@@ -7576,6 +7663,9 @@
     getPriceChannel: getPriceChannel,
     setPriceChannel: setPriceChannel,
     qtyTierForLine: qtyTierForLine,
+    describeQtyTier: describeQtyTier,
+    describeQtySchedule: describeQtySchedule,
+    getProductMetaForRow: getProductMetaForRow,
     priceForTier: function (meta, tierKey) {
       return resolveInvoiceTierPrice(meta, tierKey);
     },

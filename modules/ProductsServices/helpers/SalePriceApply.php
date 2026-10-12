@@ -22,6 +22,7 @@ class ProductsServices_SalePriceApply_Helper {
 			self::applyOnce();
 			self::applyQtyOnce();
 			self::applyQtyPackOnce();
+			self::applyQtyNameOnce();
 			self::applyUnitsOnce();
 			self::applyChainOnce();
 		} catch (Exception $e) {
@@ -209,6 +210,36 @@ class ProductsServices_SalePriceApply_Helper {
 		self::markApplied($db, 'sale_nl_qty_pack2', $matched, $sheet);
 	}
 
+	protected static function applyQtyNameOnce() {
+		self::rewriteQtyRules('sale_nl_qty_name3');
+	}
+
+	protected static function rewriteQtyRules($key) {
+		$db = PearDatabase::getInstance();
+		if (self::alreadyApplied($db, $key)) {
+			return;
+		}
+		$sheet = self::loadNamedJson('sale_nl_150926_qty.json');
+		$products = self::loadProducts($db);
+		$matched = self::matchRows($sheet, $products);
+		if (!$matched['updates']) {
+			return;
+		}
+		foreach ($matched['updates'] as $item) {
+			$row = $item[1];
+			$payload = json_encode(array(
+				'sell_unit' => isset($row['sell_unit']) ? $row['sell_unit'] : '',
+				'per_thung' => isset($row['per_thung']) ? (int) $row['per_thung'] : 0,
+				'rules' => isset($row['rules']) && is_array($row['rules']) ? $row['rules'] : array(),
+			), JSON_UNESCAPED_UNICODE);
+			$db->pquery(
+				'UPDATE vtiger_productsservices SET kl_qty_rules = ? WHERE productsservicesid = ?',
+				array($payload, $item[0])
+			);
+		}
+		self::markApplied($db, $key, $matched, $sheet);
+	}
+
 	protected static function applyUnitsOnce() {
 		$db = PearDatabase::getInstance();
 		if (self::alreadyApplied($db, 'sale_nl_units_150926')) {
@@ -311,17 +342,6 @@ class ProductsServices_SalePriceApply_Helper {
 				$byLoose[$loose][] = $index;
 			}
 		}
-		$looseProductCount = array();
-		foreach ($products as $product) {
-			$loose = self::loose($product['name']);
-			if ($loose === '') {
-				continue;
-			}
-			if (!isset($looseProductCount[$loose])) {
-				$looseProductCount[$loose] = 0;
-			}
-			$looseProductCount[$loose]++;
-		}
 		$used = array();
 		$updates = array();
 		$matchedIds = array();
@@ -342,15 +362,10 @@ class ProductsServices_SalePriceApply_Helper {
 			if ($loose === '' || empty($byLoose[$loose]) || count($byLoose[$loose]) !== 1) {
 				continue;
 			}
-			if (empty($looseProductCount[$loose]) || $looseProductCount[$loose] !== 1) {
-				continue;
-			}
 			$index = $byLoose[$loose][0];
-			if (!empty($used[$index])) {
-				continue;
-			}
 			$updates[] = array($product['id'], $sheet[$index]);
 			$used[$index] = true;
+			$matchedIds[$product['id']] = true;
 		}
 		return array('updates' => $updates, 'used' => $used);
 	}

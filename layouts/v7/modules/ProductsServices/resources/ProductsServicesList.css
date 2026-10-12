@@ -1721,6 +1721,21 @@ body[data-module="ProductsServices"][data-view="List"].mk-ps-ba-list .mk-ps-name
 	color: #14231a;
 }
 
+body[data-module="ProductsServices"][data-view="List"].mk-ps-ba-list .mk-ps-name-copy {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	gap: 2px;
+}
+
+body[data-module="ProductsServices"][data-view="List"].mk-ps-ba-list .mk-ps-qty-note {
+	font-size: 11px;
+	font-weight: 500;
+	line-height: 1.35;
+	color: #3d6b4f;
+	white-space: normal;
+}
+
 body[data-module="ProductsServices"][data-view="List"].mk-ps-ba-list .mk-ps-star {
 	display: inline-flex;
 	align-items: center;

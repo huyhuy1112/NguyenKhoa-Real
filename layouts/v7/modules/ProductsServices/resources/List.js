@@ -100,6 +100,60 @@
 		return String(Math.round(n * 100) / 100);
 	}
 
+	function qtyUnitKey(raw) {
+		var s = String(raw || '').toLowerCase();
+		if (s.indexOf('thùng') >= 0 || s.indexOf('thung') >= 0) return 'thung';
+		if (s.indexOf('bịch') >= 0 || s.indexOf('bich') >= 0) return 'bich';
+		if (s.indexOf('hộp') >= 0 || s.indexOf('hop') >= 0) return 'hop';
+		if (s.indexOf('lon') >= 0) return 'lon';
+		if (s.indexOf('bao') >= 0) return 'bao';
+		if (s.indexOf('bình') >= 0 || s.indexOf('binh') >= 0) return 'binh';
+		if (s.indexOf('chai') >= 0) return 'chai';
+		if (s.indexOf('gói') >= 0 || s.indexOf('goi') >= 0) return 'goi';
+		return '';
+	}
+
+	function qtyScheduleNote(it) {
+		var pack = it && it.kl_qty_rules;
+		if (!pack || !pack.rules || !pack.rules.length) {
+			return '';
+		}
+		var words = {
+			lon: 'lon',
+			bich: 'bịch',
+			hop: 'hộp',
+			bao: 'bao',
+			thung: 'thùng',
+			binh: 'bình',
+			chai: 'chai',
+			goi: 'gói'
+		};
+		var phrases = {
+			gte_3m: 'giá trên 3 triệu',
+			gte_5m: 'giá trên 5 triệu',
+			gte_7m: 'giá trên 7 triệu'
+		};
+		var sell = qtyUnitKey(pack.sell_unit);
+		var parts = [];
+		pack.rules.forEach(function (rule) {
+			var phrase = phrases[rule.tier];
+			var min = Number(rule.min) || 0;
+			if (!phrase || !(min > 0)) {
+				return;
+			}
+			var ruleUnit = qtyUnitKey(rule.unit);
+			if (ruleUnit === 'thung' && sell !== 'thung' && Number(pack.per_thung) > 0) {
+				parts.push(
+					'Từ ' + (min * Number(pack.per_thung)) + ' ' + (words[sell] || 'đơn vị') +
+					' (' + min + ' thùng): ' + phrase
+				);
+				return;
+			}
+			parts.push('Từ ' + min + ' ' + (words[ruleUnit] || words[sell] || 'đơn vị') + ': ' + phrase);
+		});
+		return parts.join('. ');
+	}
+
 	function formatCreated(raw) {
 		var s = String(raw || '').trim();
 		if (!s) {
@@ -531,6 +585,7 @@
 			(isStarred ? '★' : '☆') +
 			'</button>';
 		var so = stockoutInfo(it);
+		var qtyNote = qtyScheduleNote(it);
 
 		return (
 			'<tr class="listViewEntries mk-ps-client-row" data-id="' +
@@ -556,11 +611,16 @@
 			'<td class="listViewEntryValue mk-col-ps-name" data-name="productsservicesname">' +
 			'<div class="mk-ps-name-cell">' +
 			thumbHtml +
+			'<div class="mk-ps-name-copy">' +
 			'<span class="mk-ps-name-text" title="' +
 			esc(name) +
 			'">' +
 			esc(name) +
-			'</span></div></td>' +
+			'</span>' +
+			(qtyNote
+				? '<span class="mk-ps-qty-note">' + esc(qtyNote) + '</span>'
+				: '') +
+			'</div></div></td>' +
 			'<td class="listViewEntryValue mk-col-ps-price" data-name="price_lt_1m"><span class="value">' +
 			esc(formatMoney(it.price_lt_1m != null ? it.price_lt_1m : it.price)) +
 			'</span></td>' +

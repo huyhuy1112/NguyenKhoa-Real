@@ -258,6 +258,14 @@
 		return box;
 	}
 
+	function htmlText(s) {
+		return String(s == null ? '' : s)
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;');
+	}
+
 	function card(kind, lines, offer, on) {
 		var title = kind === 'value' ? 'Theo GIÁ TRỊ' : 'Theo SỐ LƯỢNG';
 		var icon = kind === 'value' ? 'fa-file-text-o' : 'fa-cubes';
@@ -269,7 +277,7 @@
 			'<article class="mk-qt-smart__card' + (on ? ' is-on' : '') + '">' +
 			'<div class="mk-qt-smart__card-h"><i class="fa ' + icon + '" aria-hidden="true"></i><span>' + title + '</span></div>' +
 			'<div class="mk-qt-smart__row"><span>' + metricLabel + '</span><b>' + metricValue + '</b></div>' +
-			'<div class="mk-qt-smart__row"><span>Bậc áp dụng</span><b>' + offer.label + '</b></div>' +
+			'<div class="mk-qt-smart__row"><span>Bậc áp dụng</span><b>' + htmlText(offer.label) + '</b></div>' +
 			'<div class="mk-qt-smart__row"><span>Tiết kiệm</span><b>' + money(offer.saving) + ' đ</b></div>' +
 			'</article>'
 		);
@@ -330,6 +338,8 @@
 		var listBase = 0;
 		var invoiceSaving = 0;
 		var qtySaving = 0;
+		var qtyLabels = [];
+		var sawQtyRules = false;
 		$('#lineItemTab tr.lineItemRow').each(function () {
 			var $row = $(this);
 			var q = parseMoney($row.find('input.qty, .qty').first().val());
@@ -337,7 +347,7 @@
 				return;
 			}
 			var $opt = $row.find('.mk-inv-product-select option:selected').first();
-			var meta = {
+			var meta = engine && engine.getProductMetaForRow ? engine.getProductMetaForRow($row) : {
 				price_lt_1m: $opt.attr('data-price-lt-1m'),
 				price_gte_1m: $opt.attr('data-price-gte-1m'),
 				price_gte_3m: $opt.attr('data-price-gte-3m'),
@@ -347,6 +357,10 @@
 				unit: $opt.attr('data-unit') || '',
 				kl_qty_rules: $opt.attr('data-kl-qty-rules')
 			};
+			var lineUnit = String($row.find('.mk-inv-unit-select').first().val() || '').trim();
+			if (lineUnit) {
+				meta.unit = lineUnit;
+			}
 			var base = parseMoney(meta.price_lt_1m);
 			if (!(base > 0)) {
 				base = parseMoney(meta.price);
@@ -365,6 +379,15 @@
 				if (engine.qtyTierForLine) {
 					var qtyTier = engine.qtyTierForLine(meta, q);
 					qtyPrice = qtyTier ? engine.priceForTier(meta, qtyTier) : 0;
+				}
+				if (engine.describeQtyTier) {
+					var step = engine.describeQtyTier(meta, q);
+					if (step) {
+						sawQtyRules = true;
+						if (step !== 'Chưa tới mốc số lượng' && qtyLabels.indexOf(step) < 0) {
+							qtyLabels.push(step);
+						}
+					}
 				}
 			}
 			var qtyPick = qtyPrice > 0 && qtyPrice < invoicePrice ? qtyPrice : invoicePrice;
@@ -390,6 +413,7 @@
 			qtySaving: qtySaving,
 			chosenSaving: chosenSaving,
 			invoiceLabel: tierLabel(invoiceTier),
+			qtyLabel: qtyLabels.length ? qtyLabels.join('; ') : (sawQtyRules ? 'Chưa tới mốc số lượng' : 'Không có mốc số lượng'),
 			why: why
 		};
 	}
@@ -494,7 +518,7 @@
 			state.subtitle = 'Khách lẻ — so giá theo tổng đơn với giá theo số lượng từng món, lấy giá thấp hơn.';
 			state.cardsHtml =
 				card('value', state.lines, { label: retail.invoiceLabel, saving: retail.invoiceSaving, percent: 0 }, retail.invoiceSaving >= retail.qtySaving) +
-				card('quantity', state.lines, { label: 'Mốc số lượng từng món', saving: retail.qtySaving, percent: 0 }, retail.qtySaving > retail.invoiceSaving);
+				card('quantity', state.lines, { label: retail.qtyLabel, saving: retail.qtySaving, percent: 0 }, retail.qtySaving > retail.invoiceSaving);
 			state.decisionHtml = '<p class="mk-qt-smart__why">' + retail.why + '</p>';
 			paint(state);
 			applyPercent(0);

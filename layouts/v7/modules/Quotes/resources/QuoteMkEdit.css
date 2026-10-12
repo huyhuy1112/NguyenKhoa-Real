@@ -2494,6 +2494,8 @@ body[data-module="Quotes"][data-view="Edit"] #mkQtSmartDiscount.mk-qt-smart {
 	font-weight: 700;
 	color: #111827;
 	text-align: right;
+	min-width: 0;
+	white-space: normal;
 }
 .mk-qt-smart__decision {
 	background: #f8fafc;

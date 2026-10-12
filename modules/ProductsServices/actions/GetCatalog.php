@@ -22,8 +22,10 @@ class ProductsServices_GetCatalog_Action extends Vtiger_Action_Controller {
 			$db = PearDatabase::getInstance();
 			$hasPriceLt = $this->columnExists($db, 'vtiger_productsservices', 'price_lt_1m');
 			$hasMiutea = $this->columnExists($db, 'vtiger_productsservices', 'price_miutea');
+			$hasQtyRules = $this->columnExists($db, 'vtiger_productsservices', 'kl_qty_rules');
 			$priceLtCol = $hasPriceLt ? ', IFNULL(ps.price_lt_1m, 0) AS price_lt_1m' : '';
 			$priceMiuteaCol = $hasMiutea ? ', IFNULL(ps.price_miutea, 0) AS price_miutea' : '';
+			$qtyRulesCol = $hasQtyRules ? ', ps.kl_qty_rules' : '';
 
 			$sql = "SELECT ps.productsservicesid AS id,
 					ps.productsservicesname AS name,
@@ -36,6 +38,7 @@ class ProductsServices_GetCatalog_Action extends Vtiger_Action_Controller {
 					ce.createdtime AS createdtime
 					{$priceLtCol}
 					{$priceMiuteaCol}
+					{$qtyRulesCol}
 				FROM vtiger_productsservices ps
 				INNER JOIN vtiger_crmentity ce ON ce.crmid = ps.productsservicesid AND ce.deleted = 0
 				ORDER BY ps.productsservicesname ASC, ps.productsservicesid ASC";
@@ -48,6 +51,11 @@ class ProductsServices_GetCatalog_Action extends Vtiger_Action_Controller {
 				$priceLt = $hasPriceLt
 					? (float) $row['price_lt_1m']
 					: (float) $row['price'];
+				$qtyRules = null;
+				if ($hasQtyRules && !empty($row['kl_qty_rules'])) {
+					$decoded = json_decode(html_entity_decode((string) $row['kl_qty_rules'], ENT_QUOTES, 'UTF-8'), true);
+					$qtyRules = is_array($decoded) ? $decoded : null;
+				}
 				$items[] = array(
 					'id' => $id,
 					'name' => decode_html((string) $row['name']),
@@ -59,6 +67,7 @@ class ProductsServices_GetCatalog_Action extends Vtiger_Action_Controller {
 					'price_tuibao' => (float) $row['price_tuibao'],
 					'price_miutea' => $hasMiutea ? (float) $row['price_miutea'] : 0,
 					'unit' => decode_html((string) $row['unit']),
+					'kl_qty_rules' => $qtyRules,
 					'createdtime' => (string) $row['createdtime'],
 					'stock' => 0.0,
 					'qty_so' => 0.0,
