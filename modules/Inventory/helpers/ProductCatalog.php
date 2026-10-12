@@ -9,6 +9,10 @@ class Inventory_ProductCatalog_Helper {
 	 * @return array<int, array{id:int,name:string,price:float,type:string,sku:string,unit:string,stock:float,qty_po:float,qty_so:float}>
 	 */
 	public static function listActiveProducts($limit = 5000) {
+		if (is_file('modules/ProductsServices/helpers/SalePriceApply.php')) {
+			require_once 'modules/ProductsServices/helpers/SalePriceApply.php';
+			ProductsServices_SalePriceApply_Helper::ensureApplied();
+		}
 		$db = PearDatabase::getInstance();
 		$limit = max(1, min(10000, (int) $limit));
 

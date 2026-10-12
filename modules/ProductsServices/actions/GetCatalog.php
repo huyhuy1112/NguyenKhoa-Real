@@ -17,6 +17,8 @@ class ProductsServices_GetCatalog_Action extends Vtiger_Action_Controller {
 		try {
 			require_once 'modules/ProductsServices/helpers/PriceSetup.php';
 			ProductsServices_PriceSetup_Helper::ensure();
+			require_once 'modules/ProductsServices/helpers/SalePriceApply.php';
+			ProductsServices_SalePriceApply_Helper::ensureApplied();
 			$db = PearDatabase::getInstance();
 			$hasPriceLt = $this->columnExists($db, 'vtiger_productsservices', 'price_lt_1m');
 			$hasMiutea = $this->columnExists($db, 'vtiger_productsservices', 'price_miutea');

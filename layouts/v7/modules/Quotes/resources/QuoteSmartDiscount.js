@@ -399,6 +399,14 @@
 			return;
 		}
 
+		if (segment === 'kl') {
+			state.subtitle = 'Khách lẻ — đơn giá lấy theo mức tổng đơn trên từng hàng hoá.';
+			state.decisionHtml = '<p class="mk-qt-smart__why">Không trừ thêm phần trăm. Giá dưới 1 triệu, trên 1 triệu, 3 triệu, 5 triệu và 7 triệu nằm ở từng hàng hoá. Mức được chọn theo tổng số lượng nhân giá dưới 1 triệu.</p>';
+			paint(state);
+			applyPercent(0);
+			return;
+		}
+
 		if (segment === 'miutea') {
 			var only = offer(lines.subtotal, findTier(lines.subtotal, MIUTEA_VALUE_TIERS), 'Chưa đạt bậc chiết khấu');
 			state.saving = only.saving;

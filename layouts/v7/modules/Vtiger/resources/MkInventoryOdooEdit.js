@@ -893,6 +893,43 @@
     return sum;
   }
 
+  /** Khách lẻ: chọn cột giá theo tổng số lượng × giá dưới 1 triệu, không theo giá đã giảm. */
+  function sumKlListBase($form) {
+    var sum = 0;
+    $form.find("tr.lineItemRow").each(function () {
+      var $row = $(this);
+      if (!rowHasSelectedProduct($row)) {
+        return;
+      }
+      var qty = parseMoney($row.find("input.qty, .qty").first().val());
+      if (!(qty > 0)) {
+        return;
+      }
+      var meta = getProductMetaForRow($row);
+      var base = parseMoney(meta.price_lt_1m);
+      if (!(base > 0)) {
+        base = parseMoney(meta.price);
+      }
+      if (!(base > 0)) {
+        return;
+      }
+      sum += qty * base;
+    });
+    return sum;
+  }
+
+  function tierBasisTotal($form) {
+    if (getPriceChannel() === "retail") {
+      return sumKlListBase($form);
+    }
+    return sumLinePreTax($form);
+  }
+
+  function isRetailQuote($form) {
+    var moduleName = String(($form && $form.find('[name="module"]').first().val()) || "");
+    return moduleName === "Quotes" && getPriceChannel() === "retail";
+  }
+
   function sumLineGrossTotal($form) {
     var sum = 0;
     $form.find("tr.lineItemRow").each(function () {
@@ -1000,7 +1037,10 @@
     if (!$listPrice.length) {
       return false;
     }
-    var tierChanged = !!opts.tierChange || !!opts.productPick;
+    if (opts.autoRetier && String($listPrice.attr("data-mk-price-manual") || "") === "1") {
+      return false;
+    }
+    var tierChanged = !!opts.tierChange || !!opts.productPick || !!opts.autoRetier;
     // Keep user-typed / already-saved unit price unless forced (tier dropdown / product pick).
     if (!opts.force && !tierChanged && String($listPrice.attr("data-mk-price-manual") || "") === "1") {
       return false;
@@ -1087,7 +1127,7 @@
       $wrap.find(".mk-inv-price-tier__label").text("Bảng giá");
       $wrap
         .find(".mk-inv-price-tier__hint")
-        .text("Đơn giá lấy từ Hàng hoá và cập nhật khi tổng đơn thay đổi");
+        .text("Đơn giá lấy theo mức tổng đơn. Tổng tính bằng giá dưới 1 triệu của từng món.");
     }
     if ($select.length && String($select.val() || "") !== String(selectedValue || "")) {
       $select.val(selectedValue);
@@ -1111,7 +1151,7 @@
     var selectedValue = getInvoiceTierSelection($form);
     var resolvedTier =
       selectedValue === "auto"
-        ? resolveInvoiceTierFromTotal(sumLinePreTax($form))
+        ? resolveInvoiceTierFromTotal(tierBasisTotal($form))
         : selectedValue;
     if (getPriceChannel() === "tuibao") {
       resolvedTier = "tuibao";
@@ -1152,7 +1192,8 @@
     }
     var timer = setTimeout(function () {
       $form.removeData("mkInvTierTimer");
-      applyInvoiceTierPricing($form);
+      var selected = getInvoiceTierSelection($form);
+      applyInvoiceTierPricing($form, { autoRetier: selected === "auto" });
     }, delay == null ? 160 : delay);
     $form.data("mkInvTierTimer", timer);
   }
@@ -1564,7 +1605,7 @@
       $row,
       $form,
       previewTier === "auto"
-        ? resolveInvoiceTierFromTotal(sumLinePreTax($form))
+        ? resolveInvoiceTierFromTotal(tierBasisTotal($form))
         : previewTier,
       { force: true, productPick: true },
     );
@@ -1610,7 +1651,7 @@
           $row,
           $form,
           responseTier === "auto"
-            ? resolveInvoiceTierFromTotal(sumLinePreTax($form))
+            ? resolveInvoiceTierFromTotal(tierBasisTotal($form))
             : responseTier,
           { force: true, productPick: true },
         );
@@ -1641,7 +1682,7 @@
         $row,
         $form,
         fallbackTier === "auto"
-          ? resolveInvoiceTierFromTotal(sumLinePreTax($form))
+          ? resolveInvoiceTierFromTotal(tierBasisTotal($form))
           : fallbackTier,
         { force: true, productPick: true },
       );
@@ -1806,7 +1847,7 @@
     if ($form && $form.length) {
       tier = getInvoiceTierSelection($form);
       if (tier === "auto") {
-        tier = resolveInvoiceTierFromTotal(sumLinePreTax($form)) || DEFAULT_INVOICE_TIER;
+        tier = resolveInvoiceTierFromTotal(tierBasisTotal($form)) || DEFAULT_INVOICE_TIER;
       }
     }
     var price = resolveInvoiceTierPrice(meta, tier);
@@ -6344,8 +6385,10 @@
     var $existing = $form.find('[name="mk_invoice_price_tier"]').first();
     var currentValue = String($existing.val() || "").trim();
     var isCreate = !String($form.find('input[name="record"]').val() || "").trim();
-    // New documents default to Giá < 1 triệu (not auto / empty).
-    if (!currentValue || (isCreate && (currentValue === "auto" || !INVOICE_TIER_FIELDS[currentValue] && currentValue !== "auto"))) {
+    // Báo giá khách lẻ: tự chọn cột giá theo tổng đơn. Đơn khác vẫn mặc định dưới 1 triệu.
+    if (isRetailQuote($form) && isCreate) {
+      currentValue = "auto";
+    } else if (!currentValue || (isCreate && (currentValue === "auto" || (!INVOICE_TIER_FIELDS[currentValue] && currentValue !== "auto")))) {
       currentValue = DEFAULT_INVOICE_TIER;
     }
     if (currentValue !== "auto" && !INVOICE_TIER_FIELDS[currentValue]) {
@@ -6395,7 +6438,7 @@
 
     var resolved =
       currentValue === "auto"
-        ? resolveInvoiceTierFromTotal(sumLinePreTax($form))
+        ? resolveInvoiceTierFromTotal(tierBasisTotal($form))
         : currentValue;
     syncInvoiceTierUi($form, currentValue, resolved);
     // Ensure pricing applies with the default tier on first paint.
