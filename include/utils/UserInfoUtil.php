@@ -365,6 +365,19 @@ function isPermitted($module,$actionname,$record_id='')
 			return $permission;
 		}
 
+		// Sales and Kế toán can open the Tuibao franchise-prospect list even when
+		// the profile does not include ServiceContracts. Read only.
+		if ($module === 'ServiceContracts') {
+			require_once 'modules/ServiceContracts/helpers/FranchiseListAccess.php';
+			if (ServiceContracts_FranchiseListAccess_Helper::currentUserCanSee()) {
+				$actionKey = strtolower(trim((string) $actionname));
+				if ($actionKey === '' || $actionKey === 'index' || $actionKey === 'detailview' || $actionKey === 'listview') {
+					$log->debug('Exiting isPermitted method ...');
+					return 'yes';
+				}
+			}
+		}
+
 		//If no actionid, then allow action is vtiger_tab permission is available
 		if($actionid === '')
 		{

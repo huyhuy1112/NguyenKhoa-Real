@@ -109,11 +109,33 @@ class Settings_MenuEditor_Module_Model extends Settings_Vtiger_Module_Model {
 			}
 		}
 
+		self::ensureFranchiseProspectsMenu($modules);
 		if (!empty($modules['SALES'])) {
 			$modules['SALES'] = self::sortSalesAppModules($modules['SALES']);
 		}
 
 		return $modules;
+	}
+
+	/**
+	 * Show Khách hàng nhượng quyền tiềm năng under Tuibao for Sales and Kế toán.
+	 */
+	protected static function ensureFranchiseProspectsMenu(array &$modules) {
+		require_once 'modules/ServiceContracts/helpers/FranchiseListAccess.php';
+		if (!ServiceContracts_FranchiseListAccess_Helper::currentUserCanSee()) {
+			return;
+		}
+		if (!empty($modules['SALES']['ServiceContracts'])) {
+			return;
+		}
+		$moduleModel = Vtiger_Module_Model::getInstance('ServiceContracts');
+		if (!$moduleModel || !$moduleModel->isActive()) {
+			return;
+		}
+		if (!isset($modules['SALES']) || !is_array($modules['SALES'])) {
+			$modules['SALES'] = array();
+		}
+		$modules['SALES']['ServiceContracts'] = $moduleModel;
 	}
 
 	/**
