@@ -9,7 +9,7 @@ include_once 'vtlib/Vtiger/PDF/PDFGenerator.php';
 
 class SalesOrder_SaleInvoicePdf_Helper {
 
-	const FONT = 'times';
+	const FONT = 'freeserif';
 	const GREEN = array(8, 160, 69);
 	const ACCENT = array(196, 74, 28);
 
@@ -46,6 +46,22 @@ class SalesOrder_SaleInvoicePdf_Helper {
 		exit;
 	}
 
+	protected static function decodePlainText($value) {
+		$s = (string) $value;
+		if ($s === '') {
+			return '';
+		}
+		if (function_exists('decode_html')) {
+			$s = decode_html($s);
+		}
+		$prev = '';
+		while ($prev !== $s) {
+			$prev = $s;
+			$s = html_entity_decode($s, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+		}
+		return trim($s);
+	}
+
 	/**
 	 * @param CRMEntity $focus
 	 * @param string $moduleName
@@ -79,7 +95,6 @@ class SalesOrder_SaleInvoicePdf_Helper {
 		$salesName = '';
 		$salesPhone = '';
 		if ($ownerId > 0) {
-			$salesName = trim((string) getOwnerName($ownerId));
 			try {
 				$db = PearDatabase::getInstance();
 				$urs = $db->pquery(
@@ -88,12 +103,17 @@ class SalesOrder_SaleInvoicePdf_Helper {
 				);
 				if ($urs && $db->num_rows($urs) > 0) {
 					$salesPhone = trim((string) ($db->query_result($urs, 0, 'phone_mobile') ?: $db->query_result($urs, 0, 'phone_work')));
-					if ($salesName === '') {
-						$salesName = trim((string) ($db->query_result($urs, 0, 'first_name') . ' ' . $db->query_result($urs, 0, 'last_name')));
-					}
+					$salesName = trim(
+						self::decodePlainText($db->query_result($urs, 0, 'first_name'))
+						. ' '
+						. self::decodePlainText($db->query_result($urs, 0, 'last_name'))
+					);
 				}
 			} catch (Exception $e) {
-				// keep owner name only
+				$salesName = '';
+			}
+			if ($salesName === '') {
+				$salesName = self::decodePlainText(getOwnerName($ownerId));
 			}
 		}
 		if ($salesName === '') {
@@ -259,7 +279,7 @@ class SalesOrder_SaleInvoicePdf_Helper {
 @page :right{margin:0}
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:#fff}
-body{padding:8mm;font:12.5px/1.4 "Times New Roman",Times,serif;color:#111}
+body{padding:8mm;font:12.5px/1.4 Arial,"Liberation Sans","Nimbus Sans",sans-serif;color:#111}
 .sheet{max-width:900px;margin:0 auto;display:flex;flex-direction:column;min-height:calc(297mm - 56mm);box-sizing:border-box}
 .head{display:flex;gap:12px;align-items:flex-start;margin-bottom:10px}
 .mk-ph-logo{width:170px;height:auto;object-fit:contain;flex:0 0 auto}
@@ -317,7 +337,7 @@ html,body{margin:0!important;padding:8mm!important;height:auto!important}
 			. '<p class="info-row"><b>Địa chỉ:</b> <span>' . $h($data['customer_address'] !== '' ? $data['customer_address'] : '—') . '</span></p>'
 			. '</div><div class="info-col">'
 			. '<p class="info-row"><b>Chi nhánh:</b> <span>' . $h($data['branch']) . '</span></p>'
-			. '<p class="info-row"><b>NVBH:</b> <span>' . $h($data['sales_name']) . '</span></p>'
+			. '<p class="info-row"><b>NVBH:</b> <span style="font-family:Arial,\'Liberation Sans\',\'Nimbus Sans\',sans-serif">' . $h($data['sales_name']) . '</span></p>'
 			. '<p class="info-row"><b>Ghi chú:</b> <span>' . $h($data['notes'] !== '' ? $data['notes'] : '—') . '</span></p>'
 			. '</div></div>'
 			. '<table><thead><tr>'
