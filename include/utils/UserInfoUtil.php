@@ -378,6 +378,19 @@ function isPermitted($module,$actionname,$record_id='')
 			}
 		}
 
+		// Kế toán can open and add Danh mục nhà cung cấp even when the profile omits Vendors.
+		if ($module === 'Vendors') {
+			require_once 'modules/Vendors/helpers/CatalogAccess.php';
+			if (Vendors_CatalogAccess_Helper::currentUserCanManage()) {
+				$actionKey = strtolower(trim((string) $actionname));
+				$vendorActions = array('', 'index', 'detailview', 'listview', 'createview', 'editview', 'save');
+				if (in_array($actionKey, $vendorActions, true)) {
+					$log->debug('Exiting isPermitted method ...');
+					return 'yes';
+				}
+			}
+		}
+
 		//If no actionid, then allow action is vtiger_tab permission is available
 		if($actionid === '')
 		{

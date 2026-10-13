@@ -260,7 +260,7 @@
 							</a>
 							{assign var=_mkVendorsActive value=(!$_settingsActive && (($MODULE eq 'Vendors') || ($MODULE eq 'Warehouse' && $VIEW eq 'VendorList')))}
 							<a class="mk-dash-mod-link{if $_mkVendorsActive} mk-dash-mod-link--active{/if}" href="index.php?module=Warehouse&amp;view=VendorList&amp;app=INVENTORY">
-								<span class="mk-dash-mod-label">Nhà cung cấp</span>
+								<span class="mk-dash-mod-label">Danh mục nhà cung cấp</span>
 							</a>
 							{assign var=_mkWhListActive value=(!$_settingsActive && $MODULE eq 'Warehouse' && ($VIEW eq 'WhList' || $VIEW eq 'WhDetail' || $VIEW eq 'WhDashboard' || $VIEW eq 'WhTransfer'))}
 							<a class="mk-dash-mod-link{if $_mkWhListActive} mk-dash-mod-link--active{/if}" href="index.php?module=Warehouse&amp;view=WhList&amp;app=INVENTORY">

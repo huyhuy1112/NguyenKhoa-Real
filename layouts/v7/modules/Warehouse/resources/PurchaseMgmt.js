@@ -675,8 +675,6 @@
 		var body = document.getElementById('mkVendorListBody');
 		var qInput = document.getElementById('mkVendorListQ');
 		var groupSel = document.getElementById('mkVendorGroupFilter');
-		var dueSum = document.getElementById('mkVendorDueSum');
-		var totalSum = document.getElementById('mkVendorTotalSum');
 		var all = [];
 		var openId = null;
 		var timer = null;
@@ -699,7 +697,7 @@
 		}
 
 		function expandHtml(v) {
-			return '<tr class="mk-kiot-expand" data-expand="' + esc(v.id) + '"><td colspan="6"><div class="mk-kiot-expand-panel">' +
+			return '<tr class="mk-kiot-expand" data-expand="' + esc(v.id) + '"><td colspan="3"><div class="mk-kiot-expand-panel">' +
 				'<div class="mk-kiot-expand-tabs">' +
 				'<button type="button" class="mk-kiot-expand-tab is-active">Thông tin</button>' +
 				'<button type="button" class="mk-kiot-expand-tab" disabled title="Sắp có">Lịch sử nhập/trả hàng</button>' +
@@ -729,40 +727,33 @@
 				if (g && String(v.category || '') !== g) return false;
 				if (!q) return true;
 				return String(v.name || '').toLowerCase().indexOf(q) >= 0 ||
-					String(v.code || '').toLowerCase().indexOf(q) >= 0 ||
-					String(v.phone || '').toLowerCase().indexOf(q) >= 0 ||
-					String(v.email || '').toLowerCase().indexOf(q) >= 0;
+					String(v.tax || '').toLowerCase().indexOf(q) >= 0 ||
+					String(v.address || '').toLowerCase().indexOf(q) >= 0 ||
+					String(v.code || '').toLowerCase().indexOf(q) >= 0;
 			});
-			var due = 0, tot = 0;
-			rows.forEach(function (v) { due += Number(v.dueAmount) || 0; tot += Number(v.totalPurchase) || 0; });
-			if (dueSum) dueSum.textContent = money(due);
-			if (totalSum) totalSum.textContent = money(tot);
 			if (!rows.length) {
-				body.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:36px;color:#5b7268">Không có nhà cung cấp. Tạo mới hoặc import NCC.</td></tr>';
+				body.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:36px;color:#5b7268">Không có nhà cung cấp. Tạo mới hoặc import NCC.</td></tr>';
 				return;
 			}
 			var html = '';
 			rows.forEach(function (v) {
 				html += '<tr class="mk-kiot-vendor-row' + (openId === v.id ? ' is-open' : '') + '" data-id="' + esc(v.id) + '">' +
-					'<td><span class="mk-purchase-code">' + esc(v.code || '—') + '</span></td>' +
-					'<td>' + esc(v.name) + '</td>' +
-					'<td>' + esc(v.phone || '—') + '</td>' +
-					'<td>' + esc(v.email || '—') + '</td>' +
-					'<td class="is-num">' + money(v.dueAmount || 0) + '</td>' +
-					'<td class="is-num">' + money(v.totalPurchase || 0) + '</td></tr>';
+					'<td>' + esc(v.name || '—') + '</td>' +
+					'<td>' + esc(v.tax || '—') + '</td>' +
+					'<td>' + esc(v.address || '—') + '</td></tr>';
 				if (openId === v.id) html += expandHtml(v);
 			});
 			body.innerHTML = html;
 		}
 
 		function load() {
-			body.innerHTML = '<tr><td colspan="6">Đang tải…</td></tr>';
+			body.innerHTML = '<tr><td colspan="3">Đang tải…</td></tr>';
 			apiPost({ mode: 'list_vendors', q: '' }).then(function (res) {
 				all = (res && res.vendors) || [];
 				groupsFrom(all);
 				render();
 			}).catch(function () {
-				body.innerHTML = '<tr><td colspan="6">Không tải được danh sách NCC.</td></tr>';
+				body.innerHTML = '<tr><td colspan="3">Không tải được danh sách NCC.</td></tr>';
 			});
 		}
 

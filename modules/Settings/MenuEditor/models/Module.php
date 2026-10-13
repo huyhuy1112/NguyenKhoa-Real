@@ -110,6 +110,7 @@ class Settings_MenuEditor_Module_Model extends Settings_Vtiger_Module_Model {
 		}
 
 		self::ensureFranchiseProspectsMenu($modules);
+		self::ensureVendorCatalogMenu($modules);
 		if (!empty($modules['SALES'])) {
 			$modules['SALES'] = self::sortSalesAppModules($modules['SALES']);
 		}
@@ -136,6 +137,27 @@ class Settings_MenuEditor_Module_Model extends Settings_Vtiger_Module_Model {
 			$modules['SALES'] = array();
 		}
 		$modules['SALES']['ServiceContracts'] = $moduleModel;
+	}
+
+	/**
+	 * Show Kho so Kế toán can open Danh mục nhà cung cấp.
+	 */
+	protected static function ensureVendorCatalogMenu(array &$modules) {
+		require_once 'modules/Vendors/helpers/CatalogAccess.php';
+		if (!Vendors_CatalogAccess_Helper::currentUserCanManage()) {
+			return;
+		}
+		if (!empty($modules['INVENTORY'])) {
+			return;
+		}
+		$moduleModel = Vtiger_Module_Model::getInstance('Warehouse');
+		if (!$moduleModel || !$moduleModel->isActive()) {
+			$moduleModel = Vtiger_Module_Model::getInstance('Vendors');
+		}
+		if (!$moduleModel || !$moduleModel->isActive()) {
+			return;
+		}
+		$modules['INVENTORY'] = array($moduleModel->getName() => $moduleModel);
 	}
 
 	/**

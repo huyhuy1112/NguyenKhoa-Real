@@ -14,10 +14,17 @@ class Warehouse_WhMgmtApi_Action extends Vtiger_Action_Controller {
 
 	public function checkPermission(Vtiger_Request $request) {
 		$moduleName = $request->getModule();
-		if (!Users_Privileges_Model::isPermitted($moduleName, 'index')) {
-			throw new AppException(vtranslate('LBL_PERMISSION_DENIED'));
+		if (Users_Privileges_Model::isPermitted($moduleName, 'index')) {
+			return true;
 		}
-		return true;
+		$mode = strtolower((string) $request->get('mode'));
+		if ($mode === 'list_vendors') {
+			require_once 'modules/Vendors/helpers/CatalogAccess.php';
+			if (Vendors_CatalogAccess_Helper::currentUserCanManage()) {
+				return true;
+			}
+		}
+		throw new AppException(vtranslate('LBL_PERMISSION_DENIED'));
 	}
 
 	public function validateRequest(Vtiger_Request $request) {
