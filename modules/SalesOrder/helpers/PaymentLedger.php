@@ -84,6 +84,8 @@ class SalesOrder_PaymentLedger_Helper {
 		}
 		$out['order_no'] = decode_html((string) $db->query_result($head, 0, 'salesorder_no'));
 		$out['total'] = $total;
+		$out['total_display'] = CurrencyField::convertToUserFormat($total, null, true);
+		$out['paid_display'] = CurrencyField::convertToUserFormat($received, null, true);
 		self::backfillIfEmpty($salesorderId, $received);
 
 		$rs = $db->pquery(
@@ -107,10 +109,15 @@ class SalesOrder_PaymentLedger_Helper {
 			if ($created !== '') {
 				$when = (new DateTimeField($created))->getDisplayDateTimeValue();
 			}
+			$amountDisplay = CurrencyField::convertToUserFormat($amount, null, true);
+			$totalDisplay = CurrencyField::convertToUserFormat($total, null, true);
 			$out['rows'][] = array(
 				'seq' => $i + 1,
+				'no' => $out['order_no'],
 				'when' => $when,
-				'amount' => CurrencyField::convertToUserFormat($amount, null, true),
+				'total' => $totalDisplay,
+				'amount' => $amountDisplay,
+				'paid' => $amountDisplay,
 				'remaining' => CurrencyField::convertToUserFormat($remaining, null, true),
 			);
 		}

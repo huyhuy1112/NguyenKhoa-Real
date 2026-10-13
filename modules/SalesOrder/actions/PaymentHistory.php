@@ -27,6 +27,8 @@ class SalesOrder_PaymentHistory_Action extends Vtiger_Action_Controller {
 			$response->setResult(array(
 				'success' => true,
 				'order_no' => $history['order_no'],
+				'total' => isset($history['total_display']) ? $history['total_display'] : '',
+				'paid' => isset($history['paid_display']) ? $history['paid_display'] : '',
 				'rows' => $history['rows'],
 			));
 		} catch (Exception $e) {

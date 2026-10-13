@@ -314,6 +314,35 @@ body[data-module="SalesOrder"][data-view="List"][data-app="SALES"] #listview-tab
 }
 
 /* ---- Filter row ---- */
+body[data-module="SalesOrder"][data-view="List"][data-app="SALES"] .mk-so-list-grand-chip {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 8px;
+	margin-left: auto;
+	padding: 8px 14px;
+	background: #fff;
+	border: 1px solid #dbe3ee;
+	border-radius: 12px;
+	box-shadow: 0 8px 18px rgba(15, 23, 42, 0.1);
+	flex: 0 0 auto;
+}
+
+body[data-module="SalesOrder"][data-view="List"][data-app="SALES"] .mk-so-list-grand-chip__label {
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: #64748b;
+}
+
+body[data-module="SalesOrder"][data-view="List"][data-app="SALES"] .mk-so-list-grand-chip__value {
+	font-family: ui-monospace, "Roboto Mono", monospace;
+	font-size: 16px;
+	font-weight: 700;
+	color: #0f172a;
+	font-variant-numeric: tabular-nums;
+}
+
 body[data-module="SalesOrder"][data-view="List"][data-app="SALES"] #listViewContent #listview-actions.listview-actions-container.mk-so-filter-row {
 	background: #eceef0 !important;
 	border: none !important;
@@ -325,7 +354,10 @@ body[data-module="SalesOrder"][data-view="List"][data-app="SALES"] #listViewCont
 	width: 100% !important;
 	max-width: none !important;
 	box-sizing: border-box !important;
-	position: relative !important;
+	position: sticky !important;
+	top: 0;
+	z-index: 30;
+	box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
 	left: auto !important;
 	display: flex;
 	flex-direction: column;
@@ -1982,6 +2014,12 @@ body[data-module="SalesOrder"][data-view="List"][data-app="SALES"] .mk-so-pos-li
 .mk-so-payhist-table th:nth-child(2),
 .mk-so-payhist-table td:nth-child(2) {
 	text-align: left;
+}
+.mk-so-payhist-summary {
+	margin: 0 0 12px;
+	font-size: 13px;
+	font-weight: 700;
+	color: #0f172a;
 }
 .mk-so-payhist-row--current {
 	background: #ecfdf3;

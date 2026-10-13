@@ -115,6 +115,17 @@ class SalesOrder_SaveAjax_Action extends Inventory_SaveAjax_Action {
 		if ($paidAmount < 0) {
 			$paidAmount = 0;
 		}
+		// Inline panel posts only the extra amount of this payment.
+		// The stored received field, the list column, and its filter stay the running total.
+		if ((string) $request->get('mk_paid_increment') === '1') {
+			require_once 'modules/SalesOrder/helpers/PaymentLedger.php';
+			$recordId = (int) $recordModel->getId();
+			if ($recordId <= 0) {
+				$recordId = (int) $request->get('record');
+			}
+			$previous = SalesOrder_PaymentLedger_Helper::readReceived($recordId);
+			$paidAmount = $previous + $paidAmount;
+		}
 		$recordModel->set($paidField, $paidAmount);
 
 		$total = (float) $recordModel->get('total');

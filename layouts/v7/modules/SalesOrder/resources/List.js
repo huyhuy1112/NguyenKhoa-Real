@@ -1535,6 +1535,7 @@
         $paidInput.attr("name") ||
         $panel.attr("data-paid-field") ||
         "received";
+      data.mk_paid_increment = 1;
       data[paidName] = $paidInput.val() || "0";
     }
     data.mk_list_note = normalizeUnicodeText(
@@ -1618,6 +1619,25 @@
     $td.toggleClass("mk-so-paid-positive", amount > 0);
   }
 
+  function syncRemainingCellInList($panel, recordId, paidDisplay) {
+    if (!recordId) {
+      return;
+    }
+    var grand = getInlineGrandRaw($panel);
+    var paid = parseInlineMoney(paidDisplay);
+    var remaining = grand - paid;
+    if (remaining < 0) {
+      remaining = 0;
+    }
+    var $row = $(
+      '#listview-table tbody tr.listViewEntries[data-id="' + recordId + '"]',
+    );
+    var $value = $row.find('td[data-name="mk_remaining"] .value').first();
+    if ($value.length) {
+      $value.text(formatInlineMoney(remaining));
+    }
+  }
+
   function saveInlineDetailPanel($panel, recordId) {
     var deferred = $.Deferred();
     var $saveBtn = $panel.find(".mk-so-inline-detail__save-btn");
@@ -1683,15 +1703,17 @@
               ? response[paidName].display_value
               : response[paidName].value;
           if (paidDisplay !== undefined && paidDisplay !== null) {
-            $panel.find(".mk-so-inline-detail__paid-input").val(paidDisplay);
+            $panel.find(".mk-so-inline-detail__paid-total").text(paidDisplay);
             $panel.find(".mk-so-inline-detail__paid-view").text(paidDisplay);
+            $panel.find(".mk-so-inline-detail__paid-input").val("");
             syncPaidCellInList(recordId, paidDisplay);
+            syncRemainingCellInList($panel, recordId, paidDisplay);
           }
         } else {
           var localPaid =
-            $panel.find(".mk-so-inline-detail__paid-input").val() || "0";
-          $panel.find(".mk-so-inline-detail__paid-view").text(localPaid);
+            $panel.find(".mk-so-inline-detail__paid-total").text() || "0";
           syncPaidCellInList(recordId, localPaid);
+          $panel.find(".mk-so-inline-detail__paid-input").val("");
         }
         if (response.hdnGrandTotal && response.hdnGrandTotal.display_value != null) {
           $panel
@@ -2771,20 +2793,20 @@
     var rows = payload.rows || [];
     var $table = $(
       '<table class="mk-so-payhist-table"><thead><tr>' +
-        "<th>Lần</th><th>Thời gian</th><th>Số tiền</th><th>Còn lại</th>" +
+        "<th>Lần</th><th>Thời gian</th><th>Tổng cộng</th><th>Chi trả</th><th>Còn lại</th>" +
         "</tr></thead><tbody></tbody></table>",
     );
     var $body = $table.find("tbody");
     if (!rows.length) {
       $body.append(
-        '<tr><td colspan="4">Chưa có lần trả nào trên đơn này.</td></tr>',
+        '<tr><td colspan="5">Chưa có lần trả nào trên đơn này.</td></tr>',
       );
     } else {
       rows.forEach(function (row) {
         var $tr = $("<tr>");
-        ["seq", "when", "amount", "remaining"].forEach(function (key) {
+        ["seq", "when", "total", "amount", "remaining"].forEach(function (key) {
           var $td = $("<td>").text(row[key] != null ? row[key] : "");
-          if (key === "amount" || key === "remaining") {
+          if (key === "total" || key === "amount" || key === "remaining") {
             $td.addClass("is-money");
           }
           $tr.append($td);
@@ -2792,6 +2814,15 @@
         $body.append($tr);
       });
     }
+    var $summary = $('<p class="mk-so-payhist-summary"></p>');
+    var summaryBits = [];
+    if (payload.total) {
+      summaryBits.push("Tổng cộng: " + payload.total);
+    }
+    if (payload.paid) {
+      summaryBits.push("Tổng khách đã trả: " + payload.paid);
+    }
+    $summary.text(summaryBits.join("  ·  "));
     var $pop = $(
       '<div class="mk-so-action-pop mk-so-payhist" role="dialog" aria-modal="true">' +
         '<div class="mk-so-action-pop__backdrop" data-mk-pop-close="1"></div>' +
@@ -2812,6 +2843,9 @@
       title += " — " + payload.order_no;
     }
     $pop.find(".mk-so-action-pop__title").text(title);
+    if (summaryBits.length) {
+      $pop.find(".mk-so-action-pop__body").append($summary);
+    }
     $pop.find(".mk-so-action-pop__body").append($table);
     function close() {
       $pop.remove();
@@ -4485,7 +4519,6 @@
 
   function injectSummaryRow($table) {
     var dueField = dueFieldName();
-    var paidField = paidFieldName();
     var $headerRow = $table.find("thead tr.listViewContentHeader").first();
     if (!$headerRow.length) {
       return;
@@ -4493,6 +4526,7 @@
     $table.find("tr.mk-so-summary-row").remove();
     var $rows = $table.find("tbody tr.listViewEntries");
     if (!$rows.length) {
+      placeListGrandChip("0");
       return;
     }
     var sumField = null;
@@ -4501,8 +4535,6 @@
     } else if ($headerRow.find('a[data-columnname="total"]').length > 0) {
       sumField = "total";
     }
-    var hasPaidColumn =
-      $headerRow.find('a[data-columnname="' + paidField + '"]').length > 0;
     var dueTotal = 0;
     if (sumField) {
       $rows.each(function () {
@@ -4511,36 +4543,30 @@
         );
       });
     }
-    var $cells = $headerRow.children("th");
-    var html = '<tr class="mk-so-summary-row">';
-    $cells.each(function () {
-      var $th = $(this);
-      var field = $th.find("a[data-columnname]").attr("data-columnname") || "";
-      var cls = "mk-so-summary-cell";
-      var content = "";
-      if ($th.hasClass("mk-so-pos-control-th")) {
-        cls += " mk-so-summary-cell--label";
-        content = '<span class="mk-so-summary-label">Tổng</span>';
-      } else if (sumField && field === sumField) {
-        cls += " mk-so-summary-cell--due";
-        content =
-          '<span class="mk-so-summary-value">' +
-          formatMoneyNumber(dueTotal) +
-          "</span>";
-      } else if (field === paidField && hasPaidColumn) {
-        // Keep paid column blank on the summary row.
-        cls += " mk-so-summary-cell--paid";
-        content = "";
-      }
-      html += '<td class="' + cls + '">' + content + "</td>";
-    });
-    html += "</tr>";
-    var $tbody = $table.find("tbody").first();
-    if ($tbody.length) {
-      $tbody.append(html);
-    } else {
-      $headerRow.after(html);
+    placeListGrandChip(sumField ? formatMoneyNumber(dueTotal) : "");
+  }
+
+  function placeListGrandChip(amountText) {
+    var $row = $("#listViewContent .mk-so-filter-row__inner").first();
+    if (!$row.length) {
+      return;
     }
+    var $chip = $row.find(".mk-so-list-grand-chip");
+    if (!$chip.length) {
+      $chip = $(
+        '<div class="mk-so-list-grand-chip" title="Tổng cộng các đơn đang hiện">' +
+          '<span class="mk-so-list-grand-chip__label">Tổng cộng</span>' +
+          '<strong class="mk-so-list-grand-chip__value"></strong>' +
+          "</div>",
+      );
+      var $right = $row.find(".mk-so-filter-row__right").first();
+      if ($right.length) {
+        $right.before($chip);
+      } else {
+        $row.append($chip);
+      }
+    }
+    $chip.find(".mk-so-list-grand-chip__value").text(amountText || "0");
   }
 
   function applyPosListChrome() {

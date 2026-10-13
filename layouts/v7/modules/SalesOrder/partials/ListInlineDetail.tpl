@@ -129,10 +129,14 @@
 				<span class="mk-so-inline-detail__total-label">Chiết khấu</span>
 				<strong class="mk-so-inline-detail__total-value">{if $SO_DISC_PCT > 0}{$SO_DISC_PCT}% · {/if}{$SO_DISC_MONEY}</strong>
 			</div>
+			<div class="mk-so-inline-detail__total-row mk-so-inline-detail__total-row--paid-sum">
+				<span class="mk-so-inline-detail__total-label">Tổng khách đã trả</span>
+				<strong class="mk-so-inline-detail__total-value mk-so-inline-detail__paid-total">{$INLINE_PAID_DISPLAY|default:'0'}</strong>
+			</div>
 			<div class="mk-so-inline-detail__total-row mk-so-inline-detail__total-row--paid" data-field-name="{$INLINE_PAID_FIELD|default:'received'|escape}">
 				<span class="mk-so-inline-detail__total-label">Khách đã trả</span>
 				<span class="mk-so-inline-detail__paid-view">{$INLINE_PAID_DISPLAY|default:'0'}</span>
-				<input type="text" class="mk-so-inline-detail__paid-input inputElement" name="{$INLINE_PAID_FIELD|default:'received'|escape}" value="{$INLINE_PAID_DISPLAY|default:'0'|escape}" inputmode="decimal" autocomplete="off" />
+				<input type="text" class="mk-so-inline-detail__paid-input inputElement" name="{$INLINE_PAID_FIELD|default:'received'|escape}" value="" placeholder="Số tiền lần này" inputmode="decimal" autocomplete="off" />
 			</div>
 			<div class="mk-so-inline-detail__total-row mk-so-inline-detail__total-row--grand" data-grand-raw="{$INLINE_GRAND_RAW|default:0|escape}">
 				<span class="mk-so-inline-detail__total-label">Tổng cộng</span>
