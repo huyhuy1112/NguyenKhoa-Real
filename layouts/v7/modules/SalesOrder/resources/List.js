@@ -4535,23 +4535,47 @@
     } else if ($headerRow.find('a[data-columnname="total"]').length > 0) {
       sumField = "total";
     }
+    var paidField = paidFieldName();
     var dueTotal = 0;
+    $rows.each(function () {
+      dueTotal += rowOrderTotal($(this), sumField, paidField);
+    });
+    placeListGrandChip(formatMoneyNumber(dueTotal));
+  }
+
+  function rowOrderTotal($row, sumField, paidField) {
+    var grand = 0;
     if (sumField) {
-      $rows.each(function () {
-        dueTotal += cellMoneyAmount(
-          $(this).find('td[data-name="' + sumField + '"]').first(),
-        );
-      });
+      grand = cellMoneyAmount(
+        $row.find('td[data-name="' + sumField + '"]').first(),
+      );
     }
-    placeListGrandChip(sumField ? formatMoneyNumber(dueTotal) : "");
+    if (!(grand > 0)) {
+      grand = cellMoneyAmount(
+        $row.find('td[data-name="hdnGrandTotal"], td[data-name="total"]').first(),
+      );
+    }
+    if (grand > 0) {
+      return grand;
+    }
+    var paid = cellMoneyAmount(
+      $row.find('td[data-name="' + paidField + '"]').first(),
+    );
+    var remain = cellMoneyAmount(
+      $row.find('td[data-name="mk_remaining"]').first(),
+    );
+    return paid + remain;
   }
 
   function placeListGrandChip(amountText) {
-    var $row = $("#listViewContent .mk-so-filter-row__inner").first();
-    if (!$row.length) {
+    var $bar = $("#listViewContent .mk-so-pos-toolbar__actions").first();
+    if (!$bar.length) {
+      $bar = $("#listViewContent .mk-so-pos-toolbar").first();
+    }
+    if (!$bar.length) {
       return;
     }
-    var $chip = $row.find(".mk-so-list-grand-chip");
+    var $chip = $("#listViewContent .mk-so-list-grand-chip");
     if (!$chip.length) {
       $chip = $(
         '<div class="mk-so-list-grand-chip" title="Tổng cộng các đơn đang hiện">' +
@@ -4559,12 +4583,7 @@
           '<strong class="mk-so-list-grand-chip__value"></strong>' +
           "</div>",
       );
-      var $right = $row.find(".mk-so-filter-row__right").first();
-      if ($right.length) {
-        $right.before($chip);
-      } else {
-        $row.append($chip);
-      }
+      $bar.prepend($chip);
     }
     $chip.find(".mk-so-list-grand-chip__value").text(amountText || "0");
   }

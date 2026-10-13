@@ -1622,6 +1622,9 @@ body[data-module="SalesOrder"][data-view="List"][data-app="SALES"] .mk-so-pos-to
 	padding: 14px 16px;
 	background: #ffffff;
 	border-bottom: 1px solid #eef2f7;
+	position: sticky;
+	top: 0;
+	z-index: 25;
 }
 
 body[data-module="SalesOrder"][data-view="List"][data-app="SALES"] .mk-so-pos-toolbar__title {

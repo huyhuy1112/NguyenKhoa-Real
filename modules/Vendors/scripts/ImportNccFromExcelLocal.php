@@ -172,6 +172,8 @@ foreach ($header as $col => $label) {
 		$map['group'] = $col;
 	} elseif ($key === 'cong ty') {
 		$map['company'] = $col;
+	} elseif (strpos($key, 'cccd') !== false || strpos($key, 'cmnd') !== false) {
+		$map['identity'] = $col;
 	}
 }
 
@@ -209,6 +211,7 @@ for ($i = 1; $i < count($raw); $i++) {
 	$note = $get('note');
 	$group = $get('group');
 	$company = $get('company');
+	$identity = $get('identity');
 	$city = trim($ward . ($ward && $region ? ', ' : '') . $region);
 	$descParts = array();
 	if ($tax !== '') {
@@ -216,6 +219,9 @@ for ($i = 1; $i < count($raw); $i++) {
 	}
 	if ($company !== '') {
 		$descParts[] = 'Công ty: ' . $company;
+	}
+	if ($identity !== '') {
+		$descParts[] = 'CCCD: ' . $identity;
 	}
 	if ($note !== '') {
 		$descParts[] = $note;

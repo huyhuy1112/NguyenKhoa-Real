@@ -18,7 +18,7 @@ class Warehouse_WhMgmtApi_Action extends Vtiger_Action_Controller {
 			return true;
 		}
 		$mode = strtolower((string) $request->get('mode'));
-		if ($mode === 'list_vendors') {
+		if (in_array($mode, array('list_vendors', 'save_vendor', 'import_vendors'), true)) {
 			require_once 'modules/Vendors/helpers/CatalogAccess.php';
 			if (Vendors_CatalogAccess_Helper::currentUserCanManage()) {
 				return true;
@@ -29,7 +29,7 @@ class Warehouse_WhMgmtApi_Action extends Vtiger_Action_Controller {
 
 	public function validateRequest(Vtiger_Request $request) {
 		$mode = strtolower((string) $request->get('mode'));
-		if (in_array($mode, array('save', 'delete', 'archive', 'seed', 'save_receipt', 'save_purchase', 'complete_purchase', 'transfer_purchase_misa', 'save_issue', 'receipt_action', 'issue_action', 'save_return', 'return_action', 'set_settings', 'qc_upload_image', 'qc_delete_image', 'qc_update', 'import_stock_excel', 'set_stock_fill', 'save_stock_fill'), true)) {
+		if (in_array($mode, array('save', 'delete', 'archive', 'seed', 'save_receipt', 'save_purchase', 'complete_purchase', 'transfer_purchase_misa', 'save_issue', 'receipt_action', 'issue_action', 'save_return', 'return_action', 'set_settings', 'qc_upload_image', 'qc_delete_image', 'qc_update', 'import_stock_excel', 'set_stock_fill', 'save_stock_fill', 'save_vendor', 'import_vendors'), true)) {
 			$request->validateWriteAccess();
 		}
 	}
@@ -233,6 +233,34 @@ class Warehouse_WhMgmtApi_Action extends Vtiger_Action_Controller {
 					$response->setResult(array(
 						'success' => true,
 						'vendors' => Warehouse_WhMgmtService::listVendorsDetailed($q),
+					));
+					break;
+
+				case 'save_vendor':
+					$payload = $this->decodePayload($request);
+					if (!is_array($payload)) {
+						$payload = array();
+					}
+					foreach (array('id', 'name', 'code', 'phone', 'email', 'street', 'city', 'state', 'category', 'tax', 'company', 'identity', 'note') as $key) {
+						if (!isset($payload[$key]) && $request->has($key)) {
+							$payload[$key] = $request->get($key);
+						}
+					}
+					$saved = Warehouse_WhMgmtService::saveVendor($payload);
+					$response->setResult(array(
+						'success' => true,
+						'vendor' => $saved,
+					));
+					break;
+
+				case 'import_vendors':
+					if (!isset($_FILES['vendorExcel']) || !is_array($_FILES['vendorExcel'])) {
+						throw new Exception('Chưa chọn file Excel.');
+					}
+					$stats = Warehouse_WhMgmtService::importVendorsFromExcel($_FILES['vendorExcel']);
+					$response->setResult(array(
+						'success' => true,
+						'stats' => $stats,
 					));
 					break;
 

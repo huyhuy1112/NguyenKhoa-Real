@@ -675,6 +675,10 @@
 		var body = document.getElementById('mkVendorListBody');
 		var qInput = document.getElementById('mkVendorListQ');
 		var groupSel = document.getElementById('mkVendorGroupFilter');
+		var dueSum = document.getElementById('mkVendorDueSum');
+		var totalSum = document.getElementById('mkVendorTotalSum');
+		var modal = document.getElementById('mkVendorModal');
+		var form = document.getElementById('mkVendorForm');
 		var all = [];
 		var openId = null;
 		var timer = null;
@@ -697,7 +701,7 @@
 		}
 
 		function expandHtml(v) {
-			return '<tr class="mk-kiot-expand" data-expand="' + esc(v.id) + '"><td colspan="3"><div class="mk-kiot-expand-panel">' +
+			return '<tr class="mk-kiot-expand" data-expand="' + esc(v.id) + '"><td colspan="6"><div class="mk-kiot-expand-panel">' +
 				'<div class="mk-kiot-expand-tabs">' +
 				'<button type="button" class="mk-kiot-expand-tab is-active">Thông tin</button>' +
 				'<button type="button" class="mk-kiot-expand-tab" disabled title="Sắp có">Lịch sử nhập/trả hàng</button>' +
@@ -715,9 +719,27 @@
 				'<div><span>Phiếu nhập</span><strong>' + esc(v.receiptCount || 0) + '</strong></div>' +
 				'</div>' +
 				'<div class="mk-kiot-expand-actions">' +
-				'<a class="mk-kiot-btn mk-kiot-btn--ghost" href="index.php?module=Vendors&view=Detail&record=' + esc(v.id) + '&app=INVENTORY">Xem Vtiger</a>' +
-				'<a class="mk-kiot-btn mk-kiot-btn--primary" href="index.php?module=Vendors&view=Edit&record=' + esc(v.id) + '&app=INVENTORY">Chỉnh sửa</a>' +
+				'<button type="button" class="mk-kiot-btn mk-kiot-btn--primary" data-edit="' + esc(v.id) + '">Chỉnh sửa</button>' +
 				'</div></div></td></tr>';
+		}
+
+		function openModal(v) {
+			if (!modal || !form) return;
+			form.reset();
+			form.elements.id.value = v && v.id ? v.id : '';
+			var title = document.getElementById('mkVendorModalTitle');
+			if (title) title.textContent = v && v.id ? 'Sửa nhà cung cấp' : 'Tạo nhà cung cấp';
+			if (v) {
+				['name', 'code', 'phone', 'email', 'street', 'city', 'state', 'category', 'note', 'company', 'tax', 'identity'].forEach(function (key) {
+					if (form.elements[key]) form.elements[key].value = v[key] || '';
+				});
+			}
+			modal.hidden = false;
+			if (form.elements.name) form.elements.name.focus();
+		}
+
+		function closeModal() {
+			if (modal) modal.hidden = true;
 		}
 
 		function render() {
@@ -727,37 +749,54 @@
 				if (g && String(v.category || '') !== g) return false;
 				if (!q) return true;
 				return String(v.name || '').toLowerCase().indexOf(q) >= 0 ||
+					String(v.code || '').toLowerCase().indexOf(q) >= 0 ||
+					String(v.phone || '').toLowerCase().indexOf(q) >= 0 ||
+					String(v.email || '').toLowerCase().indexOf(q) >= 0 ||
 					String(v.tax || '').toLowerCase().indexOf(q) >= 0 ||
-					String(v.address || '').toLowerCase().indexOf(q) >= 0 ||
-					String(v.code || '').toLowerCase().indexOf(q) >= 0;
+					String(v.company || '').toLowerCase().indexOf(q) >= 0;
 			});
+			var due = 0, tot = 0;
+			rows.forEach(function (v) { due += Number(v.dueAmount) || 0; tot += Number(v.totalPurchase) || 0; });
+			if (dueSum) dueSum.textContent = money(due);
+			if (totalSum) totalSum.textContent = money(tot);
 			if (!rows.length) {
-				body.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:36px;color:#5b7268">Không có nhà cung cấp. Tạo mới hoặc import NCC.</td></tr>';
+				body.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:36px;color:#5b7268">Không có nhà cung cấp. Tạo mới hoặc import NCC.</td></tr>';
 				return;
 			}
 			var html = '';
 			rows.forEach(function (v) {
 				html += '<tr class="mk-kiot-vendor-row' + (openId === v.id ? ' is-open' : '') + '" data-id="' + esc(v.id) + '">' +
+					'<td><span class="mk-purchase-code">' + esc(v.code || '—') + '</span></td>' +
 					'<td>' + esc(v.name || '—') + '</td>' +
-					'<td>' + esc(v.tax || '—') + '</td>' +
-					'<td>' + esc(v.address || '—') + '</td></tr>';
+					'<td>' + esc(v.phone || '—') + '</td>' +
+					'<td>' + esc(v.email || '—') + '</td>' +
+					'<td class="is-num">' + money(v.dueAmount || 0) + '</td>' +
+					'<td class="is-num">' + money(v.totalPurchase || 0) + '</td></tr>';
 				if (openId === v.id) html += expandHtml(v);
 			});
 			body.innerHTML = html;
 		}
 
 		function load() {
-			body.innerHTML = '<tr><td colspan="3">Đang tải…</td></tr>';
+			body.innerHTML = '<tr><td colspan="6">Đang tải…</td></tr>';
 			apiPost({ mode: 'list_vendors', q: '' }).then(function (res) {
 				all = (res && res.vendors) || [];
 				groupsFrom(all);
 				render();
 			}).catch(function () {
-				body.innerHTML = '<tr><td colspan="3">Không tải được danh sách NCC.</td></tr>';
+				body.innerHTML = '<tr><td colspan="6">Không tải được danh sách NCC.</td></tr>';
 			});
 		}
 
 		body.addEventListener('click', function (e) {
+			var editBtn = e.target.closest('[data-edit]');
+			if (editBtn) {
+				var editId = Number(editBtn.getAttribute('data-edit'));
+				var found = null;
+				all.forEach(function (v) { if (Number(v.id) === editId) found = v; });
+				if (found) openModal(found);
+				return;
+			}
 			if (e.target.closest('a') || e.target.closest('.mk-kiot-expand-panel')) return;
 			var tr = e.target.closest('tr.mk-kiot-vendor-row');
 			if (!tr) return;
@@ -765,6 +804,68 @@
 			openId = openId === id ? null : id;
 			render();
 		});
+		var createBtn = document.getElementById('mkVendorCreateBtn');
+		if (createBtn) createBtn.addEventListener('click', function () { openModal(null); });
+		if (modal) {
+			modal.addEventListener('click', function (e) {
+				if (e.target.closest('[data-mk-vendor-close]')) closeModal();
+			});
+		}
+		if (form) {
+			form.addEventListener('submit', function (e) {
+				e.preventDefault();
+				var payload = { mode: 'save_vendor' };
+				['id', 'name', 'code', 'phone', 'email', 'street', 'city', 'state', 'category', 'note', 'company', 'tax', 'identity'].forEach(function (key) {
+					payload[key] = form.elements[key] ? form.elements[key].value : '';
+				});
+				apiPost(payload).then(function () {
+					closeModal();
+					load();
+				}).catch(function (err) {
+					window.alert(err || 'Không lưu được nhà cung cấp.');
+				});
+			});
+		}
+		var importBtn = document.getElementById('mkVendorImportBtn');
+		var importFile = document.getElementById('mkVendorImportFile');
+		if (importBtn && importFile) {
+			importBtn.addEventListener('click', function () { importFile.click(); });
+			importFile.addEventListener('change', function () {
+				var file = importFile.files && importFile.files[0];
+				importFile.value = '';
+				if (!file) return;
+				var fd = new FormData();
+				fd.append('module', 'Warehouse');
+				fd.append('action', 'WhMgmtApi');
+				fd.append('mode', 'import_vendors');
+				fd.append('vendorExcel', file);
+				try {
+					var csrf = '';
+					if (window.jQuery && jQuery('[name="__vtrftk"]').length) csrf = jQuery('[name="__vtrftk"]').val() || '';
+					else if (typeof csrfMagicToken !== 'undefined') csrf = csrfMagicToken;
+					if (csrf) fd.append('__vtrftk', csrf);
+				} catch (errCsrf) { /* ignore */ }
+				jQuery.ajax({
+					url: 'index.php',
+					method: 'POST',
+					data: fd,
+					processData: false,
+					contentType: false,
+					dataType: 'json'
+				}).done(function (res) {
+					var bodyRes = unwrap(res);
+					if (!bodyRes || bodyRes.success === false || bodyRes.error) {
+						window.alert((bodyRes && (bodyRes.error || bodyRes.message)) || 'Import thất bại');
+						return;
+					}
+					var stats = bodyRes.stats || {};
+					window.alert('Đã tạo ' + (stats.create || 0) + ', cập nhật ' + (stats.update || 0) + '.');
+					load();
+				}).fail(function () {
+					window.alert('Import thất bại');
+				});
+			});
+		}
 		qInput.addEventListener('input', function () {
 			clearTimeout(timer);
 			timer = setTimeout(render, 200);

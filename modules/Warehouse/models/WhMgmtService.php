@@ -3702,21 +3702,27 @@ class Warehouse_WhMgmtService {
 					$creator = '';
 				}
 			}
+			$profile = self::parseVendorProfile(isset($row['description']) ? $row['description'] : '');
 			$out[] = array(
 				'id' => $id,
 				'code' => (string) (isset($row['vendor_no']) ? $row['vendor_no'] : ''),
 				'name' => $name,
 				'phone' => (string) (isset($row['phone']) ? $row['phone'] : ''),
 				'email' => (string) (isset($row['email']) ? $row['email'] : ''),
+				'street' => self::decodeDisplayTextDeep((string) (isset($row['street']) ? $row['street'] : '')),
+				'city' => self::decodeDisplayTextDeep((string) (isset($row['city']) ? $row['city'] : '')),
+				'state' => self::decodeDisplayTextDeep((string) (isset($row['state']) ? $row['state'] : '')),
 				'address' => self::decodeDisplayTextDeep(trim(
 					(isset($row['street']) ? (string) $row['street'] : '') . ', ' .
 					(isset($row['city']) ? (string) $row['city'] : '') . ', ' .
 					(isset($row['state']) ? (string) $row['state'] : ''),
 					' ,'
 				)),
-				'tax' => self::extractVendorTaxFromDescription(isset($row['description']) ? $row['description'] : ''),
+				'tax' => $profile['tax'],
+				'company' => $profile['company'],
+				'identity' => $profile['identity'],
 				'category' => self::decodeDisplayTextDeep((string) (isset($row['category']) ? $row['category'] : '')),
-				'note' => self::decodeDisplayTextDeep((string) (isset($row['description']) ? $row['description'] : '')),
+				'note' => $profile['note'],
 				'createdAt' => $created !== '' ? gmdate('c', strtotime($created)) : '',
 				'createdBy' => $creator,
 				'totalPurchase' => $stats['total'],
@@ -3831,11 +3837,256 @@ class Warehouse_WhMgmtService {
 	}
 
 	protected static function extractVendorTaxFromDescription($description) {
-		$text = (string) $description;
-		if (preg_match('/MST\s*[:=]\s*([A-Za-z0-9\-]+)/u', $text, $m)) {
-			return trim($m[1]);
+		$profile = self::parseVendorProfile($description);
+		return $profile['tax'];
+	}
+
+	protected static function parseVendorProfile($description) {
+		$text = self::decodeDisplayTextDeep((string) $description);
+		$tax = '';
+		$company = '';
+		$identity = '';
+		$notes = array();
+		foreach (preg_split('/\r\n|\r|\n/', $text) as $line) {
+			$line = trim($line);
+			if ($line === '') {
+				continue;
+			}
+			if (preg_match('/^MST\s*[:=]\s*(.+)$/u', $line, $m)) {
+				$tax = trim($m[1]);
+			} elseif (preg_match('/^Công ty\s*[:=]\s*(.+)$/u', $line, $m)) {
+				$company = trim($m[1]);
+			} elseif (preg_match('/^CCCD\s*[:=]\s*(.+)$/u', $line, $m)) {
+				$identity = trim($m[1]);
+			} else {
+				$notes[] = $line;
+			}
 		}
-		return '';
+		return array(
+			'tax' => $tax,
+			'company' => $company,
+			'identity' => $identity,
+			'note' => implode("\n", $notes),
+		);
+	}
+
+	public static function saveVendor(array $fields) {
+		$name = trim((string) (isset($fields['name']) ? $fields['name'] : ''));
+		if ($name === '') {
+			throw new Exception('Nhập tên nhà cung cấp.');
+		}
+		$id = (int) (isset($fields['id']) ? $fields['id'] : 0);
+		if ($id > 0) {
+			$record = Vtiger_Record_Model::getInstanceById($id, 'Vendors');
+			$record->set('mode', 'edit');
+		} else {
+			$record = Vtiger_Record_Model::getCleanInstance('Vendors');
+			$record->set('mode', '');
+			global $current_user;
+			$ownerId = (!empty($current_user) && !empty($current_user->id)) ? (int) $current_user->id : 1;
+			$record->set('assigned_user_id', $ownerId);
+		}
+		$record->set('vendorname', $name);
+		$code = trim((string) (isset($fields['code']) ? $fields['code'] : ''));
+		if ($code !== '' && stripos($code, 'tự động') === false && stripos($code, 'tu dong') === false) {
+			$record->set('vendor_no', $code);
+		}
+		$record->set('phone', trim((string) (isset($fields['phone']) ? $fields['phone'] : '')));
+		$record->set('email', trim((string) (isset($fields['email']) ? $fields['email'] : '')));
+		$record->set('street', trim((string) (isset($fields['street']) ? $fields['street'] : '')));
+		$record->set('city', trim((string) (isset($fields['city']) ? $fields['city'] : '')));
+		$record->set('state', trim((string) (isset($fields['state']) ? $fields['state'] : '')));
+		$record->set('category', trim((string) (isset($fields['category']) ? $fields['category'] : '')));
+		$parts = array();
+		$tax = trim((string) (isset($fields['tax']) ? $fields['tax'] : ''));
+		$company = trim((string) (isset($fields['company']) ? $fields['company'] : ''));
+		$identity = trim((string) (isset($fields['identity']) ? $fields['identity'] : ''));
+		$note = trim((string) (isset($fields['note']) ? $fields['note'] : ''));
+		if ($tax !== '') {
+			$parts[] = 'MST: ' . $tax;
+		}
+		if ($company !== '') {
+			$parts[] = 'Công ty: ' . $company;
+		}
+		if ($identity !== '') {
+			$parts[] = 'CCCD: ' . $identity;
+		}
+		if ($note !== '') {
+			$parts[] = $note;
+		}
+		$record->set('description', implode("\n", $parts));
+		$record->save();
+		$savedId = (int) $record->getId();
+		$db = PearDatabase::getInstance();
+		$no = '';
+		$rs = $db->pquery('SELECT vendor_no FROM vtiger_vendor WHERE vendorid = ?', array($savedId));
+		if ($rs && $db->num_rows($rs) > 0) {
+			$no = trim((string) $db->query_result($rs, 0, 'vendor_no'));
+		}
+		return array('id' => $savedId, 'code' => $no);
+	}
+
+	public static function importVendorsFromExcel(array $file) {
+		if (empty($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
+			throw new Exception('Chưa chọn file Excel.');
+		}
+		$rows = self::readVendorExcelRows($file['tmp_name']);
+		if (count($rows) < 2) {
+			throw new Exception('File không có dòng nhà cung cấp.');
+		}
+		$header = array_shift($rows);
+		$map = array();
+		foreach ($header as $col => $label) {
+			$key = self::foldVendorHeader($label);
+			if (strpos($key, 'ma nha cung') !== false || $key === 'ma ncc') {
+				$map['code'] = $col;
+			} elseif (strpos($key, 'ten nha cung') !== false || $key === 'ten ncc') {
+				$map['name'] = $col;
+			} elseif ($key === 'email') {
+				$map['email'] = $col;
+			} elseif (strpos($key, 'dien thoai') !== false || $key === 'sdt') {
+				$map['phone'] = $col;
+			} elseif (strpos($key, 'dia chi') !== false) {
+				$map['street'] = $col;
+			} elseif (strpos($key, 'khu vuc') !== false) {
+				$map['state'] = $col;
+			} elseif (strpos($key, 'phuong') !== false || strpos($key, 'xa') !== false) {
+				$map['city'] = $col;
+			} elseif (strpos($key, 'ma so thue') !== false || $key === 'mst') {
+				$map['tax'] = $col;
+			} elseif (strpos($key, 'ghi chu') !== false) {
+				$map['note'] = $col;
+			} elseif (strpos($key, 'nhom') !== false) {
+				$map['category'] = $col;
+			} elseif ($key === 'cong ty' || strpos($key, 'ten cong ty') !== false) {
+				$map['company'] = $col;
+			} elseif (strpos($key, 'cccd') !== false || strpos($key, 'cmnd') !== false) {
+				$map['identity'] = $col;
+			}
+		}
+		if (empty($map['name'])) {
+			throw new Exception('Không tìm thấy cột Tên nhà cung cấp.');
+		}
+		$stats = array('create' => 0, 'update' => 0, 'skip' => 0);
+		$db = PearDatabase::getInstance();
+		foreach ($rows as $row) {
+			$get = function ($k) use ($row, $map) {
+				if (!isset($map[$k]) || !isset($row[$map[$k]])) {
+					return '';
+				}
+				return trim((string) $row[$map[$k]]);
+			};
+			$name = $get('name');
+			$code = $get('code');
+			if ($name === '' && $code === '') {
+				$stats['skip']++;
+				continue;
+			}
+			$existing = 0;
+			if ($code !== '') {
+				$rs = $db->pquery(
+					'SELECT v.vendorid FROM vtiger_vendor v INNER JOIN vtiger_crmentity ce ON ce.crmid = v.vendorid AND ce.deleted = 0 WHERE v.vendor_no = ? LIMIT 1',
+					array($code)
+				);
+				if ($rs && $db->num_rows($rs) > 0) {
+					$existing = (int) $db->query_result($rs, 0, 'vendorid');
+				}
+			}
+			if ($existing <= 0 && $name !== '') {
+				$rs = $db->pquery(
+					'SELECT v.vendorid FROM vtiger_vendor v INNER JOIN vtiger_crmentity ce ON ce.crmid = v.vendorid AND ce.deleted = 0 WHERE v.vendorname = ? LIMIT 1',
+					array($name)
+				);
+				if ($rs && $db->num_rows($rs) > 0) {
+					$existing = (int) $db->query_result($rs, 0, 'vendorid');
+				}
+			}
+			self::saveVendor(array(
+				'id' => $existing,
+				'name' => $name !== '' ? $name : ('NCC ' . $code),
+				'code' => $code,
+				'phone' => $get('phone'),
+				'email' => $get('email'),
+				'street' => $get('street'),
+				'city' => $get('city'),
+				'state' => $get('state'),
+				'category' => $get('category'),
+				'tax' => $get('tax'),
+				'company' => $get('company'),
+				'identity' => $get('identity'),
+				'note' => $get('note'),
+			));
+			if ($existing > 0) {
+				$stats['update']++;
+			} else {
+				$stats['create']++;
+			}
+		}
+		return $stats;
+	}
+
+	protected static function foldVendorHeader($value) {
+		$value = function_exists('mb_strtolower') ? mb_strtolower(trim((string) $value), 'UTF-8') : strtolower(trim((string) $value));
+		$map = array(
+			'á' => 'a', 'à' => 'a', 'ả' => 'a', 'ã' => 'a', 'ạ' => 'a', 'ă' => 'a', 'ắ' => 'a', 'ằ' => 'a', 'ẳ' => 'a', 'ẵ' => 'a', 'ặ' => 'a', 'â' => 'a', 'ấ' => 'a', 'ầ' => 'a', 'ẩ' => 'a', 'ẫ' => 'a', 'ậ' => 'a',
+			'é' => 'e', 'è' => 'e', 'ẻ' => 'e', 'ẽ' => 'e', 'ẹ' => 'e', 'ê' => 'e', 'ế' => 'e', 'ề' => 'e', 'ể' => 'e', 'ễ' => 'e', 'ệ' => 'e',
+			'í' => 'i', 'ì' => 'i', 'ỉ' => 'i', 'ĩ' => 'i', 'ị' => 'i',
+			'ó' => 'o', 'ò' => 'o', 'ỏ' => 'o', 'õ' => 'o', 'ọ' => 'o', 'ô' => 'o', 'ố' => 'o', 'ồ' => 'o', 'ổ' => 'o', 'ỗ' => 'o', 'ộ' => 'o', 'ơ' => 'o', 'ớ' => 'o', 'ờ' => 'o', 'ở' => 'o', 'ỡ' => 'o', 'ợ' => 'o',
+			'ú' => 'u', 'ù' => 'u', 'ủ' => 'u', 'ũ' => 'u', 'ụ' => 'u', 'ư' => 'u', 'ứ' => 'u', 'ừ' => 'u', 'ử' => 'u', 'ữ' => 'u', 'ự' => 'u',
+			'ý' => 'y', 'ỳ' => 'y', 'ỷ' => 'y', 'ỹ' => 'y', 'ỵ' => 'y', 'đ' => 'd',
+		);
+		return strtr($value, $map);
+	}
+
+	protected static function readVendorExcelRows($path) {
+		if (!class_exists('ZipArchive')) {
+			throw new Exception('Máy chủ chưa có ZipArchive để đọc Excel.');
+		}
+		$zip = new ZipArchive();
+		if ($zip->open($path) !== true) {
+			throw new Exception('Không mở được file Excel.');
+		}
+		$shared = array();
+		$sharedXml = $zip->getFromName('xl/sharedStrings.xml');
+		if ($sharedXml) {
+			$xml = simplexml_load_string($sharedXml);
+			if ($xml) {
+				foreach ($xml->si as $si) {
+					$t = '';
+					if (isset($si->t)) {
+						$t = (string) $si->t;
+					} else {
+						foreach ($si->r as $r) {
+							$t .= (string) $r->t;
+						}
+					}
+					$shared[] = $t;
+				}
+			}
+		}
+		$sheet = $zip->getFromName('xl/worksheets/sheet1.xml');
+		$zip->close();
+		if (!$sheet) {
+			throw new Exception('File Excel không có sheet1.');
+		}
+		$sx = simplexml_load_string($sheet);
+		$sx->registerXPathNamespace('m', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+		$xmlRows = $sx->xpath('//m:sheetData/m:row');
+		$out = array();
+		foreach ($xmlRows as $row) {
+			$cells = array();
+			foreach ($row->c as $c) {
+				$ref = (string) $c['r'];
+				$col = preg_replace('/\d+/', '', $ref);
+				$v = isset($c->v) ? (string) $c->v : '';
+				if ((string) $c['t'] === 's' && isset($shared[(int) $v])) {
+					$v = $shared[(int) $v];
+				}
+				$cells[$col] = $v;
+			}
+			$out[] = $cells;
+		}
+		return $out;
 	}
 
 	protected static function findProductById(PearDatabase $db, $productId) {
