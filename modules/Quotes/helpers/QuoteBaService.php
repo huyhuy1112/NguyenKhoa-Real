@@ -624,13 +624,20 @@ class Quotes_QuoteBaService_Helper {
 		if ($stage === '') {
 			return false;
 		}
-		$cancelled = array('Rejected', 'Huỷ', 'Hủy', 'Cancelled', 'Đã hủy', 'Đã huỷ');
+		$cancelled = array('Rejected', 'Huỷ', 'Hủy', 'Cancelled', 'Đã hủy', 'Đã huỷ', 'Đã từ chối', 'Từ chối', 'Đã từ chối');
 		foreach ($cancelled as $value) {
 			if (strcasecmp($stage, $value) === 0) {
 				return true;
 			}
 		}
-		return false;
+		$plain = mb_strtolower(preg_replace('/[\x{0300}-\x{036f}]/u', '', $stage), 'UTF-8');
+		return (strpos($plain, 'tu choi') !== false)
+			|| (strpos($plain, 'từ chối') !== false)
+			|| (strpos($plain, 'huy') !== false)
+			|| (strpos($plain, 'hủy') !== false)
+			|| (strpos($plain, 'huỷ') !== false)
+			|| (strpos($plain, 'cancel') !== false)
+			|| (strpos($plain, 'reject') !== false);
 	}
 
 	public static function isConfirmedQuoteStage($stage) {
@@ -672,6 +679,9 @@ class Quotes_QuoteBaService_Helper {
 			'Cancelled' => 'Huỷ',
 			'Đã hủy' => 'Huỷ',
 			'Đã huỷ' => 'Huỷ',
+			'Đã từ chối' => 'Huỷ',
+			'Đã từ chối' => 'Huỷ',
+			'Từ chối' => 'Huỷ',
 		);
 		if (isset($map[$stage])) {
 			return $map[$stage];
@@ -681,7 +691,10 @@ class Quotes_QuoteBaService_Helper {
 				return $label;
 			}
 		}
-		return $stage;
+		if (self::isCancelledQuoteStage($stage)) {
+			return 'Huỷ';
+		}
+		return 'Phiếu tạm';
 	}
 
 	/**

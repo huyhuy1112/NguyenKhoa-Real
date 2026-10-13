@@ -124,7 +124,7 @@ class SalesOrder_ConfirmSalesOrder_Action extends Vtiger_Action_Controller {
 			);
 			$soModel->set('sostatus', 'Delivered');
 
-			$message = 'Đã xác nhận đơn hàng, chuyển xuống xuất kho. Trạng thái đơn là Đã hoàn thành.';
+			$message = 'Đã xác nhận đơn hàng, chuyển xuống xuất kho. Trạng thái đơn là Hoàn thành.';
 			if ($allowNegative && !empty($stockWarnings)) {
 				$message .= ' Lưu ý tồn kho (cho phép âm): ' . implode(' ', $stockWarnings);
 			}

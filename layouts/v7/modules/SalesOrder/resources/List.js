@@ -245,23 +245,24 @@
     Nháp: "Phiếu tạm",
     "Phiếu tạm": "Phiếu tạm",
     "Đã tạo": "Phiếu tạm",
-    Paid: "Đã thanh toán",
-    Approved: "Đã thanh toán",
-    "Đã xác nhận": "Đã thanh toán",
-    "Đã duyệt": "Đã thanh toán",
-    "Đã thanh toán": "Đã thanh toán",
-    Delivered: "Đã hoàn thành",
-    "Hoàn thành": "Đã hoàn thành",
-    "Đã hoàn thành": "Đã hoàn thành",
-    shipped: "Đã hoàn thành",
-    "Đã giao": "Đã hoàn thành",
-    "Đang giao hàng": "Đã hoàn thành",
-    waiting_print: "Đã hoàn thành",
-    picking: "Đã hoàn thành",
-    packed: "Đã hoàn thành",
-    "Chờ soạn": "Đã hoàn thành",
-    "Đang soạn": "Đã hoàn thành",
-    "Đã soạn": "Đã hoàn thành",
+    Paid: "Đã xác nhận",
+    Approved: "Đã xác nhận",
+    "Đã xác nhận": "Đã xác nhận",
+    "Đã duyệt": "Đã xác nhận",
+    "Đã thanh toán": "Đã xác nhận",
+    Delivered: "Hoàn thành",
+    "Đang sử dụng": "Hoàn thành",
+    "Hoàn thành": "Hoàn thành",
+    "Đã hoàn thành": "Hoàn thành",
+    shipped: "Hoàn thành",
+    "Đã giao": "Hoàn thành",
+    "Đang giao hàng": "Hoàn thành",
+    waiting_print: "Hoàn thành",
+    picking: "Hoàn thành",
+    packed: "Hoàn thành",
+    "Chờ soạn": "Hoàn thành",
+    "Đang soạn": "Hoàn thành",
+    "Đã soạn": "Hoàn thành",
     Cancelled: "Đã hủy",
     "Đã hủy": "Đã hủy",
   };
@@ -1863,7 +1864,7 @@
           showOrderActionConfirm({
             title: "Xác nhận đơn hàng",
             question: "Xác nhận đơn hàng này?",
-            hint: "Sau khi xác nhận, chọn kho để tạo phiếu xuất kho. Trạng thái đơn thành Đã hoàn thành.",
+            hint: "Sau khi xác nhận, chọn kho để tạo phiếu xuất kho. Trạng thái đơn thành Hoàn thành.",
             icon: "fa-check",
           }).then(
             function () {
@@ -4016,6 +4017,7 @@
       t.indexOf("deliver") >= 0 ||
       t.indexOf("đã giao") >= 0 ||
       t.indexOf("hoàn thành") >= 0 ||
+      t.indexOf("đang sử dụng") >= 0 ||
       t.indexOf("đã soạn") >= 0 ||
       t.indexOf("packed") >= 0
     ) {

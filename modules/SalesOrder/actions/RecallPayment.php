@@ -1,6 +1,6 @@
 <?php
 /*+***********************************************************************************
- * Thu hồi thanh toán: đơn Đã thanh toán biến mất, báo giá gốc quay lại Phiếu tạm.
+ * Thu hồi thanh toán: đơn Đã xác nhận biến mất, báo giá gốc quay lại Phiếu tạm.
  *************************************************************************************/
 
 class SalesOrder_RecallPayment_Action extends Vtiger_Action_Controller {
@@ -37,7 +37,7 @@ class SalesOrder_RecallPayment_Action extends Vtiger_Action_Controller {
 			$status = trim((string) $db->query_result($rs, 0, 'sostatus'));
 			$quoteId = (int) $db->query_result($rs, 0, 'quoteid');
 			$finished = array(
-				'Delivered', 'Hoàn thành', 'Đã hoàn thành', 'shipped', 'Đã giao',
+				'Delivered', 'Hoàn thành', 'Đã hoàn thành', 'Đang sử dụng', 'shipped', 'Đã giao',
 				'waiting_print', 'picking', 'packed', 'Chờ soạn', 'Đang soạn', 'Đã soạn',
 			);
 			if (in_array($status, $finished, true)) {

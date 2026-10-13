@@ -97,7 +97,7 @@
       '<div class="mk-quote-convert-modal__body">' +
       '<div class="mk-quote-convert-modal__icon" aria-hidden="true"><i class="fa fa-shopping-cart"></i></div>' +
       '<p class="mk-quote-convert-modal__title">Chuyển báo giá thành đơn hàng?</p>' +
-      '<p class="mk-quote-convert-modal__hint">Hệ thống sẽ tạo đơn hàng ở trạng thái Đã thanh toán và ẩn báo giá này khỏi danh sách.</p>' +
+      '<p class="mk-quote-convert-modal__hint">Hệ thống sẽ tạo đơn hàng ở trạng thái Đã xác nhận và ẩn báo giá này khỏi danh sách.</p>' +
       "</div>";
 
     if (typeof bootbox !== "undefined" && bootbox.dialog) {
@@ -213,7 +213,7 @@
           app.helper.showSuccessNotification({
             message: result.already_exists
               ? "Đơn hàng đã tồn tại. Đang mở danh sách đơn hàng..."
-              : "Đã tạo đơn hàng (Đã thanh toán). Đang mở danh sách đơn hàng...",
+              : "Đã tạo đơn hàng (Đã xác nhận). Đang mở danh sách đơn hàng...",
           });
         }
         window.location.href = soUrl;
@@ -2971,6 +2971,9 @@
       Cancelled: "Huỷ",
       "Đã hủy": "Huỷ",
       "Đã huỷ": "Huỷ",
+      "Đã từ chối": "Huỷ",
+      "Đã từ chối": "Huỷ",
+      "Từ chối": "Huỷ",
     };
     $(context)
       .find('td[data-name="quotestage"] .value')
@@ -2984,7 +2987,23 @@
         if (!text) {
           return;
         }
-        var label = STAGE_LABELS[text] || text;
+        var label = STAGE_LABELS[text];
+        if (!label) {
+          var plain = String(text || "").toLowerCase();
+          try {
+            plain = String(text || "")
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .toLowerCase();
+          } catch (ignoreNorm) {}
+          label =
+            plain.indexOf("tu choi") >= 0 ||
+            plain.indexOf("huy") >= 0 ||
+            plain.indexOf("cancel") >= 0 ||
+            plain.indexOf("reject") >= 0
+              ? "Huỷ"
+              : "Phiếu tạm";
+        }
         if ($link.length) {
           $link.addClass("mk-qt-stage-pill").text(label);
           return;
@@ -3286,6 +3305,27 @@
     });
   }
 
+  function bindQuoteImport() {
+    if (!window.MkQuickImport || typeof window.MkQuickImport.bind !== "function") {
+      return;
+    }
+    window.MkQuickImport.bind({
+      buttonId: "mk-qt-import-btn",
+      fileInputId: "mk-qt-import-file",
+      module: "Quotes",
+      xlsxOnly: true,
+      xlsxRejectMessage: "Chỉ hỗ trợ file .xlsx (chi tiết đặt hàng).",
+      confirmMessage:
+        "Import phiếu tạm vào Báo giá.\n" +
+        "Mỗi mã đặt hàng là một báo giá ở trạng thái Phiếu tạm.\n" +
+        "Nhập lại cùng mã sẽ cập nhật báo giá cũ.\n" +
+        "Không tạo đơn hàng và không tạo hàng hoá mới.",
+      onDone: function () {
+        window.location.reload();
+      },
+    });
+  }
+
   function init() {
     if (!isQuotesSalesList()) {
       return;
@@ -3297,6 +3337,7 @@
     ensureQtMassActionButtons();
     bindMassActionButtons();
     bindInlineDuplicateButton();
+    bindQuoteImport();
     bindQtSelectionEvents();
     bindInlineDetailCapture();
     patchInlineDetailRowClick();

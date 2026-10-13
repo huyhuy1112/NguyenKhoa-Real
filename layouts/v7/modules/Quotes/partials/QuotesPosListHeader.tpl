@@ -57,6 +57,11 @@
 				<span>{vtranslate($ADD_ACTION->getLabel(), $MODULE)}</span>
 			</button>
 		{/if}
+		<button type="button" class="mk-so-pos-btn mk-so-pos-btn--outline" id="mk-qt-import-btn" title="Import Excel phiếu tạm. Cùng mã đặt hàng là một báo giá, không tạo đơn hàng.">
+			<i class="fa fa-upload" aria-hidden="true"></i>
+			<span class="mk-leads-btn__txt">Import</span>
+		</button>
+		<input type="file" id="mk-qt-import-file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hide" tabindex="-1" aria-hidden="true" />
 		<button type="button" class="mk-so-pos-btn mk-so-pos-btn--outline mk-qt-pos-mass-dup-btn mk-so-pos-mass-action" id="mk-qt-mass-duplicate-btn" disabled="disabled" aria-hidden="true" title="Nhân bản các báo giá đã chọn"
 				onclick="if (window.mkQtMassDuplicateQuotes) window.mkQtMassDuplicateQuotes(); return false;">
 			<i class="fa fa-copy" aria-hidden="true"></i>

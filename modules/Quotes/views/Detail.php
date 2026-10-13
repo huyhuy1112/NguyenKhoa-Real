@@ -366,6 +366,9 @@ class Quotes_Detail_View extends Inventory_Detail_View {
 			'Cancelled' => 'Huỷ',
 			'Đã hủy' => 'Huỷ',
 			'Đã huỷ' => 'Huỷ',
+			'Đã từ chối' => 'Huỷ',
+			'Đã từ chối' => 'Huỷ',
+			'Từ chối' => 'Huỷ',
 		);
 	}
 
@@ -383,7 +386,7 @@ class Quotes_Detail_View extends Inventory_Detail_View {
 				return $label;
 			}
 		}
-		return $value;
+		return Quotes_QuoteBaService_Helper::getQuoteStageDisplayLabel($value);
 	}
 
 	protected function getQuoteStageOptions(Vtiger_Module_Model $moduleModel, $fieldName) {

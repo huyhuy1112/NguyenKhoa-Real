@@ -153,12 +153,13 @@
 				$INLINE_SOSTATUS eq 'waiting_print' || $INLINE_SOSTATUS eq 'picking' || $INLINE_SOSTATUS eq 'packed'
 				|| $INLINE_SOSTATUS eq 'shipped'
 				|| $INLINE_SOSTATUS eq 'Delivered' || $INLINE_SOSTATUS eq 'Đã giao' || $INLINE_SOSTATUS eq 'Hoàn thành'
-				|| $INLINE_SOSTATUS eq 'Đã hoàn thành'
+				|| $INLINE_SOSTATUS eq 'Đã hoàn thành' || $INLINE_SOSTATUS eq 'Đang sử dụng'
 				|| $INLINE_SOSTATUS eq 'Chờ soạn' || $INLINE_SOSTATUS eq 'Đang soạn' || $INLINE_SOSTATUS eq 'Đã soạn'
 			)}
 			{assign var=SO_CAN_CANCEL value=(
 				$INLINE_SOSTATUS neq 'shipped' && $INLINE_SOSTATUS neq 'Delivered' && $INLINE_SOSTATUS neq 'Đã giao'
-				&& $INLINE_SOSTATUS neq 'Hoàn thành' && $INLINE_SOSTATUS neq 'Cancelled' && $INLINE_SOSTATUS neq 'Đã hủy'
+				&& $INLINE_SOSTATUS neq 'Hoàn thành' && $INLINE_SOSTATUS neq 'Đã hoàn thành' && $INLINE_SOSTATUS neq 'Đang sử dụng'
+				&& $INLINE_SOSTATUS neq 'Cancelled' && $INLINE_SOSTATUS neq 'Đã hủy'
 				&& $INLINE_SOSTATUS neq 'Đã huỷ'
 			)}
 			{if !$SO_ALREADY_CONFIRMED}

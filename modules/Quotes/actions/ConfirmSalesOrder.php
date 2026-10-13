@@ -88,7 +88,7 @@ class Quotes_ConfirmSalesOrder_Action extends Vtiger_Action_Controller {
 				'list_url' => 'index.php?module=SalesOrder&view=List&app=SALES',
 				'already_exists' => false,
 				'quote_trashed' => true,
-				'message' => 'Đã tạo đơn hàng (Đã thanh toán) từ báo giá.',
+				'message' => 'Đã tạo đơn hàng (Đã xác nhận) từ báo giá.',
 			));
 		} catch (Exception $e) {
 			$response->setResult(array(
