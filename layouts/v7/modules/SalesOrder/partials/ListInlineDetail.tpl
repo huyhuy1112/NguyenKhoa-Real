@@ -168,10 +168,6 @@
 				<span>Xác nhận đơn hàng</span>
 			</button>
 			{/if}
-			<button type="button" class="mk-so-inline-detail__action mk-so-inline-detail__action--outline mk-so-inline-detail__misa-btn" data-record-id="{$RECORD->getId()}" title="Gửi sang AMIS thành Đơn đặt hàng">
-				<i class="fa fa-share-square-o" aria-hidden="true"></i>
-				<span>Chuyển qua MISA</span>
-			</button>
 			{if !$SO_ALREADY_CONFIRMED}
 			<button type="button" class="mk-so-inline-detail__action mk-so-inline-detail__action--outline mk-so-inline-detail__recall-payment-btn" data-record-id="{$RECORD->getId()}" title="Đưa đơn về báo giá, trạng thái Phiếu tạm">
 				<i class="fa fa-undo" aria-hidden="true"></i>

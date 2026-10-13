@@ -121,6 +121,10 @@
 					<span>Mở đơn hàng</span>
 				</a>
 			{/if}
+			<button type="button" class="mk-so-inline-detail__action mk-so-inline-detail__action--outline mk-inv-inline-detail__misa-btn" data-record-id="{$RECORD->getId()}" title="Gửi sang AMIS thành Đơn đặt hàng, đã trừ VAT nếu hóa đơn đang tính VAT">
+				<i class="fa fa-share-square-o" aria-hidden="true"></i>
+				<span>Chuyển qua MISA</span>
+			</button>
 			<a class="mk-so-inline-detail__action mk-so-inline-detail__action--outline" href="{$INLINE_DETAIL_URL|escape}">
 				<i class="fa fa-file-text-o" aria-hidden="true"></i>
 				<span>Chi tiết HĐ</span>

@@ -1864,7 +1864,7 @@
           showOrderActionConfirm({
             title: "Xác nhận đơn hàng",
             question: "Xác nhận đơn hàng này?",
-            hint: "Sau khi xác nhận, chọn kho để tạo phiếu xuất kho. Trạng thái đơn thành Hoàn thành.",
+            hint: "Sau khi xác nhận, chọn kho để tạo phiếu xuất kho. Đơn sẽ chuyển sang Hóa đơn.",
             icon: "fa-check",
           }).then(
             function () {

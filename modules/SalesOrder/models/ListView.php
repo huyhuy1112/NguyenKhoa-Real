@@ -357,12 +357,31 @@ class SalesOrder_ListView_Model extends Inventory_ListView_Model {
 
 		$scope = $this->resolveSalesOrderListScope();
 		if ($scope === 'franchise') {
-			return $this->appendSalesOrderScopeFilter($listQuery, 'franchise');
+			return $this->appendHideCompletedSalesOrders($this->appendSalesOrderScopeFilter($listQuery, 'franchise'));
 		}
 		if ($scope === 'retail') {
-			return $this->appendSalesOrderScopeFilter($listQuery, 'retail');
+			return $this->appendHideCompletedSalesOrders($this->appendSalesOrderScopeFilter($listQuery, 'retail'));
 		}
-		return $listQuery;
+		return $this->appendHideCompletedSalesOrders($listQuery);
+	}
+
+	/**
+	 * Completed orders live on the invoice list.
+	 */
+	protected function appendHideCompletedSalesOrders($listQuery) {
+		$listQuery = (string) $listQuery;
+		if ($listQuery === '' || stripos($listQuery, 'mk_hide_completed_so') !== false) {
+			return $listQuery;
+		}
+		$done = array(
+			'Delivered', 'Hoàn thành', 'Đã hoàn thành', 'Đang sử dụng', 'shipped', 'Đã giao',
+			'waiting_print', 'picking', 'packed', 'Chờ soạn', 'Đang soạn', 'Đã soạn', 'Đang giao hàng',
+		);
+		$quoted = array();
+		foreach ($done as $status) {
+			$quoted[] = "'" . PearDatabase::getInstance()->sql_escape_string($status) . "'";
+		}
+		return $listQuery . ' AND vtiger_salesorder.sostatus NOT IN (' . implode(',', $quoted) . ') /* mk_hide_completed_so */';
 	}
 
 	/**

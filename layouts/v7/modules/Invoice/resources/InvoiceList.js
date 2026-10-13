@@ -3840,6 +3840,82 @@
     tick();
   }
 
+  function bindInvoiceMisa() {
+    $(document)
+      .off("click.mkInvMisa", ".mk-inv-inline-detail__misa-btn")
+      .on("click.mkInvMisa", ".mk-inv-inline-detail__misa-btn", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var $btn = $(this);
+        var recordId = String($btn.attr("data-record-id") || "");
+        if (!recordId || $btn.data("mkBusy")) {
+          return;
+        }
+        var run = function () {
+          $btn.data("mkBusy", 1);
+          var postData = {
+            module: "Invoice",
+            action: "TransferToMisa",
+            record: recordId,
+            app: "SALES",
+          };
+          if (typeof app !== "undefined" && app.helper && app.helper.showProgress) {
+            app.helper.showProgress();
+          }
+          var finish = function () {
+            if (typeof app !== "undefined" && app.helper && app.helper.hideProgress) {
+              app.helper.hideProgress();
+            }
+            $btn.data("mkBusy", 0);
+          };
+          if (typeof app === "undefined" || !app.request || !app.request.post) {
+            finish();
+            window.alert("Không gọi được API chuyển MISA.");
+            return;
+          }
+          app.request.post({ data: postData }).then(function (err, res) {
+            finish();
+            if (err) {
+              var failMsg =
+                (err && err.message) || "Không chuyển được hóa đơn sang MISA.";
+              if (app.helper && app.helper.showErrorNotification) {
+                app.helper.showErrorNotification({ message: failMsg });
+              } else {
+                window.alert(failMsg);
+              }
+              return;
+            }
+            var okMsg =
+              (res && (res.message || res.msg)) ||
+              "Đã gửi hóa đơn sang MISA.";
+            var status = (res && res.misa_status) || "Chờ kế toán";
+            $btn
+              .closest(".mk-inv-inline-detail")
+              .find(".mk-inv-inline-detail__status-pill")
+              .text(status);
+            if (app.helper && app.helper.showSuccessNotification) {
+              app.helper.showSuccessNotification({ message: okMsg });
+            }
+            window.setTimeout(function () {
+              window.location.reload();
+            }, 600);
+          });
+        };
+        if (typeof app !== "undefined" && app.helper && app.helper.showConfirmationBox) {
+          app.helper
+            .showConfirmationBox({
+              message:
+                "Gửi hóa đơn này sang MISA thành Đơn đặt hàng? Nếu hóa đơn đang tính VAT, số tiền gửi đi sẽ trừ VAT đó.",
+            })
+            .then(run, function () {});
+          return;
+        }
+        if (window.confirm("Gửi hóa đơn này sang MISA? Số tiền sẽ trừ VAT nếu hóa đơn đang tính VAT.")) {
+          run();
+        }
+      });
+  }
+
   function init() {
     if (!isInvoiceSalesList()) {
       return;
@@ -3866,6 +3942,7 @@
     bindPosMassDuplicateButton();
     bindPosMassDeleteButton();
     bindInlineDuplicateButton();
+    bindInvoiceMisa();
     initDebugHelpers();
     scheduleInitialEnhancements();
   }

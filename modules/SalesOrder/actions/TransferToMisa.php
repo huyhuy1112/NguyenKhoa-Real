@@ -27,6 +27,7 @@ class SalesOrder_TransferToMisa_Action extends Vtiger_Action_Controller {
 			if (getSalesEntityType($recordId) !== 'SalesOrder') {
 				throw new Exception('Bản ghi không phải đơn hàng.');
 			}
+			throw new Exception('Chuyển MISA chỉ thực hiện trên Hóa đơn.');
 
 			$soModel = Vtiger_Record_Model::getInstanceById($recordId, 'SalesOrder');
 			if (!$soModel || $soModel->getModuleName() !== 'SalesOrder') {

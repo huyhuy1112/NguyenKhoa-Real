@@ -161,7 +161,7 @@ class Invoice_List_View extends Inventory_List_View {
 			'hdnGrandTotal' => 'Tổng cộng',
 			'total' => 'Tổng cộng',
 			$paidField => 'Khách đã trả',
-			$statusField => 'Trạng thái',
+			$statusField => 'Trạng thái MISA',
 			$numberField => 'Mã hóa đơn',
 		);
 
@@ -227,6 +227,10 @@ class Invoice_List_View extends Inventory_List_View {
 	}
 
 	public function process(Vtiger_Request $request) {
+		if ($this->isSalesListContext($request)) {
+			require_once 'modules/Invoice/models/MisaSyncService.php';
+			Invoice_MisaSyncService::ensureInvoicesForCompletedOrders();
+		}
 		$viewer = $this->getViewer($request);
 		if ($this->isSalesListContext($request)) {
 			$posMeta = $this->applyInvoiceSalesListPosDefaults($request);

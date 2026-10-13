@@ -86,7 +86,13 @@ class Invoice_MisaSyncService {
 		$built = self::buildVoucher($api, $soModel, $lines, $orgRefid, $orderNo);
 		$api->saveVoucher($built['voucher'], $built['dictionary']);
 
-		$invoiceId = $existing ? (int) $existing['invoiceid'] : self::createInvoice($soModel, $orderNo);
+		$invoiceId = ($existing && (int) $existing['invoiceid'] > 0) ? (int) $existing['invoiceid'] : 0;
+		if ($invoiceId <= 0) {
+			$invoiceId = self::findInvoiceIdBySalesOrder($soId);
+		}
+		if ($invoiceId <= 0) {
+			$invoiceId = self::createInvoice($soModel, $orderNo, self::STATUS_WAIT);
+		}
 		self::setInvoiceStatus($invoiceId, self::STATUS_WAIT);
 		self::saveLink($soId, $invoiceId, $orgRefid, 'pending', 'Đã gửi Đơn đặt hàng sang MISA (tab Đơn đặt hàng).', '');
 
@@ -666,7 +672,101 @@ class Invoice_MisaSyncService {
 		self::saveLink($soId, $invoiceId, $orgRefid, $status, $message, $refno);
 	}
 
-	protected static function createInvoice($soModel, $orderNo) {
+	/**
+	 * Completed orders become invoices and leave the sales-order list.
+	 * Does not send anything to MISA.
+	 */
+	public static function ensureInvoiceForSalesOrder($soModel) {
+		$soId = (int) $soModel->getId();
+		if ($soId <= 0) {
+			return 0;
+		}
+		$found = self::findInvoiceIdBySalesOrder($soId);
+		if ($found > 0) {
+			return $found;
+		}
+		self::ensureStatuses();
+		$orderNo = trim((string) $soModel->get('salesorder_no'));
+		if ($orderNo === '') {
+			$orderNo = 'SO' . $soId;
+		}
+		return self::createInvoice($soModel, $orderNo, 'Hóa đơn mới');
+	}
+
+	/**
+	 * Create invoices for completed orders that do not have one yet.
+	 */
+	public static function ensureInvoicesForCompletedOrders($limit = 40) {
+		static $ran = false;
+		if ($ran) {
+			return;
+		}
+		$ran = true;
+		$limit = (int) $limit;
+		if ($limit <= 0) {
+			$limit = 40;
+		}
+		$adb = PearDatabase::getInstance();
+		self::ensureStatuses();
+		$done = array(
+			'Delivered', 'Hoàn thành', 'Đã hoàn thành', 'Đang sử dụng', 'shipped', 'Đã giao',
+			'waiting_print', 'picking', 'packed', 'Chờ soạn', 'Đang soạn', 'Đã soạn', 'Đang giao hàng',
+		);
+		$res = $adb->pquery(
+			'SELECT so.salesorderid
+			 FROM vtiger_salesorder so
+			 INNER JOIN vtiger_crmentity ce ON ce.crmid = so.salesorderid AND ce.deleted = 0
+			 WHERE so.sostatus IN (' . generateQuestionMarks($done) . ')
+			 AND NOT EXISTS (
+				SELECT 1 FROM vtiger_invoice inv
+				INNER JOIN vtiger_crmentity ice ON ice.crmid = inv.invoiceid AND ice.deleted = 0
+				WHERE inv.salesorderid = so.salesorderid
+			 )
+			 ORDER BY so.salesorderid ASC
+			 LIMIT ' . $limit,
+			$done
+		);
+		if (!$res) {
+			return;
+		}
+		$count = $adb->num_rows($res);
+		for ($i = 0; $i < $count; $i++) {
+			$soId = (int) $adb->query_result($res, $i, 'salesorderid');
+			if ($soId <= 0) {
+				continue;
+			}
+			try {
+				$soModel = Vtiger_Record_Model::getInstanceById($soId, 'SalesOrder');
+				if ($soModel) {
+					self::ensureInvoiceForSalesOrder($soModel);
+				}
+			} catch (Exception $ignore) {
+			}
+		}
+	}
+
+	protected static function findInvoiceIdBySalesOrder($soId) {
+		$soId = (int) $soId;
+		if ($soId <= 0) {
+			return 0;
+		}
+		$adb = PearDatabase::getInstance();
+		$res = $adb->pquery(
+			'SELECT inv.invoiceid
+			 FROM vtiger_invoice inv
+			 INNER JOIN vtiger_crmentity ce ON ce.crmid = inv.invoiceid AND ce.deleted = 0
+			 WHERE inv.salesorderid = ?
+			 ORDER BY inv.invoiceid DESC
+			 LIMIT 1',
+			array($soId)
+		);
+		if (!$res || $adb->num_rows($res) < 1) {
+			return 0;
+		}
+		return (int) $adb->query_result($res, 0, 'invoiceid');
+	}
+
+	protected static function createInvoice($soModel, $orderNo, $invoiceStatus = 'Hóa đơn mới') {
 		$soId = (int) $soModel->getId();
 		$user = Users_Record_Model::getCurrentUserModel();
 		$owner = $user ? (int) $user->getId() : (int) $soModel->get('assigned_user_id');
@@ -702,7 +802,7 @@ class Invoice_MisaSyncService {
 			$subject = trim((string) $soModel->get('subject'));
 			$focus->column_fields['subject'] = $subject !== '' ? $subject : ('Hóa đơn ' . $orderNo);
 			$focus->column_fields['salesorder_id'] = $soId;
-			$focus->column_fields['invoicestatus'] = self::STATUS_WAIT;
+			$focus->column_fields['invoicestatus'] = $invoiceStatus !== '' ? $invoiceStatus : 'Hóa đơn mới';
 			$focus->column_fields['invoicedate'] = date('Y-m-d');
 			$due = trim((string) $soModel->get('duedate'));
 			$focus->column_fields['duedate'] = $due !== '' ? $due : date('Y-m-d');
@@ -728,7 +828,7 @@ class Invoice_MisaSyncService {
 			throw new Exception('CRM không tạo được hóa đơn cho đơn ' . $orderNo . '.');
 		}
 		self::copyLines($soId, $invoiceId);
-		self::copyTotals($soModel, $invoiceId);
+		self::copyTotals($soModel, $invoiceId, $invoiceStatus);
 		return $invoiceId;
 	}
 
@@ -769,7 +869,7 @@ class Invoice_MisaSyncService {
 		}
 	}
 
-	protected static function copyTotals($soModel, $invoiceId) {
+	protected static function copyTotals($soModel, $invoiceId, $invoiceStatus = 'Hóa đơn mới') {
 		$adb = PearDatabase::getInstance();
 		$total = self::money($soModel->get('hdnGrandTotal'));
 		if ($total == 0.0) {
@@ -781,7 +881,7 @@ class Invoice_MisaSyncService {
 		}
 		$adb->pquery(
 			'UPDATE vtiger_invoice SET subtotal = ?, total = ?, balance = ?, invoicestatus = ? WHERE invoiceid = ?',
-			array($sub, $total, $total, self::STATUS_WAIT, $invoiceId)
+			array($sub, $total, $total, ($invoiceStatus !== '' ? $invoiceStatus : 'Hóa đơn mới'), $invoiceId)
 		);
 	}
 
@@ -798,6 +898,7 @@ class Invoice_MisaSyncService {
 		if (!$res) {
 			return $lines;
 		}
+		$includedVatPercent = self::includedVatPercent($soId);
 		$count = $adb->num_rows($res);
 		for ($i = 0; $i < $count; $i++) {
 			$productId = (int) $adb->query_result($res, $i, 'productid');
@@ -822,6 +923,19 @@ class Invoice_MisaSyncService {
 			}
 			$rate = self::taxRate($soId, $productId, (int) $adb->query_result($res, $i, 'sequence_no'));
 			$vat = round($amount * $rate / 100, 2);
+			if ($vat > 0) {
+				// CRM added this VAT on top. MISA receives the amount with that VAT removed.
+				$vat = 0;
+				$rate = 0;
+			} elseif ($includedVatPercent > 0) {
+				// Selling price already includes VAT. Send MISA the price before that VAT.
+				$factor = 1 + ($includedVatPercent / 100);
+				$price = round($price / $factor, 2);
+				$amount = round($amount / $factor, 2);
+				$discAmt = round($discAmt / $factor, 2);
+				$vat = 0;
+				$rate = 0;
+			}
 			$lines[] = array(
 				'seq' => (int) $adb->query_result($res, $i, 'sequence_no'),
 				'product_id' => $productId,
@@ -942,6 +1056,84 @@ class Invoice_MisaSyncService {
 			$rate += (float) $value;
 		}
 		return $rate;
+	}
+
+	/**
+	 * VAT percent stored on the order or its quote, only when a VAT amount was calculated.
+	 */
+	protected static function includedVatPercent($soId) {
+		$soId = (int) $soId;
+		if ($soId <= 0) {
+			return 0;
+		}
+		$adb = PearDatabase::getInstance();
+		$percent = self::readVatPercent($adb, 'vtiger_salesorder', 'salesorderid', $soId);
+		if ($percent <= 0) {
+			$percent = self::readVatPercent($adb, 'vtiger_salesordercf', 'salesorderid', $soId);
+		}
+		if ($percent <= 0) {
+			$quoteRs = $adb->pquery('SELECT quoteid FROM vtiger_salesorder WHERE salesorderid = ?', array($soId));
+			$quoteId = ($quoteRs && $adb->num_rows($quoteRs) > 0) ? (int) $adb->query_result($quoteRs, 0, 'quoteid') : 0;
+			if ($quoteId > 0) {
+				$percent = self::readVatPercent($adb, 'vtiger_quotes', 'quoteid', $quoteId);
+				if ($percent <= 0) {
+					$percent = self::readVatPercent($adb, 'vtiger_quotescf', 'quoteid', $quoteId);
+				}
+			}
+		}
+		if ($percent <= 0 || $percent > 100) {
+			return 0;
+		}
+		return $percent;
+	}
+
+	protected static function readVatPercent(PearDatabase $adb, $table, $idCol, $id) {
+		$names = array();
+		try {
+			$names = $adb->getColumnNames($table);
+		} catch (Exception $ignore) {
+			return 0;
+		}
+		if (!is_array($names)) {
+			return 0;
+		}
+		$hasPercent = false;
+		$hasAmount = false;
+		foreach ($names as $name) {
+			$lower = strtolower((string) $name);
+			if ($lower === 'mk_vat_percent') {
+				$hasPercent = true;
+			}
+			if ($lower === 'mk_vat_amount') {
+				$hasAmount = true;
+			}
+		}
+		if (!$hasPercent && !$hasAmount) {
+			return 0;
+		}
+		$select = array();
+		if ($hasPercent) {
+			$select[] = 'mk_vat_percent';
+		}
+		if ($hasAmount) {
+			$select[] = 'mk_vat_amount';
+		}
+		$res = $adb->pquery(
+			'SELECT ' . implode(', ', $select) . ' FROM `' . $table . '` WHERE `' . $idCol . '` = ?',
+			array((int) $id)
+		);
+		if (!$res || $adb->num_rows($res) < 1) {
+			return 0;
+		}
+		$amount = $hasAmount ? self::money($adb->query_result($res, 0, 'mk_vat_amount')) : 0;
+		if ($amount <= 0) {
+			return 0;
+		}
+		$percent = $hasPercent ? self::money($adb->query_result($res, 0, 'mk_vat_percent')) : 0;
+		if ($percent > 0 && $percent <= 100) {
+			return $percent;
+		}
+		return 0;
 	}
 
 	protected static function buildVoucher($api, $soModel, array $lines, $orgRefid, $orderNo) {

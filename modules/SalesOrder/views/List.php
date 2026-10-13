@@ -282,7 +282,6 @@ class SalesOrder_List_View extends Inventory_List_View {
 		$map = $this->getPosStatusLabelMap();
 		$preferred = array(
 			'Đã xác nhận' => 'Paid',
-			'Hoàn thành' => 'Delivered',
 		);
 		$byLabel = array();
 		foreach ($options as $key => $label) {
@@ -492,6 +491,8 @@ class SalesOrder_List_View extends Inventory_List_View {
 		$this->assignSalesAppCategory($request, $viewer);
 		$posMeta = null;
 		if ($this->isSalesListContext($request) && !$this->isToolsOrdersContext($request)) {
+			require_once 'modules/Invoice/models/MisaSyncService.php';
+			Invoice_MisaSyncService::ensureInvoicesForCompletedOrders();
 			$posMeta = $this->applySalesListPosDefaults($request);
 			$this->assignSalesListPosTemplateVars($viewer, $posMeta);
 			$this->resetSalesPosListViewState();

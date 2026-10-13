@@ -50,7 +50,6 @@
 					{/foreach}
 				{else}
 					<button type="button" class="mk-so-pos-filter-chip" data-value="Paid"><span class="mk-so-pos-filter-chip__text">Đã xác nhận</span><i class="fa fa-times mk-so-pos-filter-chip__remove" aria-hidden="true"></i></button>
-					<button type="button" class="mk-so-pos-filter-chip" data-value="Delivered"><span class="mk-so-pos-filter-chip__text">Hoàn thành</span><i class="fa fa-times mk-so-pos-filter-chip__remove" aria-hidden="true"></i></button>
 				{/if}
 			</div>
 			<div class="mk-so-pos-filter-status-pool" id="mk-so-filter-status-pool">

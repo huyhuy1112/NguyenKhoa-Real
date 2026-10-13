@@ -361,7 +361,7 @@ class Invoice_Detail_View extends Inventory_Detail_View {
 
 		$statusField = $this->resolveInvoiceStatusFieldName($moduleModel);
 		$candidates = array(
-			array('names' => array($statusField), 'label' => 'Trạng thái hóa đơn'),
+			array('names' => array($statusField), 'label' => 'Trạng thái MISA'),
 			array('names' => array('createdtime'), 'label' => 'Thời gian'),
 			array('names' => array('received', 'paid', 'mk_customer_paid'), 'label' => 'Khách đã trả'),
 			array('names' => array('assigned_user_id'), 'label' => 'Người phụ trách'),

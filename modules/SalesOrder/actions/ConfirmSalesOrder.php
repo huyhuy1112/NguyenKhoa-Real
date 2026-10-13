@@ -55,6 +55,9 @@ class SalesOrder_ConfirmSalesOrder_Action extends Vtiger_Action_Controller {
 					'UPDATE vtiger_salesorder SET sostatus = ? WHERE salesorderid = ?',
 					array('Delivered', $recordId)
 				);
+				$soModel->set('sostatus', 'Delivered');
+				require_once 'modules/Invoice/models/MisaSyncService.php';
+				Invoice_MisaSyncService::ensureInvoiceForSalesOrder($soModel);
 				$this->trashLinkedQuote($soModel);
 				$whUrl = $this->buildWarehouseOutboundUrlFromIssue($existingGi);
 				$response->setResult(array(
@@ -64,7 +67,7 @@ class SalesOrder_ConfirmSalesOrder_Action extends Vtiger_Action_Controller {
 					'sostatus' => 'Delivered',
 					'goodsissueid' => $existingGi,
 					'already_confirmed' => true,
-					'message' => 'Đơn hàng đã được xác nhận và đã có phiếu xuất kho.',
+					'message' => 'Đơn đã chuyển sang Hóa đơn và đã có phiếu xuất kho.',
 					'list_url' => 'index.php?module=SalesOrder&view=List&app=SALES',
 					'detail_url' => $soModel->getDetailViewUrl() . '&app=SALES',
 					'warehouse_url' => $whUrl,
@@ -123,8 +126,14 @@ class SalesOrder_ConfirmSalesOrder_Action extends Vtiger_Action_Controller {
 				array('Delivered', $recordId)
 			);
 			$soModel->set('sostatus', 'Delivered');
+			require_once 'modules/Invoice/models/MisaSyncService.php';
+			try {
+				Invoice_MisaSyncService::ensureInvoiceForSalesOrder($soModel);
+			} catch (Exception $invoiceError) {
+				throw new Exception('Đã xuất kho nhưng chưa tạo được hóa đơn. ' . $invoiceError->getMessage());
+			}
 
-			$message = 'Đã xác nhận đơn hàng, chuyển xuống xuất kho. Trạng thái đơn là Hoàn thành.';
+			$message = 'Đã xác nhận đơn hàng. Đơn chuyển sang Hóa đơn.';
 			if ($allowNegative && !empty($stockWarnings)) {
 				$message .= ' Lưu ý tồn kho (cho phép âm): ' . implode(' ', $stockWarnings);
 			}
