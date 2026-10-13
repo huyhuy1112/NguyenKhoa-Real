@@ -1882,7 +1882,8 @@ body[data-module="SalesOrder"][data-view="List"][data-app="SALES"] .mk-so-pos-li
 body[data-module="SalesOrder"][data-view="List"][data-app="SALES"] .mk-so-pos-list-enabled #listview-table col.mk-so-col-time { width: 14%; }
 body[data-module="SalesOrder"][data-view="List"][data-app="SALES"] .mk-so-pos-list-enabled #listview-table col.mk-so-col-customer { width: 15%; }
 body[data-module="SalesOrder"][data-view="List"][data-app="SALES"] .mk-so-pos-list-enabled #listview-table col.mk-so-col-warehouse { width: 12%; }
-body[data-module="SalesOrder"][data-view="List"][data-app="SALES"] .mk-so-pos-list-enabled #listview-table col.mk-so-col-paid { width: 12%; }
+body[data-module="SalesOrder"][data-view="List"][data-app="SALES"] .mk-so-pos-list-enabled #listview-table col.mk-so-col-paid { width: 11%; }
+body[data-module="SalesOrder"][data-view="List"][data-app="SALES"] .mk-so-pos-list-enabled #listview-table col.mk-so-col-remaining { width: 11%; }
 body[data-module="SalesOrder"][data-view="List"][data-app="SALES"] .mk-so-pos-list-enabled #listview-table col.mk-so-col-status { width: 18%; }
 body[data-module="SalesOrder"][data-view="List"][data-app="SALES"] .mk-so-pos-list-enabled #listview-table col.mk-so-col-due { width: 15%; }
 
@@ -1950,9 +1951,41 @@ body[data-module="SalesOrder"][data-view="List"][data-app="SALES"] .mk-so-pos-li
 /* Paid sits before status — left-align so amounts are not glued to status pills. */
 body[data-module="SalesOrder"][data-view="List"][data-app="SALES"] .mk-so-pos-list-enabled #listview-table tbody td.mk-so-col-paid,
 body[data-module="SalesOrder"][data-view="List"][data-app="SALES"] .mk-so-pos-list-enabled #listview-table thead th.mk-so-col-paid,
+body[data-module="SalesOrder"][data-view="List"][data-app="SALES"] .mk-so-pos-list-enabled #listview-table tbody td.mk-so-col-remaining,
+body[data-module="SalesOrder"][data-view="List"][data-app="SALES"] .mk-so-pos-list-enabled #listview-table thead th.mk-so-col-remaining,
 body[data-module="SalesOrder"][data-view="List"][data-app="SALES"] .mk-so-pos-list-enabled #listview-table tbody td[data-name="received"],
 body[data-module="SalesOrder"][data-view="List"][data-app="SALES"] .mk-so-pos-list-enabled #listview-table thead th a[data-columnname="received"] {
 	text-align: left !important;
+}
+
+.mk-so-payhist .mk-so-action-pop__card {
+	width: min(760px, 100%);
+}
+.mk-so-payhist .mk-so-action-pop__body {
+	max-height: 60vh;
+	overflow: auto;
+}
+.mk-so-payhist-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 13px;
+}
+.mk-so-payhist-table th,
+.mk-so-payhist-table td {
+	padding: 8px 10px;
+	border-bottom: 1px solid #eef2f6;
+	text-align: right;
+	white-space: nowrap;
+}
+.mk-so-payhist-table th:nth-child(1),
+.mk-so-payhist-table td:nth-child(1),
+.mk-so-payhist-table th:nth-child(2),
+.mk-so-payhist-table td:nth-child(2) {
+	text-align: left;
+}
+.mk-so-payhist-row--current {
+	background: #ecfdf3;
+	font-weight: 600;
 }
 
 body[data-module="SalesOrder"][data-view="List"][data-app="SALES"] .mk-so-pos-list-enabled #listview-table tbody td.mk-so-col-paid,

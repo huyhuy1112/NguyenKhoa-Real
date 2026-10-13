@@ -21,11 +21,14 @@ class SalesOrder_ListView_Model extends Inventory_ListView_Model {
 			require_once 'modules/Vtiger/helpers/MkSalesCustomerName.php';
 			$warehouseNames = $this->loadWarehouseNamesBySalesOrderIds(array_keys($listViewRecordModels));
 			foreach ($listViewRecordModels as $recordId => $recordModel) {
-				$corrected = $this->resolveDisplayGrandTotal($recordModel);
-				if ($corrected !== null) {
-					$formatted = CurrencyField::convertToUserFormat($corrected, null, true);
+				$figures = $this->resolveDisplayAmounts($recordModel);
+				if ($figures !== null) {
+					$formatted = CurrencyField::convertToUserFormat($figures['grand'], null, true);
 					$recordModel->set('hdnGrandTotal', $formatted);
 					$recordModel->set('total', $formatted);
+					$recordModel->set('mk_remaining', CurrencyField::convertToUserFormat($figures['remaining'], null, true));
+				} else {
+					$recordModel->set('mk_remaining', CurrencyField::convertToUserFormat(0, null, true));
 				}
 				$listViewRecordModels[$recordId] = Vtiger_MkSalesCustomerName_Helper::applyListCustomerColumn($recordModel);
 				$whName = isset($warehouseNames[(int) $recordId]) ? $warehouseNames[(int) $recordId] : '';
@@ -83,11 +86,13 @@ class SalesOrder_ListView_Model extends Inventory_ListView_Model {
 	}
 
 	/**
-	 * List "Tổng cộng" for SALES BA:
-	 * Unit prices already include VAT — do NOT invent +8% tax (that caused 1tr → 1.08tr after quote confirm).
-	 * Prefer DB header total; fall back to line sum − discount + ship + adjustment − paid.
+	 * List money for SALES BA.
+	 * Tổng cộng is the order total. Còn lại is that total minus Khách đã trả.
+	 * Unit prices already include VAT — do not invent +8% tax.
+	 *
+	 * @return array{grand:float,remaining:float}|null
 	 */
-	protected function resolveDisplayGrandTotal(Vtiger_Record_Model $recordModel) {
+	protected function resolveDisplayAmounts(Vtiger_Record_Model $recordModel) {
 		$recordId = (int) $recordModel->getId();
 		if ($recordId <= 0) {
 			return null;
@@ -169,15 +174,17 @@ class SalesOrder_ListView_Model extends Inventory_ListView_Model {
 		if ($grand <= 0 && $headerTotal > 0) {
 			$grand = $headerTotal;
 		}
-		if ($grand <= 0) {
+		if ($grand <= 0 && $paid <= 0) {
 			return null;
 		}
-
 		$remaining = $grand - $paid;
 		if ($remaining < 0) {
 			$remaining = 0;
 		}
-		return $remaining;
+		return array(
+			'grand' => $grand,
+			'remaining' => $remaining,
+		);
 	}
 
 	protected function isToolsOrdersContext() {
@@ -357,12 +364,12 @@ class SalesOrder_ListView_Model extends Inventory_ListView_Model {
 
 		$scope = $this->resolveSalesOrderListScope();
 		if ($scope === 'franchise') {
-			return $this->appendHideCompletedSalesOrders($this->appendSalesOrderScopeFilter($listQuery, 'franchise'));
+			return $this->appendBalanceModeFilter($this->appendHideCompletedSalesOrders($this->appendSalesOrderScopeFilter($listQuery, 'franchise')));
 		}
 		if ($scope === 'retail') {
-			return $this->appendHideCompletedSalesOrders($this->appendSalesOrderScopeFilter($listQuery, 'retail'));
+			return $this->appendBalanceModeFilter($this->appendHideCompletedSalesOrders($this->appendSalesOrderScopeFilter($listQuery, 'retail')));
 		}
-		return $this->appendHideCompletedSalesOrders($listQuery);
+		return $this->appendBalanceModeFilter($this->appendHideCompletedSalesOrders($listQuery));
 	}
 
 	/**
@@ -382,6 +389,25 @@ class SalesOrder_ListView_Model extends Inventory_ListView_Model {
 			$quoted[] = "'" . PearDatabase::getInstance()->sql_escape_string($status) . "'";
 		}
 		return $listQuery . ' AND vtiger_salesorder.sostatus NOT IN (' . implode(',', $quoted) . ') /* mk_hide_completed_so */';
+	}
+
+	/**
+	 * Filter Còn lại: due = still unpaid, settled = paid in full.
+	 */
+	protected function appendBalanceModeFilter($listQuery) {
+		$listQuery = (string) $listQuery;
+		$mode = isset($_REQUEST['mk_balance_mode']) ? trim((string) $_REQUEST['mk_balance_mode']) : '';
+		if ($listQuery === '' || ($mode !== 'due' && $mode !== 'settled')) {
+			return $listQuery;
+		}
+		if (stripos($listQuery, 'mk_balance_mode_filter') !== false) {
+			return $listQuery;
+		}
+		$remain = '(IFNULL(vtiger_salesorder.total,0) - IFNULL(vtiger_salesorder.received,0))';
+		if ($mode === 'due') {
+			return $listQuery . ' AND ' . $remain . ' > 0.5 /* mk_balance_mode_filter */';
+		}
+		return $listQuery . ' AND IFNULL(vtiger_salesorder.total,0) > 0 AND ' . $remain . ' <= 0.5 /* mk_balance_mode_filter */';
 	}
 
 	/**

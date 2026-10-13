@@ -178,14 +178,14 @@
 				<i class="fa fa-pencil" aria-hidden="true"></i>
 				<span>Xem đơn chi tiết</span>
 			</button>
-			<a class="mk-so-inline-detail__action mk-so-inline-detail__action--outline mk-so-inline-detail__dup-btn" href="#" data-record-id="{$RECORD->getId()}" title="Nhân bản đơn hàng">
+			<button type="button" class="mk-so-inline-detail__action mk-so-inline-detail__action--outline mk-so-inline-detail__copy-quote-btn" data-record-id="{$RECORD->getId()}" title="Nhân bản đơn hoặc tạo báo giá">
 				<i class="fa fa-copy" aria-hidden="true"></i>
-				<span>Nhân bản</span>
-			</a>
-			<a class="mk-so-inline-detail__action mk-so-inline-detail__action--outline mk-so-inline-detail__to-quote-btn" href="index.php?module=Quotes&view=Edit&app=SALES&salesorder_id={$RECORD->getId()}" data-record-id="{$RECORD->getId()}" title="Tạo báo giá từ đơn hàng này">
-				<i class="fa fa-file-text-o" aria-hidden="true"></i>
-				<span>Tạo báo giá</span>
-			</a>
+				<span>Nhân bản / Báo giá</span>
+			</button>
+			<button type="button" class="mk-so-inline-detail__action mk-so-inline-detail__action--outline mk-so-inline-detail__payhist-btn" data-record-id="{$RECORD->getId()}" title="Các lần khách đã trả trên đơn hàng">
+				<i class="fa fa-history" aria-hidden="true"></i>
+				<span>Lịch sử chi trả của khách</span>
+			</button>
 			<button type="button" class="mk-so-inline-detail__action mk-so-inline-detail__action--outline mk-so-inline-detail__save-btn">
 				<i class="fa fa-save" aria-hidden="true"></i>
 				<span>Lưu</span>

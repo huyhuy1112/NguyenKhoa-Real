@@ -292,6 +292,7 @@
   var posFilterOpen = false;
   var posFilterStateSynced = false;
   var posFilterApplied = false;
+  var posBalanceMode = "all";
   var posExpandedRecordId = null;
   var posInlineDetailLoading = false;
 
@@ -2583,9 +2584,218 @@
           }
         }
         if (id > 0) {
-          runSalesOrdersMassDuplicate([id], { skipConfirm: true });
+          window.location.href =
+            "index.php?module=Quotes&view=Edit&app=SALES&salesorder_id=" + id;
         }
       });
+  }
+
+  function bindInlineCopyQuoteButton() {
+    $(document)
+      .off("click.mkSoInlineCopyQuote", ".mk-so-inline-detail__copy-quote-btn")
+      .on(
+        "click.mkSoInlineCopyQuote",
+        ".mk-so-inline-detail__copy-quote-btn",
+        function (e) {
+          if (!isSalesOrderSalesList()) {
+            return;
+          }
+          e.preventDefault();
+          e.stopPropagation();
+          var id = parseInt($(this).attr("data-record-id"), 10) || 0;
+          if (id <= 0) {
+            return;
+          }
+          showCopyOrQuoteChoice().done(function (choice) {
+            if (choice === "copy") {
+              runSalesOrdersMassDuplicate([id], { skipConfirm: true });
+            } else if (choice === "quote") {
+              window.location.href =
+                "index.php?module=Quotes&view=Edit&app=SALES&salesorder_id=" +
+                id;
+            }
+          });
+        },
+      );
+  }
+
+  function showCopyOrQuoteChoice() {
+    var deferred = $.Deferred();
+    var $pop = $(
+      '<div class="mk-so-action-pop" role="dialog" aria-modal="true">' +
+        '<div class="mk-so-action-pop__backdrop" data-mk-pop-close="1"></div>' +
+        '<div class="mk-so-action-pop__card">' +
+          '<div class="mk-so-action-pop__head">' +
+            '<span class="mk-so-action-pop__title">Nhân bản / Báo giá</span>' +
+            '<button type="button" class="mk-so-action-pop__x" data-mk-pop-close="1" aria-label="Đóng">&times;</button>' +
+          "</div>" +
+          '<div class="mk-so-action-pop__body">' +
+            '<p class="mk-so-action-pop__question">Bạn muốn nhân bản đơn hàng hay tạo báo giá từ đơn này?</p>' +
+          "</div>" +
+          '<div class="mk-so-action-pop__foot">' +
+            '<button type="button" class="mk-so-action-pop__btn mk-so-action-pop__btn--ghost" data-mk-pop-close="1">Hủy</button>' +
+            '<button type="button" class="mk-so-action-pop__btn mk-so-action-pop__btn--ghost" data-mk-choice="copy">Nhân bản</button>' +
+            '<button type="button" class="mk-so-action-pop__btn mk-so-action-pop__btn--ok" data-mk-choice="quote">Tạo báo giá</button>' +
+          "</div>" +
+        "</div>" +
+      "</div>",
+    );
+    function close(choice) {
+      $pop.remove();
+      $(document).off("keydown.mkSoCopyQuote");
+      if (choice) {
+        deferred.resolve(choice);
+      } else {
+        deferred.reject();
+      }
+    }
+    $pop.on("click", "[data-mk-choice]", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      close($(this).attr("data-mk-choice"));
+    });
+    $pop.on("click", "[data-mk-pop-close]", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      close("");
+    });
+    $(document).on("keydown.mkSoCopyQuote", function (e) {
+      if (e.key === "Escape" || e.keyCode === 27) {
+        close("");
+      }
+    });
+    $(".mk-so-action-pop").remove();
+    $(document.body).append($pop);
+    return deferred.promise();
+  }
+
+  function bindInlinePayHistoryButton() {
+    $(document)
+      .off("click.mkSoPayHist", ".mk-so-inline-detail__payhist-btn")
+      .on(
+        "click.mkSoPayHist",
+        ".mk-so-inline-detail__payhist-btn",
+        function (e) {
+          if (!isSalesOrderSalesList()) {
+            return;
+          }
+          e.preventDefault();
+          e.stopPropagation();
+          var id = parseInt($(this).attr("data-record-id"), 10) || 0;
+          if (id > 0) {
+            showPaymentHistory(id);
+          }
+        },
+      );
+  }
+
+  function showPaymentHistory(recordId) {
+    var postData = {
+      module: "SalesOrder",
+      action: "PaymentHistory",
+      record: recordId,
+      app: "SALES",
+    };
+    var csrf = getCsrfToken();
+    if (csrf) {
+      postData.__vtrftk = csrf;
+    }
+    if (app.helper && app.helper.showProgress) {
+      app.helper.showProgress();
+    }
+    AppConnector.request(postData).then(
+      function (result) {
+        if (app.helper && app.helper.hideProgress) {
+          app.helper.hideProgress();
+        }
+        var payload =
+          result && result.result && typeof result.result === "object"
+            ? result.result
+            : result;
+        if (!payload || payload.success === false) {
+          var errMsg =
+            (payload && payload.message) ||
+            (result && result.error && result.error.message) ||
+            "Không tải được lịch sử chi trả.";
+          if (app.helper && app.helper.showErrorNotification) {
+            app.helper.showErrorNotification({ message: errMsg });
+          } else {
+            window.alert(errMsg);
+          }
+          return;
+        }
+        renderPaymentHistory(payload);
+      },
+      function () {
+        if (app.helper && app.helper.hideProgress) {
+          app.helper.hideProgress();
+        }
+        window.alert("Không tải được lịch sử chi trả.");
+      },
+    );
+  }
+
+  function renderPaymentHistory(payload) {
+    var rows = payload.rows || [];
+    var $table = $(
+      '<table class="mk-so-payhist-table"><thead><tr>' +
+        "<th>Mã đơn</th><th>Thời gian</th><th>Tổng cộng</th><th>Khách đã trả</th><th>Còn lại</th>" +
+        "</tr></thead><tbody></tbody></table>",
+    );
+    var $body = $table.find("tbody");
+    if (!rows.length) {
+      $body.append(
+        '<tr><td colspan="5">Chưa có đơn hàng nào của khách này.</td></tr>',
+      );
+    } else {
+      rows.forEach(function (row) {
+        var $tr = $("<tr>");
+        if (row.current) {
+          $tr.addClass("mk-so-payhist-row--current");
+        }
+        ["no", "when", "total", "paid", "remaining"].forEach(function (key) {
+          $tr.append($("<td>").text(row[key] || ""));
+        });
+        $body.append($tr);
+      });
+    }
+    var $pop = $(
+      '<div class="mk-so-action-pop mk-so-payhist" role="dialog" aria-modal="true">' +
+        '<div class="mk-so-action-pop__backdrop" data-mk-pop-close="1"></div>' +
+        '<div class="mk-so-action-pop__card">' +
+          '<div class="mk-so-action-pop__head">' +
+            '<span class="mk-so-action-pop__title"></span>' +
+            '<button type="button" class="mk-so-action-pop__x" data-mk-pop-close="1" aria-label="Đóng">&times;</button>' +
+          "</div>" +
+          '<div class="mk-so-action-pop__body"></div>' +
+          '<div class="mk-so-action-pop__foot">' +
+            '<button type="button" class="mk-so-action-pop__btn mk-so-action-pop__btn--ok" data-mk-pop-close="1">Đóng</button>' +
+          "</div>" +
+        "</div>" +
+      "</div>",
+    );
+    var title = "Lịch sử chi trả của khách";
+    if (payload.customer) {
+      title += " — " + payload.customer;
+    }
+    $pop.find(".mk-so-action-pop__title").text(title);
+    $pop.find(".mk-so-action-pop__body").append($table);
+    function close() {
+      $pop.remove();
+      $(document).off("keydown.mkSoPayHistPop");
+    }
+    $pop.on("click", "[data-mk-pop-close]", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      close();
+    });
+    $(document).on("keydown.mkSoPayHistPop", function (e) {
+      if (e.key === "Escape" || e.keyCode === 27) {
+        close();
+      }
+    });
+    $(".mk-so-action-pop").remove();
+    $(document.body).append($pop);
   }
 
   function bindPosSelectionEvents() {
@@ -3766,6 +3976,11 @@
   }
   function runPosAdvancedFilter() {
     posFilterApplied = true;
+    var balanceMode = $(
+      '#mk-so-pos-filter-panel input[name="mk_so_filter_balance"]:checked',
+    ).val();
+    posBalanceMode =
+      balanceMode === "due" || balanceMode === "settled" ? balanceMode : "all";
     var advParams = buildPosAdvancedSearchParams(readPosFilterState());
     var quickParams = buildPosSearchParams(livePosSearchQuery);
     var merged = mergePosSearchPayloads(advParams, quickParams);
@@ -3794,12 +4009,16 @@
 
   function clearPosAdvancedFilter() {
     posFilterApplied = false;
+    posBalanceMode = "all";
     var $panel = $("#mk-so-pos-filter-panel");
     $panel
       .find('input[name="mk_so_filter_time"][value="all"]')
       .prop("checked", true);
     $panel
       .find('input[name="mk_so_filter_due_time"][value="all"]')
+      .prop("checked", true);
+    $panel
+      .find('input[name="mk_so_filter_balance"][value="all"]')
       .prop("checked", true);
     $("#mk-so-filter-time-custom, #mk-so-filter-due-custom").prop(
       "hidden",
@@ -4343,8 +4562,9 @@
       "mk-so-col-time": "12%",
       "mk-so-col-customer": "15%",
       "mk-so-col-warehouse": "12%",
-      "mk-so-col-paid": "12%",
-      "mk-so-col-status": "14%",
+      "mk-so-col-paid": "11%",
+      "mk-so-col-remaining": "11%",
+      "mk-so-col-status": "13%",
       "mk-so-col-due": "13%",
     };
     var html = '<colgroup class="mk-so-pos-cols">';
@@ -4626,6 +4846,15 @@
     if (!isSalesOrderSalesList()) {
       return;
     }
+    var balanceMode =
+      posBalanceMode === "due" || posBalanceMode === "settled"
+        ? posBalanceMode
+        : "all";
+    $(
+      '#mk-so-pos-filter-panel input[name="mk_so_filter_balance"][value="' +
+        balanceMode +
+        '"]',
+    ).prop("checked", true);
 
     if (
       window.MkSalesListShared &&
@@ -4694,6 +4923,8 @@
     bindPosMassDeleteButton();
     bindInlineDuplicateButton();
     bindInlineToQuoteButton();
+    bindInlineCopyQuoteButton();
+    bindInlinePayHistoryButton();
     syncPosRowSelectedClass();
     syncPosMassActionButtons();
     if (
@@ -4920,6 +5151,11 @@
         var params = origParams.apply(this, arguments);
         if (isSalesOrderSalesList()) {
           params.mk_so_scope = resolveSoListScope();
+          if (posBalanceMode === "due" || posBalanceMode === "settled") {
+            params.mk_balance_mode = posBalanceMode;
+          } else {
+            delete params.mk_balance_mode;
+          }
           if (!params.app || String(params.app).toUpperCase() === "") {
             params.app = "SALES";
           }
@@ -5006,6 +5242,8 @@
     bindPosMassDeleteButton();
     bindInlineDuplicateButton();
     bindInlineToQuoteButton();
+    bindInlineCopyQuoteButton();
+    bindInlinePayHistoryButton();
     initDebugHelpers();
     scheduleInitialEnhancements();
   }

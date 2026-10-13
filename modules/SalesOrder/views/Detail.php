@@ -666,6 +666,14 @@ class SalesOrder_Detail_View extends Inventory_Detail_View {
 		if ($dataType === 'date' || $dataType === 'datetime') {
 			$editValue = $fieldModel->getUITypeModel()->getDisplayValue($rawValue);
 		}
+		if (in_array($fieldName, array('received', 'paid_amount', 'amount_paid', 'paid', 'mk_customer_paid'), true)) {
+			$paidAmount = (float) $rawValue;
+			if ($paidAmount < 0) {
+				$paidAmount = 0;
+			}
+			$value = CurrencyField::convertToUserFormat($paidAmount, null, true);
+			$editValue = $value;
+		}
 		$picklistValues = array();
 		if ($dataType === 'picklist') {
 			if ($this->isPosStatusFieldName($fieldName)) {
@@ -699,11 +707,6 @@ class SalesOrder_Detail_View extends Inventory_Detail_View {
 				'label' => 'Người tạo',
 				'label_hints' => array('Người tạo', 'Creator', 'Created By'),
 				'virtual' => 'creator',
-			),
-			array(
-				'names' => array('leadsource'),
-				'label' => 'Kênh bán',
-				'label_hints' => array('Kênh bán', 'Lead Source', 'Source', 'Funnel'),
 			),
 			array(
 				'names' => array('received', 'paid_amount', 'amount_paid', 'paid', 'mk_customer_paid'),

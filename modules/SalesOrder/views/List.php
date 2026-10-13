@@ -215,7 +215,7 @@ class SalesOrder_List_View extends Inventory_List_View {
 		if ($paidField) {
 			$preferredHeaders[] = $paidField;
 		}
-		// Status before grand total — list column order: … | Khách đã trả | Trạng thái | Tổng cộng
+		// Status before grand total — list column order: … | Khách đã trả | Còn lại | Trạng thái | Tổng cộng
 		if ($statusField) {
 			$preferredHeaders[] = $statusField;
 		}

@@ -117,6 +117,24 @@
 			</div>
 		</section>
 
+		<section class="mk-so-pos-filter-section">
+			<h3 class="mk-so-pos-filter-section__title">Còn lại</h3>
+			<div class="mk-so-pos-filter-options" role="radiogroup" aria-label="Còn lại">
+				<label class="mk-so-pos-filter-option">
+					<input type="radio" name="mk_so_filter_balance" value="all" checked />
+					<span class="mk-so-pos-filter-option__text">Tất cả</span>
+				</label>
+				<label class="mk-so-pos-filter-option">
+					<input type="radio" name="mk_so_filter_balance" value="due" />
+					<span class="mk-so-pos-filter-option__text">Còn nợ</span>
+				</label>
+				<label class="mk-so-pos-filter-option">
+					<input type="radio" name="mk_so_filter_balance" value="settled" />
+					<span class="mk-so-pos-filter-option__text">Đã trả hết</span>
+				</label>
+			</div>
+		</section>
+
 		{if isset($MK_SO_POS_FILTER_META.paymentField) && $MK_SO_POS_FILTER_META.paymentField neq ''}
 		<section class="mk-so-pos-filter-section mk-so-pos-filter-section--payment">
 			<h3 class="mk-so-pos-filter-section__title">Hình thức thanh toán</h3>
