@@ -3700,6 +3700,7 @@
       "account_id",
       "contact_id",
       "mk_warehouse_name",
+      "mk_remaining",
       "hdnGrandTotal",
       "total",
       paidFieldName(),
@@ -3727,8 +3728,8 @@
         $(this).addClass("mk-so-list-col-hidden");
       }
     });
-    // Injected Kho header has no data-columnname — keep it aligned with warehouse cells.
-    $table.find("thead th.mk-so-col-warehouse").removeClass("mk-so-list-col-hidden");
+    // Injected Kho and Còn lại headers have no data-columnname — keep them aligned with their cells.
+    $table.find("thead th.mk-so-col-warehouse, thead th.mk-so-col-remaining").removeClass("mk-so-list-col-hidden");
   }
 
   function filterMeta() {
