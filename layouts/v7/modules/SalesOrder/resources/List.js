@@ -1825,6 +1825,38 @@
         "&app=SALES";
     });
 
+    $panel.on("click", ".mk-so-inline-detail__copy-quote-btn", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var id =
+        parseInt($(this).attr("data-record-id"), 10) ||
+        parseInt(recordId, 10) ||
+        0;
+      if (id <= 0) {
+        return;
+      }
+      showCopyOrQuoteChoice().done(function (choice) {
+        if (choice === "copy") {
+          runSalesOrdersMassDuplicate([id], { skipConfirm: true });
+        } else if (choice === "quote") {
+          window.location.href =
+            "index.php?module=Quotes&view=Edit&app=SALES&salesorder_id=" + id;
+        }
+      });
+    });
+
+    $panel.on("click", ".mk-so-inline-detail__payhist-btn", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var id =
+        parseInt($(this).attr("data-record-id"), 10) ||
+        parseInt(recordId, 10) ||
+        0;
+      if (id > 0) {
+        showPaymentHistory(id);
+      }
+    });
+
     $panel[0].addEventListener(
       "click",
       function (ev) {
