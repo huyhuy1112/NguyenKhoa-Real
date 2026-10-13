@@ -41,7 +41,8 @@ class Contacts_ModernService {
 			self::ensureEdubitCoursesJsonColumn($adb);
 			Leads_ModernService::markSchemaWarm('contacts_list');
 		}
-		list($ownerSql, $ownerParams) = Leads_ModernService::ownerFilterSql('ce', $userId);
+		$ownerSql = '';
+		$ownerParams = array();
 		$sql = "SELECT cd.contactid, cd.firstname, cd.lastname, cd.title, cd.email, cd.phone, cd.mobile,
 				cd.accountid, ce.smownerid, ce.createdtime, ce.modifiedtime, ce.description,
 				acc.accountname,

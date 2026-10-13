@@ -1135,8 +1135,8 @@
     var val = String(input.value || "").trim();
     var patch = {};
     if (field === "phone") {
-      val = val.replace(/\s+/g, "");
-      if (val && !/^\d{10}$/.test(val)) {
+      val = val.replace(/\D+/g, "").slice(0, 10);
+      if (val && val.length !== 10) {
         notifyUser("warning", "Số điện thoại phải đủ 10 số.");
         renderTable();
         return;
