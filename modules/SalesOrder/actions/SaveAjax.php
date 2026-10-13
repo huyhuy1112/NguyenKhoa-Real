@@ -9,7 +9,11 @@ class SalesOrder_SaveAjax_Action extends Inventory_SaveAjax_Action {
 		$response = new Vtiger_Response();
 		try {
 			vglobal('VTIGER_TIMESTAMP_NO_CHANGE_MODE', $request->get('_timeStampNoChangeMode', false));
+			require_once 'modules/SalesOrder/helpers/PaymentLedger.php';
+			$existingId = (int) $request->get('record');
+			$previousPaid = $existingId > 0 ? SalesOrder_PaymentLedger_Helper::readReceived($existingId) : 0.0;
 			$recordModel = $this->saveRecord($request);
+			SalesOrder_PaymentLedger_Helper::recordIncrease((int) $recordModel->getId(), $previousPaid);
 			$this->saveInlineLineExtras($request, $recordModel);
 			vglobal('VTIGER_TIMESTAMP_NO_CHANGE_MODE', false);
 

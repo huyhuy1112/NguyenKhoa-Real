@@ -182,7 +182,7 @@
 				<i class="fa fa-copy" aria-hidden="true"></i>
 				<span>Nhân bản / Báo giá</span>
 			</button>
-			<button type="button" class="mk-so-inline-detail__action mk-so-inline-detail__action--outline mk-so-inline-detail__payhist-btn" data-record-id="{$RECORD->getId()}" title="Các lần khách đã trả trên đơn hàng">
+			<button type="button" class="mk-so-inline-detail__action mk-so-inline-detail__action--outline mk-so-inline-detail__payhist-btn" data-record-id="{$RECORD->getId()}" title="Các lần khách đã trả trên đơn này">
 				<i class="fa fa-history" aria-hidden="true"></i>
 				<span>Lịch sử chi trả của khách</span>
 			</button>

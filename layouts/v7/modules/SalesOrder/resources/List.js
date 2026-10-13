@@ -2771,22 +2771,23 @@
     var rows = payload.rows || [];
     var $table = $(
       '<table class="mk-so-payhist-table"><thead><tr>' +
-        "<th>Mã đơn</th><th>Thời gian</th><th>Tổng cộng</th><th>Khách đã trả</th><th>Còn lại</th>" +
+        "<th>Lần</th><th>Thời gian</th><th>Số tiền</th><th>Còn lại</th>" +
         "</tr></thead><tbody></tbody></table>",
     );
     var $body = $table.find("tbody");
     if (!rows.length) {
       $body.append(
-        '<tr><td colspan="5">Chưa có đơn hàng nào của khách này.</td></tr>',
+        '<tr><td colspan="4">Chưa có lần trả nào trên đơn này.</td></tr>',
       );
     } else {
       rows.forEach(function (row) {
         var $tr = $("<tr>");
-        if (row.current) {
-          $tr.addClass("mk-so-payhist-row--current");
-        }
-        ["no", "when", "total", "paid", "remaining"].forEach(function (key) {
-          $tr.append($("<td>").text(row[key] || ""));
+        ["seq", "when", "amount", "remaining"].forEach(function (key) {
+          var $td = $("<td>").text(row[key] != null ? row[key] : "");
+          if (key === "amount" || key === "remaining") {
+            $td.addClass("is-money");
+          }
+          $tr.append($td);
         });
         $body.append($tr);
       });
@@ -2806,9 +2807,9 @@
         "</div>" +
       "</div>",
     );
-    var title = "Lịch sử chi trả của khách";
-    if (payload.customer) {
-      title += " — " + payload.customer;
+    var title = "Lịch sử chi trả";
+    if (payload.order_no) {
+      title += " — " + payload.order_no;
     }
     $pop.find(".mk-so-action-pop__title").text(title);
     $pop.find(".mk-so-action-pop__body").append($table);
