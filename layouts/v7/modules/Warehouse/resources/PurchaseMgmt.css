@@ -387,9 +387,39 @@ body[data-module="Warehouse"][data-view="PurchaseHistory"][data-app="INVENTORY"]
 
 .mk-purchase-cell--num {
 	text-align: right;
-	max-width: 118px;
+	max-width: none;
+	min-width: 96px;
 	min-height: 38px;
 	padding: 6px 10px;
+}
+
+.mk-purchase-col-sku {
+	min-width: 168px;
+	white-space: normal;
+	overflow-wrap: anywhere;
+}
+
+.mk-purchase-col-name {
+	min-width: 220px;
+	white-space: normal;
+	line-height: 1.35;
+}
+
+.mk-purchase-col-lot .mk-purchase-cell {
+	min-width: 140px;
+}
+
+.mk-purchase-col-date .mk-purchase-cell,
+.mk-purchase-cell--date {
+	min-width: 158px;
+}
+
+.mk-purchase-col-qty .mk-purchase-cell {
+	min-width: 88px;
+}
+
+.mk-purchase-col-price .mk-purchase-cell {
+	min-width: 120px;
 }
 
 .mk-purchase-pay-block {
@@ -515,6 +545,7 @@ body[data-module="Warehouse"][data-view="PurchaseHistory"][data-app="INVENTORY"]
 
 .mk-purchase-table {
 	width: 100%;
+	min-width: 1180px;
 	border-collapse: collapse;
 	font-size: 13px;
 }

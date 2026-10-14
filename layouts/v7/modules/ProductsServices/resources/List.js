@@ -474,16 +474,16 @@
 			'<colgroup>' +
 				'<col style="width:48px" />' +
 				'<col style="width:44px" />' +
-				'<col style="width:110px" />' +
-				'<col style="width:28%" />' +
-				'<col style="width:110px" />' +
-				'<col style="width:110px" />' +
-				'<col style="width:110px" />' +
-				'<col style="width:90px" />' +
-				'<col style="width:110px" />' +
-				'<col style="width:90px" />' +
-				'<col style="width:140px" />' +
+				'<col style="width:240px" />' +
+				'<col style="width:360px" />' +
 				'<col style="width:120px" />' +
+				'<col style="width:130px" />' +
+				'<col style="width:130px" />' +
+				'<col style="width:88px" />' +
+				'<col style="width:110px" />' +
+				'<col style="width:96px" />' +
+				'<col style="width:148px" />' +
+				'<col style="width:150px" />' +
 				'</colgroup>'
 		);
 	}

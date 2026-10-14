@@ -323,13 +323,13 @@
 			body.innerHTML = lines.map(function (ln, idx) {
 				var amount = (Number(ln.qty) || 0) * (Number(ln.price) || 0);
 				return '<tr data-idx="' + idx + '">' +
-					'<td><span class="mk-purchase-code">' + esc(ln.sku || '—') + '</span></td>' +
-					'<td>' + esc(ln.name) + '</td>' +
-					'<td><input class="mk-purchase-cell" data-f="lot" value="' + esc(ln.lot || '') + '" placeholder="Nhập lô" required /></td>' +
-					'<td><input class="mk-purchase-cell mk-purchase-cell--date" data-f="mfg" type="date" value="' + esc(ln.mfg || '') + '" /></td>' +
-					'<td><input class="mk-purchase-cell mk-purchase-cell--date" data-f="expiry" type="date" value="' + esc(ln.expiry || '') + '" required /></td>' +
-					'<td class="is-num"><input class="mk-purchase-cell mk-purchase-cell--num" data-f="qty" type="number" min="0" step="1" value="' + esc(ln.qty) + '" /></td>' +
-					'<td class="is-num"><input class="mk-purchase-cell mk-purchase-cell--num" data-f="price" type="number" min="0" step="1000" value="' + esc(ln.price) + '" /></td>' +
+					'<td class="mk-purchase-col-sku"><span class="mk-purchase-code">' + esc(ln.sku || '—') + '</span></td>' +
+					'<td class="mk-purchase-col-name">' + esc(ln.name) + '</td>' +
+					'<td class="mk-purchase-col-lot"><input class="mk-purchase-cell" data-f="lot" value="' + esc(ln.lot || '') + '" placeholder="Nhập lô" required /></td>' +
+					'<td class="mk-purchase-col-date"><input class="mk-purchase-cell mk-purchase-cell--date" data-f="mfg" type="date" value="' + esc(ln.mfg || '') + '" /></td>' +
+					'<td class="mk-purchase-col-date"><input class="mk-purchase-cell mk-purchase-cell--date" data-f="expiry" type="date" value="' + esc(ln.expiry || '') + '" required /></td>' +
+					'<td class="is-num mk-purchase-col-qty"><input class="mk-purchase-cell mk-purchase-cell--num" data-f="qty" type="number" min="0" step="1" value="' + esc(ln.qty) + '" /></td>' +
+					'<td class="is-num mk-purchase-col-price"><input class="mk-purchase-cell mk-purchase-cell--num" data-f="price" type="number" min="0" step="1000" value="' + esc(ln.price) + '" /></td>' +
 					'<td class="is-num mk-purchase-line-amount">' + money(amount) + '</td>' +
 					'<td class="is-action"><button type="button" class="mk-purchase-remove" data-idx="' + idx + '">×</button></td></tr>';
 			}).join('');
