@@ -802,11 +802,16 @@
 			resolved = { code: '', segment: '' };
 			loadCode();
 		});
-		$(document).on('change.mkSmartDisc input.mkSmartDisc', '#lineItemTab .qty, #lineItemTab .listPrice, #lineItemTab .taxPercentage', function () {
+		$(document).on('change.mkSmartDisc input.mkSmartDisc focusout.mkSmartDisc', '#lineItemTab .qty, #lineItemTab .listPrice, #lineItemTab .taxPercentage, #lineItemTab .mk-inv-product-select', function () {
 			if (applying) {
 				return;
 			}
 			schedule();
+			setTimeout(schedule, 320);
+		});
+		$(document).on('click.mkSmartDisc', '#addProductsServices, .mk-inv-add-line-btn', function () {
+			setTimeout(schedule, 120);
+			setTimeout(schedule, 480);
 		});
 		var pins = 0;
 		var pinTimer = setInterval(function () {

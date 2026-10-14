@@ -2636,17 +2636,28 @@ body[data-module="Quotes"][data-view="Edit"][data-app="SALES"] .mk-inv-form-odoo
 }
 body[data-module="Quotes"][data-view="Edit"][data-app="SALES"] .mk-inv-form-odoo .mk-inv-luxury-lines td.mk-inv-col-discount,
 body[data-module="Quotes"][data-view="Edit"][data-app="SALES"] .mk-inv-form-odoo .mk-inv-luxury-lines td.mk-inv-col-tax {
-	min-width: 176px !important;
-	width: 176px !important;
-	max-width: none !important;
+	min-width: 118px !important;
+	width: 118px !important;
+	max-width: 128px !important;
+	text-align: center !important;
 }
 body[data-module="Quotes"][data-view="Edit"][data-app="SALES"] .mk-inv-form-odoo .mk-inv-luxury-lines td.mk-inv-col-note {
 	min-width: 200px !important;
 	width: 200px !important;
 }
 body[data-module="Quotes"][data-view="Edit"][data-app="SALES"] .mk-inv-form-odoo .mk-inv-luxury-lines .mk-inv-discount-wrap {
-	max-width: 168px !important;
-	width: 100% !important;
+	max-width: 112px !important;
+	width: 112px !important;
+	margin: 0 auto;
+}
+body[data-module="Quotes"][data-view="Edit"][data-app="SALES"] .mk-inv-form-odoo .mk-inv-luxury-lines tr.mk-inv-header-row td,
+body[data-module="Quotes"][data-view="Edit"][data-app="SALES"] .mk-inv-form-odoo .mk-inv-luxury-lines tr.mk-inv-header-row td .mk-inv-th-label {
+	text-align: center !important;
+}
+body[data-module="Quotes"][data-view="Edit"][data-app="SALES"] .mk-inv-form-odoo .mk-inv-luxury-lines td.mk-inv-col-qty input,
+body[data-module="Quotes"][data-view="Edit"][data-app="SALES"] .mk-inv-form-odoo .mk-inv-luxury-lines td.mk-inv-col-unit select,
+body[data-module="Quotes"][data-view="Edit"][data-app="SALES"] .mk-inv-form-odoo .mk-inv-luxury-lines .mk-inv-discount-custom {
+	text-align: center !important;
 }
 
 body[data-module="Quotes"][data-view="Edit"][data-app="SALES"] .mk-qt-totals-below,

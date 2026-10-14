@@ -1918,9 +1918,26 @@
 			return false;
 		});
 
-		$f.on('click.mkQtCustomerClear', '.mk-qt-customer-ref .clearReferenceSelection', function () {
-			setTimeout(clearQuoteCustomerFields, 0);
+		$f.on('click.mkQtCustomerClear', '.mk-qt-customer-ref .clearReferenceSelection, tr.mk-qt-customer-row .clearReferenceSelection', function (e) {
+			e.preventDefault();
+			e.stopPropagation();
+			clearQuoteCustomerFields();
+			return false;
 		});
+		document.addEventListener('click', function (e) {
+			var btn = e.target && e.target.closest
+				? e.target.closest('.mk-qt-customer-ref .clearReferenceSelection, tr.mk-qt-customer-row .clearReferenceSelection')
+				: null;
+			if (!btn) {
+				return;
+			}
+			e.preventDefault();
+			e.stopPropagation();
+			if (e.stopImmediatePropagation) {
+				e.stopImmediatePropagation();
+			}
+			clearQuoteCustomerFields();
+		}, true);
 
 		// + creates Contact via stock Quick Create (popupReferenceModule=Contacts).
 		$f.find('.mk-qt-customer-ref input[name="popupReferenceModule"]').val('Contacts');
@@ -2355,7 +2372,7 @@
 					'<input name="contact_id" type="hidden" value="" class="sourceField" data-displayvalue=""/>' +
 					'<input id="contact_id_display" name="contact_id_display" data-fieldname="contact_id" data-fieldtype="reference" type="text" ' +
 						'class="marginLeftZero autoComplete inputElement" value="" placeholder="Nhập để tìm kiếm"/>' +
-					'<a href="#" class="clearReferenceSelection hide" tabindex="-1"> x </a>' +
+					'<a href="javascript:void(0)" class="clearReferenceSelection hide" tabindex="-1" role="button"> x </a>' +
 					'<span class="input-group-addon relatedPopup cursorPointer" title="Tìm kiếm"><i class="fa fa-search"></i></span>' +
 					'<span class="input-group-addon createReferenceRecord cursorPointer clearfix" title="Tạo mới"><i class="fa fa-plus"></i></span>' +
 				'</div>' +
