@@ -119,11 +119,21 @@
 
   var UNIT_OPTIONS = [
     { value: "Cái", label: "Cái" },
+    { value: "Bịch", label: "Bịch" },
+    { value: "Bao", label: "Bao" },
+    { value: "Lon", label: "Lon" },
     { value: "Hộp", label: "Hộp" },
-    { value: "Tá", label: "Tá" },
+    { value: "Hũ", label: "Hũ" },
+    { value: "Gói", label: "Gói" },
+    { value: "Can", label: "Can" },
     { value: "Thùng", label: "Thùng" },
+    { value: "Bình", label: "Bình" },
+    { value: "Chai", label: "Chai" },
+    { value: "Cuộn", label: "Cuộn" },
+    { value: "Con", label: "Con" },
     { value: "Kg", label: "Kg" },
-    { value: "Mét", label: "Mét" },
+    { value: "Bộ", label: "Bộ" },
+    { value: "Lít", label: "Lít" },
   ];
 
   var ADDRESS_DETAIL_FIELDS = [
@@ -4182,72 +4192,81 @@
         $("<option></option>").attr("value", opt.value).text(opt.label),
       );
     });
-    $sel.append(
-      $("<option></option>")
-        .attr("value", "__search__")
-        .text("Tìm kiếm thêm..."),
-    );
     $unitTd.empty().append($sel);
-    $sel.on("change.mkInvUnit", function () {
-      if (this.value !== "__search__") {
-        return;
-      }
-      var $unitSelect = $sel;
-      var helper = window.app && app.helper ? app.helper : null;
-      if (!helper || !helper.showPromptBox) {
-        $unitSelect.val("");
-        return;
-      }
-      helper.showPromptBox({
-        title: "Đơn vị",
-        message: "Nhập đơn vị",
-        placeholder: "Đơn vị",
-        confirmLabel: "Dùng",
-      }).then(function (custom) {
-        custom = String(custom || "").trim();
-        if (custom) {
-          ensureUnitOptionOnSelect($unitSelect, custom);
-          $unitSelect.val(custom);
-        } else {
-          $unitSelect.val("");
-        }
-      }, function () {
-        $unitSelect.val("");
-      });
-    });
   }
 
-  function normalizeUnitToken(value) {
+  function foldUnitToken(value) {
     return String(value || "")
       .trim()
       .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
+      .replace(/[áàảãạăắằẳẵặâấầẩẫậ]/g, "a")
+      .replace(/[éèẻẽẹêếềểễệ]/g, "e")
+      .replace(/[íìỉĩị]/g, "i")
+      .replace(/[óòỏõọôốồổỗộơớờởỡợ]/g, "o")
+      .replace(/[úùủũụưứừửữự]/g, "u")
+      .replace(/[ýỳỷỹỵ]/g, "y")
+      .replace(/đ/g, "d");
+  }
+
+  function canonicalLineUnit(raw) {
+    var fold = foldUnitToken(raw);
+    if (!fold) {
+      return "";
+    }
+    var map = {
+      pcs: "Cái",
+      piece: "Cái",
+      cai: "Cái",
+      box: "Hộp",
+      hop: "Hộp",
+      set: "Bộ",
+      bo: "Bộ",
+      kg: "Kg",
+      bich: "Bịch",
+      bao: "Bao",
+      lon: "Lon",
+      hu: "Hũ",
+      goi: "Gói",
+      can: "Can",
+      thung: "Thùng",
+      binh: "Bình",
+      chai: "Chai",
+      cuon: "Cuộn",
+      con: "Con",
+      lit: "Lít",
+      liter: "Lít",
+      litre: "Lít",
+    };
+    if (map[fold]) {
+      return map[fold];
+    }
+    for (var i = 0; i < UNIT_OPTIONS.length; i++) {
+      if (foldUnitToken(UNIT_OPTIONS[i].label) === fold) {
+        return UNIT_OPTIONS[i].value;
+      }
+    }
+    return String(raw || "").trim();
   }
 
   function ensureUnitOptionOnSelect($sel, unit) {
-    unit = String(unit || "").trim();
+    unit = canonicalLineUnit(unit);
     if (!$sel || !$sel.length || !unit) {
       return "";
     }
-    var token = normalizeUnitToken(unit);
+    var token = foldUnitToken(unit);
     var resolved = "";
     $sel.find("option").each(function () {
       var val = String($(this).attr("value") || "");
-      if (!val || val === "__search__") {
+      if (!val) {
         return;
       }
-      var valToken = normalizeUnitToken(val);
-      var labelToken = normalizeUnitToken($(this).text());
-      if (valToken === token || labelToken.indexOf(token) >= 0) {
+      if (foldUnitToken(val) === token || foldUnitToken($(this).text()) === token) {
         resolved = val;
         return false;
       }
     });
     if (!resolved) {
-      $sel
-        .find('option[value="__search__"]')
-        .before($("<option></option>").attr("value", unit).text(unit));
+      $sel.append($("<option></option>").attr("value", unit).text(unit));
       resolved = unit;
     }
     return resolved;
