@@ -2151,6 +2151,9 @@ class Warehouse_WhMgmtService {
 		if ($status === 'approved') {
 			return 'packed';
 		}
+		if ($status === 'transfer_done') {
+			return 'shipped';
+		}
 		return $status;
 	}
 
@@ -2397,6 +2400,17 @@ class Warehouse_WhMgmtService {
 			}
 			$newDbStatus = 'shipped';
 			self::pushTimeline($meta, 'Đã giao hàng', $role, '');
+		} else if ($actionKey === 'issue-transfer-done') {
+			$ot = trim((string) (isset($meta['outboundType']) ? $meta['outboundType'] : ''));
+			$toId = trim((string) (isset($meta['toWarehouseId']) ? $meta['toWarehouseId'] : ''));
+			if ($ot !== 'transfer' && $toId === '') {
+				throw new Exception('Phiếu này không phải xuất chuyển kho.');
+			}
+			if ($dbStatus !== 'shipped') {
+				throw new Exception('Chỉ xác nhận được phiếu chuyển kho đã giao.');
+			}
+			$newDbStatus = 'transfer_done';
+			self::pushTimeline($meta, 'Chuyển kho thành công', $role, (string) $note);
 		} else if ($actionKey === 'issue-submit') {
 			$newDbStatus = 'waiting_print';
 			self::pushTimeline($meta, 'Chờ soạn', $role, '');
@@ -2557,6 +2571,9 @@ class Warehouse_WhMgmtService {
 		}
 		if ($s === 'packed' || $s === 'prepared') {
 			return 'packed';
+		}
+		if ($s === 'transfer_done') {
+			return 'transfer_done';
 		}
 		if ($s === 'completed' || $s === 'shipped') {
 			return 'shipped';

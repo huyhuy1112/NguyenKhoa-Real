@@ -815,6 +815,7 @@
 		picking: { label: 'Đang soạn', cls: 'mk-wh-proto-pill mk-wh-proto-pill--issue-pick' },
 		packed: { label: 'Đã soạn', cls: 'mk-wh-proto-pill mk-wh-proto-pill--issue-packed' },
 		shipped: { label: 'Đã giao', cls: 'mk-wh-proto-pill mk-wh-proto-pill--ok' },
+		transfer_done: { label: 'Chuyển kho thành công', cls: 'mk-wh-proto-pill mk-wh-proto-pill--ok' },
 		rejected: { label: 'Từ chối', cls: 'mk-wh-proto-pill mk-wh-proto-pill--warn' },
 		cancelled: { label: 'Đã huỷ', cls: 'mk-wh-proto-pill mk-wh-proto-pill--warn' },
 		// legacy aliases
@@ -843,6 +844,7 @@
 		var s = String(status || '');
 		if (s === 'pending_approval' || s === 'draft') return 'waiting_print';
 		if (s === 'approved') return 'packed';
+		if (s === 'transfer_done') return 'shipped';
 		return s;
 	}
 

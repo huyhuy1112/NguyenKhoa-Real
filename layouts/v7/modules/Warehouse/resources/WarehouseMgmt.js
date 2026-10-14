@@ -702,6 +702,7 @@
 		picking: { label: 'Đang soạn', cls: 'mk-wh-proto-pill mk-wh-proto-pill--issue-pick' },
 		packed: { label: 'Đã soạn', cls: 'mk-wh-proto-pill mk-wh-proto-pill--issue-packed' },
 		shipped: { label: 'Đã giao', cls: 'mk-wh-proto-pill mk-wh-proto-pill--ok' },
+		transfer_done: { label: 'Chuyển kho thành công', cls: 'mk-wh-proto-pill mk-wh-proto-pill--ok' },
 		rejected: { label: 'Từ chối', cls: 'mk-wh-proto-pill mk-wh-proto-pill--danger' },
 		pending_approval: { label: 'Chờ soạn', cls: 'mk-wh-proto-pill mk-wh-proto-pill--issue-wait' },
 		approved: { label: 'Đã soạn', cls: 'mk-wh-proto-pill mk-wh-proto-pill--issue-packed' },
@@ -1371,426 +1372,104 @@
 	}
 
 	/* ========== TRANSFER PAGE ========== */
+	function collectDeliveredTransfers() {
+		var state = S.getState();
+		var rows = [];
+		var data = state.data || {};
+		Object.keys(data).forEach(function (whId) {
+			var issues = (data[whId] && data[whId].issues) || [];
+			issues.forEach(function (issue) {
+				if (!issue || issue.outboundType !== 'transfer') return;
+				if (issue.status !== 'shipped' && issue.status !== 'transfer_done') return;
+				rows.push({ whId: whId, issue: issue });
+			});
+		});
+		rows.sort(function (a, b) {
+			return String(b.issue.createdAt || '').localeCompare(String(a.issue.createdAt || ''));
+		});
+		return rows;
+	}
+
+	function transferLineSummary(issue) {
+		var lines = issue.lines || [];
+		if (!lines.length) return '—';
+		return lines.map(function (l) {
+			var name = decodeEntities(l.name || l.sku || '');
+			var sku = decodeEntities(l.sku || '');
+			var lot = decodeEntities(l.lot || '');
+			var qty = l.qty != null ? l.qty : '';
+			var text = name;
+			if (sku) text += ' · ' + sku;
+			if (lot) text += ' · Lô ' + lot;
+			if (qty !== '') text += ' × ' + qty;
+			return escapeHtml(text);
+		}).join('<br>');
+	}
+
+	function transferQty(issue) {
+		var total = 0;
+		(issue.lines || []).forEach(function (l) {
+			total += Number(l.qty) || 0;
+		});
+		return total;
+	}
+
 	function renderTransfers() {
 		var tbody = qs('#mkWhTransferTableBody');
 		if (!tbody) return;
-		var state = S.getState();
-		if (!state.transfers.length) {
-			tbody.innerHTML = '<tr><td colspan="9" class="mk-wh-mgmt-empty">Chưa có phiếu chuyển nào.</td></tr>';
+		var rows = collectDeliveredTransfers();
+		if (!rows.length) {
+			tbody.innerHTML = '<tr><td colspan="10" class="mk-wh-mgmt-empty">Chưa có phiếu chuyển kho đã giao.</td></tr>';
 			return;
 		}
-		tbody.innerHTML = state.transfers.map(function (t) {
-			var stCls = 'mk-wh-mgmt-badge ' + (TRANSFER_STATUS_CLS[t.status] || 'mk-wh-mgmt-badge--inactive');
-			var stLabel = S.TRANSFER_STATUS_LABEL[t.status] || t.status;
-			var actions = '';
-			if (t.status === 'pending') {
-				actions =
-					'<button type="button" class="mk-wh-mgmt-btn mk-wh-mgmt-btn--outline mk-wh-mgmt-btn--sm" data-mk-trf-action="approve" data-mk-trf-id="' + escapeHtml(t.id) + '">Duyệt</button> ' +
-					'<button type="button" class="mk-wh-mgmt-link" data-mk-trf-action="cancel" data-mk-trf-id="' + escapeHtml(t.id) + '">Hủy</button>';
-			} else if (t.status === 'approved') {
-				actions = '<button type="button" class="mk-wh-mgmt-btn mk-wh-mgmt-btn--outline mk-wh-mgmt-btn--sm" data-mk-trf-action="ship" data-mk-trf-id="' + escapeHtml(t.id) + '">Xuất kho nguồn</button>';
-			} else if (t.status === 'in_transit') {
-				actions = '<button type="button" class="mk-wh-mgmt-btn mk-wh-mgmt-btn--primary mk-wh-mgmt-btn--sm" data-mk-trf-action="complete" data-mk-trf-id="' + escapeHtml(t.id) + '">Hoàn tất</button>';
-			}
+		tbody.innerHTML = rows.map(function (row) {
+			var issue = row.issue;
+			var dest = issue.toWarehouseId ? whName(issue.toWarehouseId) : (issue.customer || '—');
+			var soRef = decodeEntities(issue.soRef || '');
+			if (!soRef || soRef === '—') soRef = '—';
+			var status = issue.status === 'transfer_done' ? 'transfer_done' : 'shipped';
+			var st = ISSUE_STATUS[status] || { label: status, cls: 'mk-wh-proto-pill' };
+			var action = status === 'shipped'
+				? '<button type="button" class="mk-wh-mgmt-btn mk-wh-mgmt-btn--primary mk-wh-mgmt-btn--sm" data-mk-trf-confirm="1" data-mk-trf-wh="' + escapeHtml(row.whId) + '" data-mk-trf-id="' + escapeHtml(issue.id) + '">Xác nhận thành công</button>'
+				: '—';
 			return '<tr>' +
-				'<td><span class="mk-wh-mgmt-chip">' + escapeHtml(t.id) + '</span></td>' +
-				'<td>' + escapeHtml(whName(t.fromWarehouseId)) + '</td>' +
+				'<td><span class="mk-wh-mgmt-chip">' + escapeHtml(issue.id) + '</span></td>' +
+				'<td>' + escapeHtml(whName(row.whId)) + '</td>' +
 				'<td class="mk-wh-mgmt-arrow" aria-hidden="true">→</td>' +
-				'<td>' + escapeHtml(whName(t.toWarehouseId)) + '</td>' +
-				'<td><div><strong>' + escapeHtml(t.name) + '</strong></div><div class="mk-wh-mgmt-muted">' + escapeHtml(t.sku) + ' · ' + escapeHtml(t.lot) + '</div></td>' +
-				'<td class="mk-wh-mgmt-td-right"><strong>' + t.qty + '</strong></td>' +
-				'<td class="mk-wh-mgmt-muted">' + escapeHtml(t.reason || '—') + '</td>' +
-				'<td><span class="' + stCls + '">' + escapeHtml(stLabel) + '</span></td>' +
-				'<td class="mk-wh-mgmt-td-right">' + actions + '</td></tr>';
+				'<td>' + escapeHtml(dest) + '</td>' +
+				'<td>' + escapeHtml(soRef) + '</td>' +
+				'<td>' + transferLineSummary(issue) + '</td>' +
+				'<td class="mk-wh-mgmt-td-right"><strong>' + transferQty(issue) + '</strong></td>' +
+				'<td>' + escapeHtml(fmtDateTime(issue.createdAt)) + '</td>' +
+				'<td><span class="' + st.cls + '">' + escapeHtml(st.label) + '</span></td>' +
+				'<td class="mk-wh-mgmt-td-right">' + action + '</td></tr>';
 		}).join('');
-	}
-
-	function displayUnit(value) {
-		var raw = decodeEntities(String(value || '')).trim();
-		if (!raw || raw === '—' || raw === '-') return '';
-		var fold = raw.toLowerCase()
-			.replace(/[áàảãạăắằẳẵặâấầẩẫậ]/g, 'a')
-			.replace(/[éèẻẽẹêếềểễệ]/g, 'e')
-			.replace(/[íìỉĩị]/g, 'i')
-			.replace(/[óòỏõọôốồổỗộơớờởỡợ]/g, 'o')
-			.replace(/[úùủũụưứừửữự]/g, 'u')
-			.replace(/[ýỳỷỹỵ]/g, 'y')
-			.replace(/đ/g, 'd');
-		var map = {
-			pcs: 'Cái', piece: 'Cái', cai: 'Cái',
-			box: 'Hộp', hop: 'Hộp',
-			set: 'Bộ', bo: 'Bộ',
-			kg: 'Kg',
-			bich: 'Bịch', bao: 'Bao', lon: 'Lon', hu: 'Hũ', goi: 'Gói',
-			can: 'Can', thung: 'Thùng', binh: 'Bình', chai: 'Chai',
-			cuon: 'Cuộn', con: 'Con', lit: 'Lít', liter: 'Lít', litre: 'Lít'
-		};
-		if (map[fold]) return map[fold];
-		var canonical = ['Cái', 'Bịch', 'Bao', 'Lon', 'Hộp', 'Hũ', 'Gói', 'Can', 'Thùng', 'Bình', 'Chai', 'Cuộn', 'Con', 'Kg', 'Bộ', 'Lít'];
-		for (var i = 0; i < canonical.length; i++) {
-			var labelFold = canonical[i].toLowerCase()
-				.replace(/[áàảãạăắằẳẵặâấầẩẫậ]/g, 'a')
-				.replace(/[éèẻẽẹêếềểễệ]/g, 'e')
-				.replace(/[íìỉĩị]/g, 'i')
-				.replace(/[óòỏõọôốồổỗộơớờởỡợ]/g, 'o')
-				.replace(/[úùủũụưứừửữự]/g, 'u')
-				.replace(/[ýỳỷỹỵ]/g, 'y')
-				.replace(/đ/g, 'd');
-			if (labelFold === fold) return canonical[i];
-		}
-		return raw;
-	}
-
-	function catalogUnit(sku, name) {
-		var cat = (typeof window !== 'undefined' && window.MK_WH_PRODUCT_CATALOG) ? window.MK_WH_PRODUCT_CATALOG : [];
-		var skuKey = String(sku || '').trim();
-		var nameKey = String(name || '').trim();
-		var i;
-		for (i = 0; i < cat.length; i++) {
-			if (skuKey && String(cat[i].sku || '').trim() === skuKey) {
-				return displayUnit(cat[i].unit || '');
-			}
-		}
-		for (i = 0; i < cat.length; i++) {
-			if (nameKey && String(cat[i].name || '').trim() === nameKey) {
-				return displayUnit(cat[i].unit || '');
-			}
-		}
-		return '';
-	}
-
-	function toDateInputValue(v) {
-		var s = decodeEntities(String(v || '')).trim();
-		if (!s || s === '—' || s === '-') return '';
-		var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
-		if (m) return m[1] + '-' + m[2] + '-' + m[3];
-		m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(s);
-		if (m) return m[3] + '-' + String(m[2]).padStart(2, '0') + '-' + String(m[1]).padStart(2, '0');
-		return '';
-	}
-
-	function nextIssueId(issues) {
-		var max = 0;
-		(issues || []).forEach(function (x) {
-			var id = String(x && (x.id || x.code) ? (x.id || x.code) : '');
-			var m = /^GIN-(\d+)$/.exec(id);
-			if (m && m[1]) {
-				var n = parseInt(m[1], 10);
-				if (!isNaN(n) && n > max) max = n;
-			}
-		});
-		return 'GIN-' + String(max + 1).padStart(4, '0');
-	}
-
-	function notifyTransfer(msg, isError) {
-		var safe = escapeHtml(msg);
-		if (window.app && app.helper) {
-			if (isError && app.helper.showErrorNotification) {
-				app.helper.showErrorNotification({ message: safe });
-				return;
-			}
-			if (!isError && app.helper.showSuccessNotification) {
-				app.helper.showSuccessNotification({ message: safe });
-				return;
-			}
-		}
-		window.alert(String(msg || ''));
 	}
 
 	function bindTransferEvents() {
 		var root = qs('#mkWhMgmtRoot');
-		var modal = qs('#mkWhTransferFormModal');
-		var form = qs('#mkWhTransferForm');
-		var createBtn = qs('#mkWhTransferCreateBtn');
-		var fromSel = qs('#mkWhTrfFrom');
-		var toSel = qs('#mkWhTrfTo');
-		var searchSel = qs('#mkWhTrfSearch');
-		var linesBody = qs('#mkWhTrfLines');
-		var saving = false;
-
-		if (!root) return;
-
-		function warehouseOptions(placeholder) {
-			var wh = S.getState().warehouses || [];
-			return '<option value="">' + escapeHtml(placeholder) + '</option>' +
-				wh.map(function (w) {
-					return '<option value="' + escapeHtml(w.id) + '">' + escText(w.name || w.id) + '</option>';
-				}).join('');
-		}
-
-		function stockLots(fromId) {
-			return (S.ensureData(fromId).stock || [])
-				.filter(function (s) { return (Number(s.qty) || 0) > 0; })
-				.slice()
-				.sort(function (a, b) {
-					var an = String(a.name || '');
-					var bn = String(b.name || '');
-					if (an !== bn) return an.localeCompare(bn, 'vi');
-					return String(a.lot || '').localeCompare(String(b.lot || ''), 'vi');
-				});
-		}
-
-		function destroySearch() {
-			if (!searchSel || !$.fn || !$.fn.select2) return;
-			var $el = $(searchSel);
-			if (!$el.data('mkTrfSelect2')) return;
-			try { $el.off('.mkTrfSearch'); $el.select2('destroy'); } catch (e) { /* ignore */ }
-			$el.removeData('mkTrfSelect2');
-		}
-
-		function fillSearch(fromId) {
-			destroySearch();
-			if (!searchSel) return;
-			if (!fromId) {
-				searchSel.disabled = true;
-				searchSel.innerHTML = '<option value="">Chọn kho nguồn trước</option>';
-				return;
-			}
-			var lots = stockLots(fromId);
-			if (!lots.length) {
-				searchSel.disabled = true;
-				searchSel.innerHTML = '<option value="">Kho nguồn chưa có tồn</option>';
-				return;
-			}
-			searchSel.disabled = false;
-			searchSel.innerHTML = '<option value=""></option>' + lots.map(function (s) {
-				var name = decodeEntities(s.name || s.sku || '');
-				var sku = decodeEntities(s.sku || '');
-				var lot = decodeEntities(s.lot || '').replace(/^\s*lô\s+/i, '').trim();
-				var key = sku + '|' + lot;
-				var qty = Number(s.qty) || 0;
-				var unit = catalogUnit(sku, name) || displayUnit(s.unit || '');
-				var mfg = toDateInputValue(s.mfg || '');
-				var expiry = toDateInputValue(s.expiry || s.exp || '');
-				var label = name + (lot ? ' · Lô ' + lot : '') + ' · còn ' + qty;
-				return '<option value="' + escapeHtml(key) + '" data-sku="' + escapeHtml(sku) +
-					'" data-name="' + escapeHtml(name) + '" data-lot="' + escapeHtml(lot) +
-					'" data-qty="' + escapeHtml(String(qty)) + '" data-unit="' + escapeHtml(unit) +
-					'" data-mfg="' + escapeHtml(mfg) + '" data-expiry="' + escapeHtml(expiry) +
-					'" data-price="' + escapeHtml(String(s.price || 0)) + '">' + escapeHtml(label) + '</option>';
-			}).join('');
-			if ($.fn && $.fn.select2) {
-				var $el = $(searchSel);
-				$el.data('mkTrfSelect2', true);
-				try {
-					$el.select2({
-						placeholder: 'Tìm lô hàng trong kho…',
-						allowClear: true,
-						width: '100%',
-						minimumResultsForSearch: 0,
-						dropdownCssClass: 'mk-wh-proto-s2-drop mk-wh-proto-s2-quick'
-					});
-				} catch (e) { /* plain select */ }
-			}
-		}
-
-		function clearLines() {
-			if (linesBody) linesBody.innerHTML = '';
-		}
-
-		function addLineFromOption(opt) {
-			if (!linesBody || !opt) return;
-			var sku = decodeEntities(opt.getAttribute('data-sku') || '');
-			var lot = decodeEntities(opt.getAttribute('data-lot') || '');
-			var name = decodeEntities(opt.getAttribute('data-name') || '');
-			var unit = displayUnit(opt.getAttribute('data-unit') || '') || catalogUnit(sku, name);
-			var qtyAvail = parseInt(opt.getAttribute('data-qty') || '0', 10) || 0;
-			var mfg = opt.getAttribute('data-mfg') || '';
-			var expiry = opt.getAttribute('data-expiry') || '';
-			var price = opt.getAttribute('data-price') || '0';
-			var key = sku + '|' + lot;
-			var existing = null;
-			Array.prototype.forEach.call(linesBody.querySelectorAll('[data-mk-line="1"]'), function (row) {
-				if (row.getAttribute('data-lot-key') === key) existing = row;
-			});
-			if (existing) {
-				var qtyEl = existing.querySelector('[data-mk-line-qty="1"]');
-				if (qtyEl) {
-					try { qtyEl.focus(); qtyEl.select(); } catch (e) { /* ignore */ }
-				}
-				return;
-			}
-			var nameLabel = name + (lot ? ' · Lô ' + lot : '');
-			linesBody.insertAdjacentHTML('beforeend',
-				'<tr data-mk-line="1" data-lot-key="' + escapeHtml(key) + '" data-price="' + escapeHtml(price) + '">' +
-				'<td><input type="text" data-mk-line-name="1" value="' + escapeHtml(nameLabel) + '" readonly tabindex="-1" class="mk-wh-proto-sku-readonly" /></td>' +
-				'<td class="mk-wh-proto-col-sku"><input type="text" data-mk-line-sku="1" value="' + escapeHtml(sku) + '" readonly tabindex="-1" class="mk-wh-proto-sku-readonly" /></td>' +
-				'<td class="mk-wh-proto-col-unit"><input type="text" data-mk-line-unit="1" value="' + escapeHtml(unit) + '" readonly tabindex="-1" class="mk-wh-proto-sku-readonly" /></td>' +
-				'<td class="mk-wh-proto-col-lot"><input type="text" data-mk-line-lot="1" value="' + escapeHtml(lot) + '" readonly tabindex="-1" class="mk-wh-proto-sku-readonly" /></td>' +
-				'<td class="mk-wh-proto-col-qty"><input type="number" min="1" step="1" max="' + escapeHtml(String(qtyAvail)) + '" data-mk-line-qty="1" value="1" /></td>' +
-				'<td class="mk-wh-proto-col-date"><input type="date" data-mk-line-mfg="1" value="' + escapeHtml(mfg) + '" readonly tabindex="-1" class="mk-wh-proto-sku-readonly" /></td>' +
-				'<td class="mk-wh-proto-col-date"><input type="date" data-mk-line-exp="1" value="' + escapeHtml(expiry) + '"' + (expiry ? ' readonly tabindex="-1" class="mk-wh-proto-sku-readonly"' : '') + ' /></td>' +
-				'<td><button type="button" class="mk-wh-proto-btn mk-wh-proto-btn--ghost mk-wh-proto-lines__del" data-mk-trf-del="1" title="Xóa dòng">×</button></td>' +
-				'</tr>');
-		}
-
-		function openModal() {
-			if (fromSel) fromSel.innerHTML = warehouseOptions('Chọn kho nguồn');
-			if (toSel) toSel.innerHTML = warehouseOptions('Chọn kho đích');
-			var code = qs('#mkWhTrfCode');
-			if (code) code.value = '';
-			clearLines();
-			fillSearch('');
-			if (modal) modal.classList.remove('hide');
-		}
-
-		function closeModal() {
-			destroySearch();
-			if (modal) modal.classList.add('hide');
-		}
-
-		if (createBtn) createBtn.addEventListener('click', openModal);
-
-		if (fromSel) {
-			fromSel.addEventListener('change', function () {
-				if (toSel && toSel.value === fromSel.value) toSel.value = '';
-				clearLines();
-				fillSearch(fromSel.value);
-			});
-		}
-		if (toSel && fromSel) {
-			toSel.addEventListener('change', function () {
-				if (toSel.value && toSel.value === fromSel.value) toSel.value = '';
-			});
-		}
-
-		if (searchSel) {
-			searchSel.addEventListener('change', function () {
-				var opt = searchSel.options[searchSel.selectedIndex];
-				if (!searchSel.value || !opt) return;
-				addLineFromOption(opt);
-				if ($.fn && $.fn.select2 && $(searchSel).data('mkTrfSelect2')) {
-					try { $(searchSel).select2('val', ''); } catch (e) { searchSel.value = ''; }
-				} else {
-					searchSel.value = '';
-				}
-			});
-		}
-
+		if (!root || root.getAttribute('data-mk-trf-bound') === '1') return;
+		root.setAttribute('data-mk-trf-bound', '1');
 		root.addEventListener('click', function (e) {
-			var closeEl = e.target.closest ? e.target.closest('[data-mk-wh-trf-close="1"]') : null;
-			if (closeEl) {
-				closeModal();
-				return;
-			}
-			var del = e.target.closest ? e.target.closest('[data-mk-trf-del="1"]') : null;
-			if (del) {
-				var row = del.closest('tr');
-				if (row) row.parentNode.removeChild(row);
-				return;
-			}
-			var action = e.target.getAttribute && e.target.getAttribute('data-mk-trf-action');
-			var id = e.target.getAttribute && e.target.getAttribute('data-mk-trf-id');
-			if (!action || !id) return;
+			var btn = e.target.closest ? e.target.closest('[data-mk-trf-confirm="1"]') : null;
+			if (!btn) return;
 			e.preventDefault();
-			if (action === 'approve') S.transferActions.approve(id, getAccess().userName || 'User');
-			else if (action === 'cancel') S.transferActions.cancel(id);
-			else if (action === 'ship') S.transferActions.ship(id);
-			else if (action === 'complete') S.transferActions.complete(id);
-			renderTransfers();
-		});
-
-		if (form) {
-			form.addEventListener('submit', function (e) {
-				e.preventDefault();
-				if (saving) return;
-				var from = fromSel ? fromSel.value : '';
-				var to = toSel ? toSel.value : '';
-				var soRef = qs('#mkWhTrfCode') ? qs('#mkWhTrfCode').value.trim() : '';
-				if (!from || !to || from === to) {
-					notifyTransfer('Chọn kho nguồn và kho đích khác nhau.', true);
-					return;
-				}
-				var rows = linesBody ? Array.prototype.slice.call(linesBody.querySelectorAll('[data-mk-line="1"]')) : [];
-				var outLines = [];
-				var outError = '';
-				rows.forEach(function (row) {
-					var sku = row.querySelector('[data-mk-line-sku="1"]') ? row.querySelector('[data-mk-line-sku="1"]').value.trim() : '';
-					var lot = row.querySelector('[data-mk-line-lot="1"]') ? row.querySelector('[data-mk-line-lot="1"]').value.trim() : '';
-					var qtyOut = row.querySelector('[data-mk-line-qty="1"]')
-						? (parseInt(row.querySelector('[data-mk-line-qty="1"]').value, 10) || 0)
-						: 0;
-					var expiry = row.querySelector('[data-mk-line-exp="1"]') ? row.querySelector('[data-mk-line-exp="1"]').value : '';
-					if (!sku && !lot && !qtyOut) return;
-					if (!lot || qtyOut <= 0) {
-						outError = 'Mỗi dòng cần lô và số lượng.';
-						return;
-					}
-					if (!expiry) {
-						outError = 'Mỗi dòng cần hạn sử dụng.';
-						return;
-					}
-					var stock = (S.ensureData(from).stock || []).find(function (s) {
-						return decodeEntities(s.sku || '').trim() === sku &&
-							decodeEntities(s.lot || '').replace(/^\s*lô\s+/i, '').trim() === lot;
-					});
-					if (!stock) {
-						outError = 'Lô hàng không còn trong kho nguồn.';
-						return;
-					}
-					var avail = Number(stock.qty) || 0;
-					if (qtyOut > avail) {
-						outError = 'Số lượng xuất vượt tồn (còn ' + avail + ').';
-						return;
-					}
-					var name = decodeEntities(stock.name || '');
-					var unit = displayUnit(row.querySelector('[data-mk-line-unit="1"]')
-						? row.querySelector('[data-mk-line-unit="1"]').value
-						: '') || catalogUnit(sku, name) || displayUnit(stock.unit || '');
-					var mfg = row.querySelector('[data-mk-line-mfg="1"]') ? row.querySelector('[data-mk-line-mfg="1"]').value : '';
-					outLines.push({
-						sku: stock.sku || sku,
-						name: name,
-						lot: stock.lot || lot,
-						qty: qtyOut,
-						price: Number(stock.price) || 0,
-						unit_price: Number(stock.price) || 0,
-						unit: unit,
-						mfg: mfg || toDateInputValue(stock.mfg || ''),
-						expiry: expiry
-					});
-				});
-				if (outError) {
-					notifyTransfer(outError, true);
-					return;
-				}
-				if (!outLines.length) {
-					notifyTransfer('Thêm ít nhất một dòng hàng xuất.', true);
-					return;
-				}
-				var dest = (S.getState().warehouses || []).find(function (w) { return w.id === to; });
-				var userEl = qs('#mkWhTrfUser');
-				var userName = userEl ? String(userEl.value || '').trim() : '';
-				var data = S.ensureData(from);
-				var issue = {
-					id: nextIssueId(data.issues || []),
-					outboundType: 'transfer',
-					customer: dest ? (dest.name || dest.id) : to,
-					toWarehouseId: to,
-					soRef: soRef || '—',
-					status: 'waiting_print',
-					createdAt: S.nowISO(),
-					createdBy: userName || 'User',
-					lines: outLines,
-					timeline: [],
-					stockDeducted: false
-				};
-				if (!(S.useDb && S.useDb() && S.warehouseDataActions && S.warehouseDataActions.saveIssue)) {
-					notifyTransfer('Chế độ lưu database chưa sẵn sàng.', true);
-					return;
-				}
-				saving = true;
-				S.warehouseDataActions.saveIssue(from, issue).then(function (res) {
-					saving = false;
-					var code = (res && res.code) ? res.code : issue.id;
-					closeModal();
-					notifyTransfer('Đã tạo phiếu xuất ' + code + ' tại kho nguồn. Mở kho đó, tab Xuất kho để xem.');
-				}).fail(function (err) {
-					saving = false;
-					notifyTransfer((err && err.message) || 'Không lưu được phiếu xuất.', true);
-				});
+			var whId = btn.getAttribute('data-mk-trf-wh') || '';
+			var code = btn.getAttribute('data-mk-trf-id') || '';
+			if (!whId || !code) return;
+			if (!window.confirm('Xác nhận chuyển kho ' + code + ' đã xong? Trạng thái sẽ thành Chuyển kho thành công.')) return;
+			if (!(S.useDb && S.useDb() && S.warehouseDataActions && S.warehouseDataActions.issueAction)) {
+				window.alert('Chế độ lưu database chưa sẵn sàng.');
+				return;
+			}
+			btn.disabled = true;
+			S.warehouseDataActions.issueAction(whId, code, 'issue-transfer-done', 'manager', 'Chuyển kho thành công', '').then(function () {
+				renderTransfers();
+			}).fail(function (err) {
+				btn.disabled = false;
+				window.alert((err && err.message) || 'Không xác nhận được phiếu chuyển kho.');
 			});
-		}
+		});
 	}
 
 	function init() {
