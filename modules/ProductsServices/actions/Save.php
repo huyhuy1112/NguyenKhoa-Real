@@ -5,6 +5,11 @@
 class ProductsServices_Save_Action extends Vtiger_Save_Action {
 
 	public function saveRecord($request) {
+		require_once 'modules/ProductsServices/helpers/UnitOptions.php';
+		ProductsServices_UnitOptions_Helper::ensurePicklist();
+		if ($request->get('unit') !== null && $request->get('unit') !== '') {
+			$request->set('unit', ProductsServices_UnitOptions_Helper::normalize($request->get('unit')));
+		}
 		$recordModel = parent::saveRecord($request);
 		$this->saveQtyRules((int) $recordModel->getId(), $request);
 		return $recordModel;

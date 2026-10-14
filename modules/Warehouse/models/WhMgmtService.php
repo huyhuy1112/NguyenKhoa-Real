@@ -2753,7 +2753,7 @@ class Warehouse_WhMgmtService {
 			array_values($ids)
 		);
 		while ($rs && ($row = $db->fetchByAssoc($rs))) {
-			$out[(int) $row['productsservicesid']] = self::decodeDisplayTextDeep(trim((string) (isset($row['unit']) ? $row['unit'] : '')));
+			$out[(int) $row['productsservicesid']] = self::displayUnit(isset($row['unit']) ? $row['unit'] : '');
 		}
 		return $out;
 	}
@@ -3129,6 +3129,14 @@ class Warehouse_WhMgmtService {
 	}
 
 	/**
+	 * Show the same unit word as the goods form (pcs → Cái).
+	 */
+	protected static function displayUnit($unit) {
+		require_once 'modules/ProductsServices/helpers/UnitOptions.php';
+		return ProductsServices_UnitOptions_Helper::normalize(self::decodeDisplayTextDeep(trim((string) $unit)));
+	}
+
+	/**
 	 * Resolve Đơn vị tính from Products & Services by id / sku / name.
 	 */
 	public static function lookupProductUnit(PearDatabase $db, $productId = 0, $sku = '', $name = '') {
@@ -3163,7 +3171,7 @@ class Warehouse_WhMgmtService {
 		if (!$prs || $db->num_rows($prs) < 1) {
 			return '';
 		}
-		return self::decodeDisplayTextDeep(trim((string) $db->query_result($prs, 0, 'unit')));
+		return self::displayUnit($db->query_result($prs, 0, 'unit'));
 	}
 
 	protected static function nextGrnCode(PearDatabase $db) {

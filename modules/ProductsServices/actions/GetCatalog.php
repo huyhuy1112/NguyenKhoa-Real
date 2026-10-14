@@ -19,6 +19,8 @@ class ProductsServices_GetCatalog_Action extends Vtiger_Action_Controller {
 			ProductsServices_PriceSetup_Helper::ensure();
 			require_once 'modules/ProductsServices/helpers/SalePriceApply.php';
 			ProductsServices_SalePriceApply_Helper::ensureApplied();
+			require_once 'modules/ProductsServices/helpers/UnitOptions.php';
+			ProductsServices_UnitOptions_Helper::ensurePicklist();
 			$db = PearDatabase::getInstance();
 			$hasPriceLt = $this->columnExists($db, 'vtiger_productsservices', 'price_lt_1m');
 			$hasMiutea = $this->columnExists($db, 'vtiger_productsservices', 'price_miutea');
@@ -69,7 +71,7 @@ class ProductsServices_GetCatalog_Action extends Vtiger_Action_Controller {
 					'price_lt_1m' => $priceLt,
 					'price_tuibao' => (float) $row['price_tuibao'],
 					'price_miutea' => $hasMiutea ? (float) $row['price_miutea'] : 0,
-					'unit' => decode_html((string) $row['unit']),
+					'unit' => ProductsServices_UnitOptions_Helper::normalize(decode_html((string) $row['unit'])),
 					'kl_qty_rules' => $qtyRules,
 					'createdtime' => (string) $row['createdtime'],
 					'stock' => 0.0,

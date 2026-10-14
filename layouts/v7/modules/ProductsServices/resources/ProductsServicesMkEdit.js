@@ -21,7 +21,6 @@
 		'Con',
 		'Kg',
 		'Bộ',
-		'Set',
 		'Lít'
 	];
 	var UNIT_STORAGE_KEY = 'mk_ps_custom_units_v1';
@@ -244,16 +243,45 @@
 		} catch (e) { /* ignore */ }
 	}
 
+	function canonicalUnit(raw) {
+		var s = String(raw || '').trim().toLowerCase();
+		var fold = s
+			.replace(/[áàảãạăắằẳẵặâấầẩẫậ]/g, 'a')
+			.replace(/[éèẻẽẹêếềểễệ]/g, 'e')
+			.replace(/[íìỉĩị]/g, 'i')
+			.replace(/[óòỏõọôốồổỗộơớờởỡợ]/g, 'o')
+			.replace(/[úùủũụưứừửữự]/g, 'u')
+			.replace(/[ýỳỷỹỵ]/g, 'y')
+			.replace(/đ/g, 'd');
+		var map = {
+			pcs: 'Cái', piece: 'Cái', cai: 'Cái',
+			box: 'Hộp', hop: 'Hộp',
+			set: 'Bộ', bo: 'Bộ',
+			kg: 'Kg',
+			bich: 'Bịch', bao: 'Bao', lon: 'Lon', hu: 'Hũ', goi: 'Gói',
+			can: 'Can', thung: 'Thùng', binh: 'Bình', chai: 'Chai',
+			cuon: 'Cuộn', con: 'Con', lit: 'Lít', liter: 'Lít', litre: 'Lít'
+		};
+		if (map[fold]) return map[fold];
+		for (var i = 0; i < UNIT_PRESETS.length; i++) {
+			if (canonicalUnitKey(UNIT_PRESETS[i]) === fold) return UNIT_PRESETS[i];
+		}
+		return String(raw || '').trim();
+	}
+
+	function canonicalUnitKey(label) {
+		return String(label || '').trim().toLowerCase()
+			.replace(/[áàảãạăắằẳẵặâấầẩẫậ]/g, 'a')
+			.replace(/[éèẻẽẹêếềểễệ]/g, 'e')
+			.replace(/[íìỉĩị]/g, 'i')
+			.replace(/[óòỏõọôốồổỗộơớờởỡợ]/g, 'o')
+			.replace(/[úùủũụưứừửữự]/g, 'u')
+			.replace(/[ýỳỷỹỵ]/g, 'y')
+			.replace(/đ/g, 'd');
+	}
+
 	function allUnits() {
-		var out = [];
-		var seen = {};
-		UNIT_PRESETS.concat(loadCustomUnits()).forEach(function (u) {
-			var key = String(u || '').trim();
-			if (!key || seen[key]) return;
-			seen[key] = true;
-			out.push(key);
-		});
-		return out;
+		return UNIT_PRESETS.slice();
 	}
 
 	function enhanceUnitField() {
@@ -268,9 +296,7 @@
 		}
 		$select.data('mkPsUnitReady', true);
 
-		var current = String($select.val() || '').trim();
-		var mapOld = { pcs: 'cái', box: 'hộp', set: 'set', kg: 'kg', Piece: 'cái', Box: 'hộp', Set: 'set' };
-		if (mapOld[current]) current = mapOld[current];
+		var current = canonicalUnit($select.val() || '');
 
 		var units = allUnits();
 		if (current && units.indexOf(current) < 0) {
@@ -281,7 +307,6 @@
 			'<div class="mk-ps-unit-box">' +
 				'<div class="mk-ps-unit-box__row">' +
 					'<select class="mk-ps-unit-box__select inputElement" aria-label="Đơn vị tính"></select>' +
-					'<button type="button" class="mk-ps-unit-box__add" title="Thêm đơn vị">+</button>' +
 				'</div>' +
 			'</div>'
 		);
@@ -316,25 +341,7 @@
 		$host.append($wrap);
 
 		$uiSelect.on('change', function () {
-			syncHidden($(this).val());
-		});
-
-		$wrap.find('.mk-ps-unit-box__add').on('click', function (e) {
-			e.preventDefault();
-			var next = window.prompt('Thêm đơn vị tính mới:', '');
-			if (next === null) return;
-			next = String(next).trim();
-			if (!next) return;
-			var customs = loadCustomUnits();
-			if (customs.indexOf(next) < 0 && UNIT_PRESETS.indexOf(next) < 0) {
-				customs.push(next);
-				saveCustomUnits(customs);
-			}
-			if (!$uiSelect.find('option').filter(function () { return $(this).val() === next; }).length) {
-				$uiSelect.append($('<option></option>').attr('value', next).text(next));
-			}
-			$uiSelect.val(next);
-			syncHidden(next);
+			syncHidden(canonicalUnit($(this).val()));
 		});
 	}
 
