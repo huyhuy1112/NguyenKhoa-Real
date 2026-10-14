@@ -149,6 +149,21 @@
 				<p class="mk-qt-smart__sub" id="mkQtSmartSub">Chọn khách KL để so sánh hai cách chiết khấu.</p>
 				<div class="mk-qt-smart__cards" id="mkQtSmartCards"></div>
 				<div class="mk-qt-smart__decision" id="mkQtSmartDecision"></div>
+				<div class="mk-qt-smart__order" id="mkQtSmartOrder">
+					<label class="mk-qt-smart__order-label" for="mkQtOrderDiscountPreset">Chiết khấu tổng đơn</label>
+					<div class="mk-qt-smart__order-row">
+						<select id="mkQtOrderDiscountPreset" aria-label="Chọn phần trăm chiết khấu tổng đơn">
+							<option value="0">0%</option>
+							<option value="5">5%</option>
+							<option value="8">8%</option>
+							<option value="10">10%</option>
+							<option value="15">15%</option>
+							<option value="20">20%</option>
+							<option value="custom">Nhập %</option>
+						</select>
+						<input type="text" inputmode="decimal" id="mkQtOrderDiscountValue" autocomplete="off" placeholder="Nhập % khác" />
+					</div>
+				</div>
 				<dl class="mk-qt-smart__sum" id="mkQtSmartSum"></dl>
 			</section>
 		</aside>

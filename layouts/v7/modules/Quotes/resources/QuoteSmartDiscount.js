@@ -266,6 +266,31 @@
 				'</div>' +
 				'<dl class="mk-qt-smart__sum" id="mkQtSmartSum"></dl>';
 		}
+		if (box && !document.getElementById('mkQtSmartOrder')) {
+			var order = document.createElement('div');
+			order.id = 'mkQtSmartOrder';
+			order.className = 'mk-qt-smart__order';
+			order.innerHTML =
+				'<label class="mk-qt-smart__order-label" for="mkQtOrderDiscountPreset">Chiết khấu tổng đơn</label>' +
+				'<div class="mk-qt-smart__order-row">' +
+					'<select id="mkQtOrderDiscountPreset" aria-label="Chọn phần trăm chiết khấu tổng đơn">' +
+						'<option value="0">0%</option>' +
+						'<option value="5">5%</option>' +
+						'<option value="8">8%</option>' +
+						'<option value="10">10%</option>' +
+						'<option value="15">15%</option>' +
+						'<option value="20">20%</option>' +
+						'<option value="custom">Nhập %</option>' +
+					'</select>' +
+					'<input type="text" inputmode="decimal" id="mkQtOrderDiscountValue" autocomplete="off" placeholder="Nhập % khác" />' +
+				'</div>';
+			var sumNode = box.querySelector('#mkQtSmartSum');
+			if (sumNode) {
+				box.insertBefore(order, sumNode);
+			} else {
+				box.appendChild(order);
+			}
+		}
 		syncOrderInputsFromForm();
 		if (rail && box.parentNode !== rail) {
 			rail.insertBefore(box, rail.firstChild);
