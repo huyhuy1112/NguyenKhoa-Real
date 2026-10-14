@@ -2636,9 +2636,9 @@ body[data-module="Quotes"][data-view="Edit"][data-app="SALES"] .mk-inv-form-odoo
 }
 body[data-module="Quotes"][data-view="Edit"][data-app="SALES"] .mk-inv-form-odoo .mk-inv-luxury-lines td.mk-inv-col-discount,
 body[data-module="Quotes"][data-view="Edit"][data-app="SALES"] .mk-inv-form-odoo .mk-inv-luxury-lines td.mk-inv-col-tax {
-	min-width: 118px !important;
-	width: 118px !important;
-	max-width: 128px !important;
+	min-width: 156px !important;
+	width: 156px !important;
+	max-width: 168px !important;
 	text-align: center !important;
 }
 body[data-module="Quotes"][data-view="Edit"][data-app="SALES"] .mk-inv-form-odoo .mk-inv-luxury-lines td.mk-inv-col-note {
@@ -2646,8 +2646,8 @@ body[data-module="Quotes"][data-view="Edit"][data-app="SALES"] .mk-inv-form-odoo
 	width: 200px !important;
 }
 body[data-module="Quotes"][data-view="Edit"][data-app="SALES"] .mk-inv-form-odoo .mk-inv-luxury-lines .mk-inv-discount-wrap {
-	max-width: 112px !important;
-	width: 112px !important;
+	max-width: 148px !important;
+	width: 148px !important;
 	margin: 0 auto;
 }
 body[data-module="Quotes"][data-view="Edit"][data-app="SALES"] .mk-inv-form-odoo .mk-inv-luxury-lines tr.mk-inv-header-row td,
@@ -2658,6 +2658,9 @@ body[data-module="Quotes"][data-view="Edit"][data-app="SALES"] .mk-inv-form-odoo
 body[data-module="Quotes"][data-view="Edit"][data-app="SALES"] .mk-inv-form-odoo .mk-inv-luxury-lines td.mk-inv-col-unit select,
 body[data-module="Quotes"][data-view="Edit"][data-app="SALES"] .mk-inv-form-odoo .mk-inv-luxury-lines .mk-inv-discount-custom {
 	text-align: center !important;
+	flex: 1 1 42px !important;
+	min-width: 42px !important;
+	width: auto !important;
 }
 
 body[data-module="Quotes"][data-view="Edit"][data-app="SALES"] .mk-qt-totals-below,
