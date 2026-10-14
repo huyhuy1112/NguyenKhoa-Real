@@ -2559,3 +2559,46 @@ body[data-module="Quotes"][data-view="Edit"] #mkQtSmartDiscount.mk-qt-smart {
 	font-weight: 700;
 	color: #111827;
 }
+.mk-qt-smart__order {
+	margin: 0 0 12px;
+	padding: 12px;
+	background: #fff;
+	border: 1px solid #e5e7eb;
+	border-radius: 12px;
+}
+.mk-qt-smart__order-label {
+	display: block;
+	margin: 0 0 8px;
+	font-size: 13px;
+	font-weight: 700;
+	color: #111827;
+}
+.mk-qt-smart__order-row {
+	display: flex;
+	gap: 8px;
+}
+.mk-qt-smart__order-row input,
+.mk-qt-smart__order-row select {
+	height: 36px;
+	border: 1px solid #d1d5db;
+	border-radius: 8px;
+	background: #fff;
+	color: #111827;
+	font-size: 14px;
+}
+.mk-qt-smart__order-row input {
+	flex: 1;
+	min-width: 0;
+	padding: 0 10px;
+}
+.mk-qt-smart__order-row select {
+	width: 84px;
+	padding: 0 8px;
+}
+
+body[data-module="Quotes"][data-view="Edit"][data-app="SALES"] .mk-qt-totals-below,
+body[data-module="Quotes"][data-view="Edit"][data-app="SALES"] .mk-inv-lineitems-odoo > .mk-qt-totals-below,
+body[data-module="Quotes"][data-view="Edit"][data-app="SALES"] .mk-inv-lineitems-odoo > .mk-inv-totals-odoo,
+body[data-module="Quotes"][data-view="Edit"][data-app="SALES"] .mk-qt-block--totals {
+	display: none !important;
+}

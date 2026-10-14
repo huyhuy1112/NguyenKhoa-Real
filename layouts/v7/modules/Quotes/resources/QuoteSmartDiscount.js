@@ -85,6 +85,7 @@
 	var applying = false;
 	var timer = null;
 	var resolved = { code: '', segment: '' };
+	var lastPaint = null;
 
 	function parseMoney(raw) {
 		var s = String(raw || '').trim();
@@ -248,8 +249,19 @@
 				'<p class="mk-qt-smart__sub" id="mkQtSmartSub">Chọn khách KL để so sánh hai cách chiết khấu.</p>' +
 				'<div class="mk-qt-smart__cards" id="mkQtSmartCards"></div>' +
 				'<div class="mk-qt-smart__decision" id="mkQtSmartDecision"></div>' +
+				'<div class="mk-qt-smart__order" id="mkQtSmartOrder">' +
+					'<label class="mk-qt-smart__order-label" for="mkQtOrderDiscountValue">Chiết khấu tổng đơn</label>' +
+					'<div class="mk-qt-smart__order-row">' +
+						'<input type="text" inputmode="decimal" id="mkQtOrderDiscountValue" autocomplete="off" placeholder="0" />' +
+						'<select id="mkQtOrderDiscountMode" aria-label="Kiểu chiết khấu tổng đơn">' +
+							'<option value="percentage">%</option>' +
+							'<option value="amount">VNĐ</option>' +
+						'</select>' +
+					'</div>' +
+				'</div>' +
 				'<dl class="mk-qt-smart__sum" id="mkQtSmartSum"></dl>';
 		}
+		syncOrderInputsFromForm();
 		if (rail && box.parentNode !== rail) {
 			rail.insertBefore(box, rail.firstChild);
 		} else if (rail && rail.firstElementChild !== box) {
@@ -299,8 +311,92 @@
 		);
 	}
 
+	function readOrderDiscount() {
+		var valueEl = document.getElementById('mkQtOrderDiscountValue');
+		var modeEl = document.getElementById('mkQtOrderDiscountMode');
+		var mode = modeEl && modeEl.value === 'amount' ? 'amount' : 'percentage';
+		var value = valueEl ? parseMoney(valueEl.value) : 0;
+		if (value < 0) {
+			value = 0;
+		}
+		if (mode === 'percentage' && value > 100) {
+			value = 100;
+		}
+		return { mode: mode, value: value };
+	}
+
+	function orderDiscountMoney(base) {
+		var discount = readOrderDiscount();
+		base = Math.max(0, Number(base) || 0);
+		if (!(discount.value > 0) || !(base > 0)) {
+			return 0;
+		}
+		var shown = parseMoney($('#discountTotal_final').first().text());
+		if (shown > 0) {
+			return Math.min(base, shown);
+		}
+		if (discount.mode === 'percentage') {
+			return Math.min(base, Math.round((base * discount.value) / 100));
+		}
+		return Math.min(base, Math.round(discount.value));
+	}
+
+	function syncOrderInputsFromForm() {
+		var valueEl = document.getElementById('mkQtOrderDiscountValue');
+		var modeEl = document.getElementById('mkQtOrderDiscountMode');
+		if (!valueEl || !modeEl || valueEl.getAttribute('data-mk-synced') === '1') {
+			return;
+		}
+		if (!$('#discount_type_final').length) {
+			return;
+		}
+		var type = String($('#discount_type_final').val() || 'zero');
+		if (type === 'amount') {
+			modeEl.value = 'amount';
+			var amount = parseMoney($('#discount_amount_final').val());
+			if (amount > 0) {
+				valueEl.value = String(amount);
+			}
+		} else if (type === 'percentage') {
+			modeEl.value = 'percentage';
+			var percent = parseMoney($('#discount_percentage_final').val());
+			if (percent > 0) {
+				valueEl.value = String(percent);
+			}
+		}
+		valueEl.setAttribute('data-mk-synced', '1');
+	}
+
+	function applyOrderDiscount() {
+		var discount = readOrderDiscount();
+		var $ui = $('#finalDiscountUI');
+		if (!$ui.length) {
+			return;
+		}
+		var type = discount.value > 0 ? discount.mode : 'zero';
+		var $radio = $ui.find('input.finalDiscounts[data-discount-type="' + type + '"]');
+		if (!$radio.length) {
+			type = 'zero';
+			$radio = $ui.find('input.finalDiscounts[data-discount-type="zero"]');
+		}
+		$ui.find('input.finalDiscounts').prop('checked', false);
+		$radio.prop('checked', true);
+		$('#discount_type_final').val(type);
+		$('#discount_percentage_final').val(type === 'percentage' ? String(discount.value) : '');
+		$('#discount_amount_final').val(type === 'amount' ? String(discount.value) : '');
+		var inst = (typeof Quotes_Edit_Js !== 'undefined' && Quotes_Edit_Js.getInstance) ? Quotes_Edit_Js.getInstance() : null;
+		if (!inst || typeof inst.finalDiscountChangeActions !== 'function') {
+			return;
+		}
+		if (!inst.finalDiscountUIEle || !inst.finalDiscountUIEle.length) {
+			inst.finalDiscountUIEle = $ui;
+		}
+		inst.finalDiscountChangeActions();
+	}
+
 	function paint(state) {
 		ensurePanel();
+		lastPaint = state;
 		var sub = document.getElementById('mkQtSmartSub');
 		var cards = document.getElementById('mkQtSmartCards');
 		var decision = document.getElementById('mkQtSmartDecision');
@@ -309,7 +405,9 @@
 			return;
 		}
 		var lines = state.lines;
-		var after = Math.max(0, lines.subtotal - state.saving);
+		var base = Math.max(0, lines.subtotal - state.saving);
+		var orderOff = orderDiscountMoney(base);
+		var after = Math.max(0, base - orderOff);
 		sub.textContent = state.subtitle;
 		cards.innerHTML = state.cardsHtml;
 		decision.innerHTML = state.decisionHtml || '';
@@ -317,6 +415,7 @@
 		sum.innerHTML =
 			'<div><dt>Tạm tính</dt><dd>' + money(lines.subtotal) + ' đ</dd></div>' +
 			'<div><dt>Chiết khấu</dt><dd class="is-off">- ' + money(state.saving) + ' đ</dd></div>' +
+			'<div><dt>Chiết khấu tổng đơn</dt><dd class="is-off">- ' + money(orderOff) + ' đ</dd></div>' +
 			'<div class="is-total"><dt>Sau chiết khấu</dt><dd>' + money(after) + ' đ</dd></div>';
 	}
 
@@ -605,6 +704,16 @@
 		}
 		booted = true;
 		ensurePanel();
+		$(document).on('input.mkOrderDisc change.mkOrderDisc', '#mkQtOrderDiscountValue, #mkQtOrderDiscountMode', function () {
+			var valueEl = document.getElementById('mkQtOrderDiscountValue');
+			if (valueEl) {
+				valueEl.setAttribute('data-mk-synced', '1');
+			}
+			applyOrderDiscount();
+			if (lastPaint) {
+				paint(lastPaint);
+			}
+		});
 		loadDiscountPolicy();
 		refresh();
 		$(document).on('mkQuoteDiscountRefresh', function () {
