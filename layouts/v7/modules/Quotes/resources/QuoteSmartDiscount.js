@@ -250,13 +250,18 @@
 				'<div class="mk-qt-smart__cards" id="mkQtSmartCards"></div>' +
 				'<div class="mk-qt-smart__decision" id="mkQtSmartDecision"></div>' +
 				'<div class="mk-qt-smart__order" id="mkQtSmartOrder">' +
-					'<label class="mk-qt-smart__order-label" for="mkQtOrderDiscountValue">Chiết khấu tổng đơn</label>' +
+					'<label class="mk-qt-smart__order-label" for="mkQtOrderDiscountPreset">Chiết khấu tổng đơn</label>' +
 					'<div class="mk-qt-smart__order-row">' +
-						'<input type="text" inputmode="decimal" id="mkQtOrderDiscountValue" autocomplete="off" placeholder="0" />' +
-						'<select id="mkQtOrderDiscountMode" aria-label="Kiểu chiết khấu tổng đơn">' +
-							'<option value="percentage">%</option>' +
-							'<option value="amount">VNĐ</option>' +
+						'<select id="mkQtOrderDiscountPreset" aria-label="Chọn phần trăm chiết khấu tổng đơn">' +
+							'<option value="0">0%</option>' +
+							'<option value="5">5%</option>' +
+							'<option value="8">8%</option>' +
+							'<option value="10">10%</option>' +
+							'<option value="15">15%</option>' +
+							'<option value="20">20%</option>' +
+							'<option value="custom">Nhập %</option>' +
 						'</select>' +
+						'<input type="text" inputmode="decimal" id="mkQtOrderDiscountValue" autocomplete="off" placeholder="Nhập % khác" />' +
 					'</div>' +
 				'</div>' +
 				'<dl class="mk-qt-smart__sum" id="mkQtSmartSum"></dl>';
@@ -311,18 +316,39 @@
 		);
 	}
 
-	function readOrderDiscount() {
+	var ORDER_PRESETS = ['0', '5', '8', '10', '15', '20'];
+
+	function orderPercentFromInput() {
 		var valueEl = document.getElementById('mkQtOrderDiscountValue');
-		var modeEl = document.getElementById('mkQtOrderDiscountMode');
-		var mode = modeEl && modeEl.value === 'amount' ? 'amount' : 'percentage';
-		var value = valueEl ? parseMoney(valueEl.value) : 0;
+		if (!valueEl || String(valueEl.value).trim() === '') {
+			return null;
+		}
+		var value = parseMoney(valueEl.value);
 		if (value < 0) {
 			value = 0;
 		}
-		if (mode === 'percentage' && value > 100) {
+		if (value > 100) {
 			value = 100;
 		}
-		return { mode: mode, value: value };
+		return value;
+	}
+
+	function readOrderDiscount() {
+		var value = orderPercentFromInput();
+		return { mode: 'percentage', value: value == null ? 0 : value };
+	}
+
+	function syncPreset(percent) {
+		var sel = document.getElementById('mkQtOrderDiscountPreset');
+		if (!sel) {
+			return;
+		}
+		var key = String(percent);
+		if (ORDER_PRESETS.indexOf(key) >= 0) {
+			sel.value = key;
+			return;
+		}
+		sel.value = percent > 0 ? 'custom' : '0';
 	}
 
 	function orderDiscountMoney(base) {
@@ -331,59 +357,59 @@
 		if (!(discount.value > 0) || !(base > 0)) {
 			return 0;
 		}
-		var shown = parseMoney($('#discountTotal_final').first().text());
-		if (shown > 0) {
-			return Math.min(base, shown);
-		}
-		if (discount.mode === 'percentage') {
-			return Math.min(base, Math.round((base * discount.value) / 100));
-		}
-		return Math.min(base, Math.round(discount.value));
+		return Math.min(base, Math.round((base * discount.value) / 100));
 	}
 
 	function syncOrderInputsFromForm() {
 		var valueEl = document.getElementById('mkQtOrderDiscountValue');
-		var modeEl = document.getElementById('mkQtOrderDiscountMode');
-		if (!valueEl || !modeEl || valueEl.getAttribute('data-mk-synced') === '1') {
+		var presetEl = document.getElementById('mkQtOrderDiscountPreset');
+		if (!valueEl || !presetEl || valueEl.getAttribute('data-mk-synced') === '1') {
 			return;
 		}
-		if (!$('#discount_type_final').length) {
-			return;
+		var percent = null;
+		var saw = false;
+		var mixed = false;
+		$('#lineItemTab tr.lineItemRow').each(function () {
+			var q = parseMoney($(this).find('input.qty, .qty').first().val());
+			if (!(q > 0)) {
+				return;
+			}
+			var linePercent = parseMoney($(this).find('.discount_percentage').first().val());
+			if (!saw) {
+				percent = linePercent;
+				saw = true;
+			} else if (linePercent !== percent) {
+				mixed = true;
+			}
+		});
+		if ((!saw || mixed) && String($('#discount_type_final').val() || '') === 'percentage') {
+			percent = parseMoney($('#discount_percentage_final').val());
+			saw = percent > 0;
+			mixed = false;
 		}
-		var type = String($('#discount_type_final').val() || 'zero');
-		if (type === 'amount') {
-			modeEl.value = 'amount';
-			var amount = parseMoney($('#discount_amount_final').val());
-			if (amount > 0) {
-				valueEl.value = String(amount);
-			}
-		} else if (type === 'percentage') {
-			modeEl.value = 'percentage';
-			var percent = parseMoney($('#discount_percentage_final').val());
-			if (percent > 0) {
-				valueEl.value = String(percent);
-			}
+		if (saw && !mixed && percent > 0) {
+			valueEl.value = String(percent);
+			syncPreset(percent);
 		}
 		valueEl.setAttribute('data-mk-synced', '1');
 	}
 
-	function applyOrderDiscount() {
-		var discount = readOrderDiscount();
+	function clearFinalDiscount() {
+		var type = String($('#discount_type_final').val() || 'zero');
+		var pct = parseMoney($('#discount_percentage_final').val());
+		var amt = parseMoney($('#discount_amount_final').val());
+		if ((type === 'zero' || type === '') && !(pct > 0) && !(amt > 0)) {
+			return;
+		}
 		var $ui = $('#finalDiscountUI');
 		if (!$ui.length) {
 			return;
 		}
-		var type = discount.value > 0 ? discount.mode : 'zero';
-		var $radio = $ui.find('input.finalDiscounts[data-discount-type="' + type + '"]');
-		if (!$radio.length) {
-			type = 'zero';
-			$radio = $ui.find('input.finalDiscounts[data-discount-type="zero"]');
-		}
 		$ui.find('input.finalDiscounts').prop('checked', false);
-		$radio.prop('checked', true);
-		$('#discount_type_final').val(type);
-		$('#discount_percentage_final').val(type === 'percentage' ? String(discount.value) : '');
-		$('#discount_amount_final').val(type === 'amount' ? String(discount.value) : '');
+		$ui.find('input.finalDiscounts[data-discount-type="zero"]').prop('checked', true);
+		$('#discount_type_final').val('zero');
+		$('#discount_percentage_final').val('');
+		$('#discount_amount_final').val('');
 		var inst = (typeof Quotes_Edit_Js !== 'undefined' && Quotes_Edit_Js.getInstance) ? Quotes_Edit_Js.getInstance() : null;
 		if (!inst || typeof inst.finalDiscountChangeActions !== 'function') {
 			return;
@@ -392,6 +418,14 @@
 			inst.finalDiscountUIEle = $ui;
 		}
 		inst.finalDiscountChangeActions();
+	}
+
+	function applyOrderDiscount() {
+		var discount = readOrderDiscount();
+		applyPercent(discount.value);
+		if (discount.value > 0) {
+			clearFinalDiscount();
+		}
 	}
 
 	function paint(state) {
@@ -414,7 +448,7 @@
 		decision.className = 'mk-qt-smart__decision' + (state.decisionHtml ? ' is-on' : '');
 		sum.innerHTML =
 			'<div><dt>Tạm tính</dt><dd>' + money(lines.subtotal) + ' đ</dd></div>' +
-			'<div><dt>Chiết khấu</dt><dd class="is-off">- ' + money(state.saving) + ' đ</dd></div>' +
+			'<div><dt>Chiết khấu nguyên liệu</dt><dd class="is-off">- ' + money(state.saving) + ' đ</dd></div>' +
 			'<div><dt>Chiết khấu tổng đơn</dt><dd class="is-off">- ' + money(orderOff) + ' đ</dd></div>' +
 			'<div class="is-total"><dt>Sau chiết khấu</dt><dd>' + money(after) + ' đ</dd></div>';
 	}
@@ -620,7 +654,11 @@
 				card('quantity', state.lines, { label: retail.qtyLabel, saving: retail.qtySaving, percent: 0 }, retail.qtySaving > retail.invoiceSaving);
 			state.decisionHtml = '<p class="mk-qt-smart__why">' + retail.why + '</p>';
 			paint(state);
-			applyPercent(0);
+			var chosen = orderPercentFromInput();
+			applyPercent(chosen == null ? 0 : chosen);
+			if (chosen != null && chosen > 0) {
+				clearFinalDiscount();
+			}
 			return;
 		}
 
@@ -638,7 +676,11 @@
 			card('quantity', lines, both.byQuantity, both.chosen === 'quantity');
 		state.decisionHtml = decisionHtml(both);
 		paint(state);
-		applyPercent(both.percent);
+		var chosenPercent = orderPercentFromInput();
+		applyPercent(chosenPercent == null ? both.percent : chosenPercent);
+		if (chosenPercent != null && chosenPercent > 0) {
+			clearFinalDiscount();
+		}
 	}
 
 	function schedule() {
@@ -704,11 +746,26 @@
 		}
 		booted = true;
 		ensurePanel();
-		$(document).on('input.mkOrderDisc change.mkOrderDisc', '#mkQtOrderDiscountValue, #mkQtOrderDiscountMode', function () {
+		$(document).on('change.mkOrderDisc', '#mkQtOrderDiscountPreset', function () {
+			var preset = String(this.value || '0');
 			var valueEl = document.getElementById('mkQtOrderDiscountValue');
+			if (valueEl && preset !== 'custom') {
+				valueEl.value = preset === '0' ? '' : preset;
+			}
 			if (valueEl) {
 				valueEl.setAttribute('data-mk-synced', '1');
+				if (preset === 'custom') {
+					valueEl.focus();
+				}
 			}
+			applyOrderDiscount();
+			if (lastPaint) {
+				paint(lastPaint);
+			}
+		});
+		$(document).on('input.mkOrderDisc change.mkOrderDisc', '#mkQtOrderDiscountValue', function () {
+			this.setAttribute('data-mk-synced', '1');
+			syncPreset(orderPercentFromInput() || 0);
 			applyOrderDiscount();
 			if (lastPaint) {
 				paint(lastPaint);
