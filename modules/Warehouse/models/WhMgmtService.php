@@ -3107,7 +3107,7 @@ class Warehouse_WhMgmtService {
 				continue;
 			}
 			$sku = self::formatDisplaySku(trim((string) (isset($row['sku']) ? $row['sku'] : '')));
-			$unit = self::decodeDisplayTextDeep(trim((string) (isset($row['unit']) ? $row['unit'] : '')));
+			$unit = self::displayUnit(isset($row['unit']) ? $row['unit'] : '');
 			$needsQcRaw = isset($row['needs_qc']) ? $row['needs_qc'] : 0;
 			$needsQc = ($needsQcRaw === 1 || $needsQcRaw === '1' || $needsQcRaw === true || $needsQcRaw === 'on');
 			$expiryWarnDays = (int) (isset($row['expiry_warn_days']) ? $row['expiry_warn_days'] : 0);

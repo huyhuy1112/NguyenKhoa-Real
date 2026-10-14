@@ -29,6 +29,49 @@
 		return escapeHtml(decodeEntities(s));
 	}
 
+	function displayUnit(value) {
+		var raw = decodeEntities(String(value || '')).trim();
+		if (!raw || raw === '—' || raw === '-') {
+			return '';
+		}
+		var fold = raw.toLowerCase()
+			.replace(/[áàảãạăắằẳẵặâấầẩẫậ]/g, 'a')
+			.replace(/[éèẻẽẹêếềểễệ]/g, 'e')
+			.replace(/[íìỉĩị]/g, 'i')
+			.replace(/[óòỏõọôốồổỗộơớờởỡợ]/g, 'o')
+			.replace(/[úùủũụưứừửữự]/g, 'u')
+			.replace(/[ýỳỷỹỵ]/g, 'y')
+			.replace(/đ/g, 'd');
+		var map = {
+			pcs: 'Cái', piece: 'Cái', cai: 'Cái',
+			box: 'Hộp', hop: 'Hộp',
+			set: 'Bộ', bo: 'Bộ',
+			kg: 'Kg',
+			bich: 'Bịch', bao: 'Bao', lon: 'Lon', hu: 'Hũ', goi: 'Gói',
+			can: 'Can', thung: 'Thùng', binh: 'Bình', chai: 'Chai',
+			cuon: 'Cuộn', con: 'Con', lit: 'Lít', liter: 'Lít', litre: 'Lít'
+		};
+		if (map[fold]) {
+			return map[fold];
+		}
+		var canonical = ['Cái', 'Bịch', 'Bao', 'Lon', 'Hộp', 'Hũ', 'Gói', 'Can', 'Thùng', 'Bình', 'Chai', 'Cuộn', 'Con', 'Kg', 'Bộ', 'Lít'];
+		for (var i = 0; i < canonical.length; i++) {
+			var label = canonical[i];
+			var labelFold = label.toLowerCase()
+				.replace(/[áàảãạăắằẳẵặâấầẩẫậ]/g, 'a')
+				.replace(/[éèẻẽẹêếềểễệ]/g, 'e')
+				.replace(/[íìỉĩị]/g, 'i')
+				.replace(/[óòỏõọôốồổỗộơớờởỡợ]/g, 'o')
+				.replace(/[úùủũụưứừửữự]/g, 'u')
+				.replace(/[ýỳỷỹỵ]/g, 'y')
+				.replace(/đ/g, 'd');
+			if (labelFold === fold) {
+				return label;
+			}
+		}
+		return raw;
+	}
+
 	function formatSkuLabel(sku) {
 		var s = decodeEntities(sku || '').trim();
 		if (!s || /^PS-\d+$/i.test(s)) {
@@ -3362,12 +3405,12 @@
 		var i;
 		for (i = 0; i < cat.length; i++) {
 			if (skuKey && String(cat[i].sku || '').trim() === skuKey) {
-				return decodeEntities(cat[i].unit || '');
+				return displayUnit(decodeEntities(cat[i].unit || ''));
 			}
 		}
 		for (i = 0; i < cat.length; i++) {
 			if (nameKey && String(cat[i].name || '').trim() === nameKey) {
-				return decodeEntities(cat[i].unit || '');
+				return displayUnit(decodeEntities(cat[i].unit || ''));
 			}
 		}
 		return '';
@@ -3381,7 +3424,7 @@
 		var unitEl = row.querySelector('[data-mk-line-unit="1"]');
 		var opt = selectEl.options[selectEl.selectedIndex];
 		var sku = (opt && opt.getAttribute('data-sku')) || '';
-		var unit = (opt && opt.getAttribute('data-unit')) || '';
+		var unit = displayUnit((opt && opt.getAttribute('data-unit')) || '');
 		if (skuEl) {
 			skuEl.value = sku;
 			skuEl.placeholder = sku ? 'SKU' : 'Chưa có SKU';
@@ -3400,7 +3443,7 @@
 			var p = preset || {};
 			var productId = p.productId || p.product_id || '';
 			var skuVal = p.sku || '';
-			var unitVal = p.unit || '';
+			var unitVal = displayUnit(p.unit || '');
 			var nameVal = p.name || '';
 			var priceVal = p.price != null ? p.price : '';
 			var needsQc = !!(p.needsQc || p.needs_qc);
@@ -3501,7 +3544,7 @@
 		var lot = decodeEntities((stockLot && stockLot.lot) || opt.getAttribute('data-lot') || lotKeyPart || '');
 		lot = lot.replace(/^\s*lô\s+/i, '').trim();
 		var name = decodeEntities((stockLot && stockLot.name) || opt.getAttribute('data-name') || '');
-		var unit = decodeEntities(opt.getAttribute('data-unit') || '') || lookupUnitFromCatalog(sku, name);
+		var unit = displayUnit(decodeEntities(opt.getAttribute('data-unit') || '') || lookupUnitFromCatalog(sku, name));
 		var avail = stockLot ? (Number(stockLot.qty) || 0) : (parseInt(opt.getAttribute('data-qty') || '0', 10) || 0);
 		var mfg = toDateInputValue(decodeEntities((stockLot && stockLot.mfg) || opt.getAttribute('data-mfg') || ''));
 		var expiry = toDateInputValue(decodeEntities((stockLot && (stockLot.expiry || stockLot.exp)) || opt.getAttribute('data-expiry') || ''));
@@ -3556,7 +3599,7 @@
 				'<input type="text" data-mk-line-name="1" value="' + escapeHtml(nameVal) + '" readonly tabindex="-1" class="mk-wh-proto-sku-readonly" />' +
 				'</td>' +
 				'<td class="mk-wh-proto-col-sku"><input type="text" data-mk-line-sku="1" value="' + escapeHtml(p.sku || '') + '" readonly tabindex="-1" class="mk-wh-proto-sku-readonly" placeholder="SKU" /></td>' +
-				'<td class="mk-wh-proto-col-unit"><input type="text" data-mk-line-unit="1" value="' + escapeHtml(p.unit || '') + '" readonly tabindex="-1" class="mk-wh-proto-sku-readonly" placeholder="—" /></td>' +
+				'<td class="mk-wh-proto-col-unit"><input type="text" data-mk-line-unit="1" value="' + escapeHtml(displayUnit(p.unit || '')) + '" readonly tabindex="-1" class="mk-wh-proto-sku-readonly" placeholder="—" /></td>' +
 				'<td class="mk-wh-proto-col-lot"><input type="text" data-mk-line-lot="1" value="' + escapeHtml(p.lot || '') + '" readonly tabindex="-1" class="mk-wh-proto-sku-readonly" placeholder="LOT-2605A" /></td>' +
 				'<td class="mk-wh-proto-col-qty"><input type="number" min="1" step="1" data-mk-line-qty="1" value="' + escapeHtml(p.qty != null ? p.qty : '1') + '" placeholder="100" /></td>' +
 				'<td class="mk-wh-proto-col-date"><input type="date" data-mk-line-mfg="1" value="' + escapeHtml(p.mfg || '') + '" readonly tabindex="-1" class="mk-wh-proto-sku-readonly" /></td>' +
@@ -3710,9 +3753,9 @@
 						qty: qtyOut,
 						price: Number(stockLot.price) || 0,
 						unit_price: Number(stockLot.price) || 0,
-						unit: (row.querySelector('[data-mk-line-unit="1"]')
+						unit: displayUnit((row.querySelector('[data-mk-line-unit="1"]')
 							? row.querySelector('[data-mk-line-unit="1"]').value
-							: '') || lookupUnitFromCatalog(stockLot.sku, stockLot.name),
+							: '') || lookupUnitFromCatalog(stockLot.sku, stockLot.name)),
 						mfg: toDateInputValue(mfgVal || stockLot.mfg || ''),
 						expiry: toDateInputValue(expVal || stockLot.expiry || stockLot.exp || '') || '—',
 					});

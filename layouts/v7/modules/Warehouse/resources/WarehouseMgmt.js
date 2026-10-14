@@ -1405,6 +1405,98 @@
 		}).join('');
 	}
 
+	function displayUnit(value) {
+		var raw = decodeEntities(String(value || '')).trim();
+		if (!raw || raw === '—' || raw === '-') return '';
+		var fold = raw.toLowerCase()
+			.replace(/[áàảãạăắằẳẵặâấầẩẫậ]/g, 'a')
+			.replace(/[éèẻẽẹêếềểễệ]/g, 'e')
+			.replace(/[íìỉĩị]/g, 'i')
+			.replace(/[óòỏõọôốồổỗộơớờởỡợ]/g, 'o')
+			.replace(/[úùủũụưứừửữự]/g, 'u')
+			.replace(/[ýỳỷỹỵ]/g, 'y')
+			.replace(/đ/g, 'd');
+		var map = {
+			pcs: 'Cái', piece: 'Cái', cai: 'Cái',
+			box: 'Hộp', hop: 'Hộp',
+			set: 'Bộ', bo: 'Bộ',
+			kg: 'Kg',
+			bich: 'Bịch', bao: 'Bao', lon: 'Lon', hu: 'Hũ', goi: 'Gói',
+			can: 'Can', thung: 'Thùng', binh: 'Bình', chai: 'Chai',
+			cuon: 'Cuộn', con: 'Con', lit: 'Lít', liter: 'Lít', litre: 'Lít'
+		};
+		if (map[fold]) return map[fold];
+		var canonical = ['Cái', 'Bịch', 'Bao', 'Lon', 'Hộp', 'Hũ', 'Gói', 'Can', 'Thùng', 'Bình', 'Chai', 'Cuộn', 'Con', 'Kg', 'Bộ', 'Lít'];
+		for (var i = 0; i < canonical.length; i++) {
+			var labelFold = canonical[i].toLowerCase()
+				.replace(/[áàảãạăắằẳẵặâấầẩẫậ]/g, 'a')
+				.replace(/[éèẻẽẹêếềểễệ]/g, 'e')
+				.replace(/[íìỉĩị]/g, 'i')
+				.replace(/[óòỏõọôốồổỗộơớờởỡợ]/g, 'o')
+				.replace(/[úùủũụưứừửữự]/g, 'u')
+				.replace(/[ýỳỷỹỵ]/g, 'y')
+				.replace(/đ/g, 'd');
+			if (labelFold === fold) return canonical[i];
+		}
+		return raw;
+	}
+
+	function catalogUnit(sku, name) {
+		var cat = (typeof window !== 'undefined' && window.MK_WH_PRODUCT_CATALOG) ? window.MK_WH_PRODUCT_CATALOG : [];
+		var skuKey = String(sku || '').trim();
+		var nameKey = String(name || '').trim();
+		var i;
+		for (i = 0; i < cat.length; i++) {
+			if (skuKey && String(cat[i].sku || '').trim() === skuKey) {
+				return displayUnit(cat[i].unit || '');
+			}
+		}
+		for (i = 0; i < cat.length; i++) {
+			if (nameKey && String(cat[i].name || '').trim() === nameKey) {
+				return displayUnit(cat[i].unit || '');
+			}
+		}
+		return '';
+	}
+
+	function toDateInputValue(v) {
+		var s = decodeEntities(String(v || '')).trim();
+		if (!s || s === '—' || s === '-') return '';
+		var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+		if (m) return m[1] + '-' + m[2] + '-' + m[3];
+		m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(s);
+		if (m) return m[3] + '-' + String(m[2]).padStart(2, '0') + '-' + String(m[1]).padStart(2, '0');
+		return '';
+	}
+
+	function nextIssueId(issues) {
+		var max = 0;
+		(issues || []).forEach(function (x) {
+			var id = String(x && (x.id || x.code) ? (x.id || x.code) : '');
+			var m = /^GIN-(\d+)$/.exec(id);
+			if (m && m[1]) {
+				var n = parseInt(m[1], 10);
+				if (!isNaN(n) && n > max) max = n;
+			}
+		});
+		return 'GIN-' + String(max + 1).padStart(4, '0');
+	}
+
+	function notifyTransfer(msg, isError) {
+		var safe = escapeHtml(msg);
+		if (window.app && app.helper) {
+			if (isError && app.helper.showErrorNotification) {
+				app.helper.showErrorNotification({ message: safe });
+				return;
+			}
+			if (!isError && app.helper.showSuccessNotification) {
+				app.helper.showSuccessNotification({ message: safe });
+				return;
+			}
+		}
+		window.alert(String(msg || ''));
+	}
+
 	function bindTransferEvents() {
 		var root = qs('#mkWhMgmtRoot');
 		var modal = qs('#mkWhTransferFormModal');
@@ -1412,46 +1504,138 @@
 		var createBtn = qs('#mkWhTransferCreateBtn');
 		var fromSel = qs('#mkWhTrfFrom');
 		var toSel = qs('#mkWhTrfTo');
-		var lotSel = qs('#mkWhTrfLot');
+		var searchSel = qs('#mkWhTrfSearch');
+		var linesBody = qs('#mkWhTrfLines');
+		var saving = false;
 
 		if (!root) return;
 
-		function fillWarehouseSelects() {
-			var wh = S.getState().warehouses;
-			if (fromSel) {
-				fromSel.innerHTML = '<option value="">Chọn kho nguồn</option>' +
-					wh.map(function (w) { return '<option value="' + escapeHtml(w.id) + '">' + escText(w.name) + '</option>'; }).join('');
-			}
-			if (toSel) {
-				toSel.innerHTML = '<option value="">Chọn kho đích</option>' +
-					wh.map(function (w) { return '<option value="' + escapeHtml(w.id) + '">' + escText(w.name) + '</option>'; }).join('');
-			}
-		}
-
-		function fillLotSelect(fromId) {
-			if (!lotSel) return;
-			if (!fromId) {
-				lotSel.disabled = true;
-				lotSel.innerHTML = '<option value="">Chọn kho nguồn trước</option>';
-				return;
-			}
-			var stock = (S.ensureData(fromId).stock || []).filter(function (s) { return s.qty > 0; });
-			lotSel.disabled = false;
-			lotSel.innerHTML = '<option value="">Chọn lô từ kho nguồn</option>' +
-				stock.map(function (s) {
-					var key = s.sku + '|' + s.lot;
-					return '<option value="' + escapeHtml(key) + '">' + escapeHtml(s.name) + ' · ' + escapeHtml(s.lot) + ' · còn ' + s.qty + '</option>';
+		function warehouseOptions(placeholder) {
+			var wh = S.getState().warehouses || [];
+			return '<option value="">' + escapeHtml(placeholder) + '</option>' +
+				wh.map(function (w) {
+					return '<option value="' + escapeHtml(w.id) + '">' + escText(w.name || w.id) + '</option>';
 				}).join('');
 		}
 
+		function stockLots(fromId) {
+			return (S.ensureData(fromId).stock || [])
+				.filter(function (s) { return (Number(s.qty) || 0) > 0; })
+				.slice()
+				.sort(function (a, b) {
+					var an = String(a.name || '');
+					var bn = String(b.name || '');
+					if (an !== bn) return an.localeCompare(bn, 'vi');
+					return String(a.lot || '').localeCompare(String(b.lot || ''), 'vi');
+				});
+		}
+
+		function destroySearch() {
+			if (!searchSel || !$.fn || !$.fn.select2) return;
+			var $el = $(searchSel);
+			if (!$el.data('mkTrfSelect2')) return;
+			try { $el.off('.mkTrfSearch'); $el.select2('destroy'); } catch (e) { /* ignore */ }
+			$el.removeData('mkTrfSelect2');
+		}
+
+		function fillSearch(fromId) {
+			destroySearch();
+			if (!searchSel) return;
+			if (!fromId) {
+				searchSel.disabled = true;
+				searchSel.innerHTML = '<option value="">Chọn kho nguồn trước</option>';
+				return;
+			}
+			var lots = stockLots(fromId);
+			if (!lots.length) {
+				searchSel.disabled = true;
+				searchSel.innerHTML = '<option value="">Kho nguồn chưa có tồn</option>';
+				return;
+			}
+			searchSel.disabled = false;
+			searchSel.innerHTML = '<option value=""></option>' + lots.map(function (s) {
+				var name = decodeEntities(s.name || s.sku || '');
+				var sku = decodeEntities(s.sku || '');
+				var lot = decodeEntities(s.lot || '').replace(/^\s*lô\s+/i, '').trim();
+				var key = sku + '|' + lot;
+				var qty = Number(s.qty) || 0;
+				var unit = catalogUnit(sku, name) || displayUnit(s.unit || '');
+				var mfg = toDateInputValue(s.mfg || '');
+				var expiry = toDateInputValue(s.expiry || s.exp || '');
+				var label = name + (lot ? ' · Lô ' + lot : '') + ' · còn ' + qty;
+				return '<option value="' + escapeHtml(key) + '" data-sku="' + escapeHtml(sku) +
+					'" data-name="' + escapeHtml(name) + '" data-lot="' + escapeHtml(lot) +
+					'" data-qty="' + escapeHtml(String(qty)) + '" data-unit="' + escapeHtml(unit) +
+					'" data-mfg="' + escapeHtml(mfg) + '" data-expiry="' + escapeHtml(expiry) +
+					'" data-price="' + escapeHtml(String(s.price || 0)) + '">' + escapeHtml(label) + '</option>';
+			}).join('');
+			if ($.fn && $.fn.select2) {
+				var $el = $(searchSel);
+				$el.data('mkTrfSelect2', true);
+				try {
+					$el.select2({
+						placeholder: 'Tìm lô hàng trong kho…',
+						allowClear: true,
+						width: '100%',
+						minimumResultsForSearch: 0,
+						dropdownCssClass: 'mk-wh-proto-s2-drop mk-wh-proto-s2-quick'
+					});
+				} catch (e) { /* plain select */ }
+			}
+		}
+
+		function clearLines() {
+			if (linesBody) linesBody.innerHTML = '';
+		}
+
+		function addLineFromOption(opt) {
+			if (!linesBody || !opt) return;
+			var sku = decodeEntities(opt.getAttribute('data-sku') || '');
+			var lot = decodeEntities(opt.getAttribute('data-lot') || '');
+			var name = decodeEntities(opt.getAttribute('data-name') || '');
+			var unit = displayUnit(opt.getAttribute('data-unit') || '') || catalogUnit(sku, name);
+			var qtyAvail = parseInt(opt.getAttribute('data-qty') || '0', 10) || 0;
+			var mfg = opt.getAttribute('data-mfg') || '';
+			var expiry = opt.getAttribute('data-expiry') || '';
+			var price = opt.getAttribute('data-price') || '0';
+			var key = sku + '|' + lot;
+			var existing = null;
+			Array.prototype.forEach.call(linesBody.querySelectorAll('[data-mk-line="1"]'), function (row) {
+				if (row.getAttribute('data-lot-key') === key) existing = row;
+			});
+			if (existing) {
+				var qtyEl = existing.querySelector('[data-mk-line-qty="1"]');
+				if (qtyEl) {
+					try { qtyEl.focus(); qtyEl.select(); } catch (e) { /* ignore */ }
+				}
+				return;
+			}
+			var nameLabel = name + (lot ? ' · Lô ' + lot : '');
+			linesBody.insertAdjacentHTML('beforeend',
+				'<tr data-mk-line="1" data-lot-key="' + escapeHtml(key) + '" data-price="' + escapeHtml(price) + '">' +
+				'<td><input type="text" data-mk-line-name="1" value="' + escapeHtml(nameLabel) + '" readonly tabindex="-1" class="mk-wh-proto-sku-readonly" /></td>' +
+				'<td class="mk-wh-proto-col-sku"><input type="text" data-mk-line-sku="1" value="' + escapeHtml(sku) + '" readonly tabindex="-1" class="mk-wh-proto-sku-readonly" /></td>' +
+				'<td class="mk-wh-proto-col-unit"><input type="text" data-mk-line-unit="1" value="' + escapeHtml(unit) + '" readonly tabindex="-1" class="mk-wh-proto-sku-readonly" /></td>' +
+				'<td class="mk-wh-proto-col-lot"><input type="text" data-mk-line-lot="1" value="' + escapeHtml(lot) + '" readonly tabindex="-1" class="mk-wh-proto-sku-readonly" /></td>' +
+				'<td class="mk-wh-proto-col-qty"><input type="number" min="1" step="1" max="' + escapeHtml(String(qtyAvail)) + '" data-mk-line-qty="1" value="1" /></td>' +
+				'<td class="mk-wh-proto-col-date"><input type="date" data-mk-line-mfg="1" value="' + escapeHtml(mfg) + '" readonly tabindex="-1" class="mk-wh-proto-sku-readonly" /></td>' +
+				'<td class="mk-wh-proto-col-date"><input type="date" data-mk-line-exp="1" value="' + escapeHtml(expiry) + '"' + (expiry ? ' readonly tabindex="-1" class="mk-wh-proto-sku-readonly"' : '') + ' /></td>' +
+				'<td><button type="button" class="mk-wh-proto-btn mk-wh-proto-btn--ghost mk-wh-proto-lines__del" data-mk-trf-del="1" title="Xóa dòng">×</button></td>' +
+				'</tr>');
+		}
+
 		function openModal() {
-			fillWarehouseSelects();
-			fillLotSelect('');
-			if (form) form.reset();
+			if (fromSel) fromSel.innerHTML = warehouseOptions('Chọn kho nguồn');
+			if (toSel) toSel.innerHTML = warehouseOptions('Chọn kho đích');
+			var code = qs('#mkWhTrfCode');
+			if (code) code.value = '';
+			clearLines();
+			fillSearch('');
 			if (modal) modal.classList.remove('hide');
 		}
 
 		function closeModal() {
+			destroySearch();
 			if (modal) modal.classList.add('hide');
 		}
 
@@ -1459,14 +1643,40 @@
 
 		if (fromSel) {
 			fromSel.addEventListener('change', function () {
-				fillLotSelect(fromSel.value);
 				if (toSel && toSel.value === fromSel.value) toSel.value = '';
+				clearLines();
+				fillSearch(fromSel.value);
+			});
+		}
+		if (toSel && fromSel) {
+			toSel.addEventListener('change', function () {
+				if (toSel.value && toSel.value === fromSel.value) toSel.value = '';
+			});
+		}
+
+		if (searchSel) {
+			searchSel.addEventListener('change', function () {
+				var opt = searchSel.options[searchSel.selectedIndex];
+				if (!searchSel.value || !opt) return;
+				addLineFromOption(opt);
+				if ($.fn && $.fn.select2 && $(searchSel).data('mkTrfSelect2')) {
+					try { $(searchSel).select2('val', ''); } catch (e) { searchSel.value = ''; }
+				} else {
+					searchSel.value = '';
+				}
 			});
 		}
 
 		root.addEventListener('click', function (e) {
-			if (e.target.getAttribute && e.target.getAttribute('data-mk-wh-trf-close') === '1') {
+			var closeEl = e.target.closest ? e.target.closest('[data-mk-wh-trf-close="1"]') : null;
+			if (closeEl) {
 				closeModal();
+				return;
+			}
+			var del = e.target.closest ? e.target.closest('[data-mk-trf-del="1"]') : null;
+			if (del) {
+				var row = del.closest('tr');
+				if (row) row.parentNode.removeChild(row);
 				return;
 			}
 			var action = e.target.getAttribute && e.target.getAttribute('data-mk-trf-action');
@@ -1483,30 +1693,102 @@
 		if (form) {
 			form.addEventListener('submit', function (e) {
 				e.preventDefault();
+				if (saving) return;
 				var from = fromSel ? fromSel.value : '';
 				var to = toSel ? toSel.value : '';
-				var lotKey = lotSel ? lotSel.value : '';
-				var qty = parseInt(qs('#mkWhTrfQty').value, 10) || 0;
-				var reason = qs('#mkWhTrfReason') ? qs('#mkWhTrfReason').value.trim() : '';
-				if (!from || !to || from === to || !lotKey || qty <= 0) return;
-				var parts = lotKey.split('|');
-				var sku = parts[0];
-				var lot = parts[1];
-				var stock = S.ensureData(from).stock || [];
-				var s = stock.find(function (x) { return x.sku === sku && x.lot === lot; });
-				if (!s || qty > s.qty) return;
-				S.transferActions.create({
-					fromWarehouseId: from,
-					toWarehouseId: to,
-					sku: s.sku,
-					name: s.name,
-					lot: s.lot,
-					qty: qty,
-					reason: reason || '—',
-					requestedBy: (getAccess().userName || 'User'),
+				var soRef = qs('#mkWhTrfCode') ? qs('#mkWhTrfCode').value.trim() : '';
+				if (!from || !to || from === to) {
+					notifyTransfer('Chọn kho nguồn và kho đích khác nhau.', true);
+					return;
+				}
+				var rows = linesBody ? Array.prototype.slice.call(linesBody.querySelectorAll('[data-mk-line="1"]')) : [];
+				var outLines = [];
+				var outError = '';
+				rows.forEach(function (row) {
+					var sku = row.querySelector('[data-mk-line-sku="1"]') ? row.querySelector('[data-mk-line-sku="1"]').value.trim() : '';
+					var lot = row.querySelector('[data-mk-line-lot="1"]') ? row.querySelector('[data-mk-line-lot="1"]').value.trim() : '';
+					var qtyOut = row.querySelector('[data-mk-line-qty="1"]')
+						? (parseInt(row.querySelector('[data-mk-line-qty="1"]').value, 10) || 0)
+						: 0;
+					var expiry = row.querySelector('[data-mk-line-exp="1"]') ? row.querySelector('[data-mk-line-exp="1"]').value : '';
+					if (!sku && !lot && !qtyOut) return;
+					if (!lot || qtyOut <= 0) {
+						outError = 'Mỗi dòng cần lô và số lượng.';
+						return;
+					}
+					if (!expiry) {
+						outError = 'Mỗi dòng cần hạn sử dụng.';
+						return;
+					}
+					var stock = (S.ensureData(from).stock || []).find(function (s) {
+						return decodeEntities(s.sku || '').trim() === sku &&
+							decodeEntities(s.lot || '').replace(/^\s*lô\s+/i, '').trim() === lot;
+					});
+					if (!stock) {
+						outError = 'Lô hàng không còn trong kho nguồn.';
+						return;
+					}
+					var avail = Number(stock.qty) || 0;
+					if (qtyOut > avail) {
+						outError = 'Số lượng xuất vượt tồn (còn ' + avail + ').';
+						return;
+					}
+					var name = decodeEntities(stock.name || '');
+					var unit = displayUnit(row.querySelector('[data-mk-line-unit="1"]')
+						? row.querySelector('[data-mk-line-unit="1"]').value
+						: '') || catalogUnit(sku, name) || displayUnit(stock.unit || '');
+					var mfg = row.querySelector('[data-mk-line-mfg="1"]') ? row.querySelector('[data-mk-line-mfg="1"]').value : '';
+					outLines.push({
+						sku: stock.sku || sku,
+						name: name,
+						lot: stock.lot || lot,
+						qty: qtyOut,
+						price: Number(stock.price) || 0,
+						unit_price: Number(stock.price) || 0,
+						unit: unit,
+						mfg: mfg || toDateInputValue(stock.mfg || ''),
+						expiry: expiry
+					});
 				});
-				closeModal();
-				renderTransfers();
+				if (outError) {
+					notifyTransfer(outError, true);
+					return;
+				}
+				if (!outLines.length) {
+					notifyTransfer('Thêm ít nhất một dòng hàng xuất.', true);
+					return;
+				}
+				var dest = (S.getState().warehouses || []).find(function (w) { return w.id === to; });
+				var userEl = qs('#mkWhTrfUser');
+				var userName = userEl ? String(userEl.value || '').trim() : '';
+				var data = S.ensureData(from);
+				var issue = {
+					id: nextIssueId(data.issues || []),
+					outboundType: 'transfer',
+					customer: dest ? (dest.name || dest.id) : to,
+					toWarehouseId: to,
+					soRef: soRef || '—',
+					status: 'waiting_print',
+					createdAt: S.nowISO(),
+					createdBy: userName || 'User',
+					lines: outLines,
+					timeline: [],
+					stockDeducted: false
+				};
+				if (!(S.useDb && S.useDb() && S.warehouseDataActions && S.warehouseDataActions.saveIssue)) {
+					notifyTransfer('Chế độ lưu database chưa sẵn sàng.', true);
+					return;
+				}
+				saving = true;
+				S.warehouseDataActions.saveIssue(from, issue).then(function (res) {
+					saving = false;
+					var code = (res && res.code) ? res.code : issue.id;
+					closeModal();
+					notifyTransfer('Đã tạo phiếu xuất ' + code + ' tại kho nguồn. Mở kho đó, tab Xuất kho để xem.');
+				}).fail(function (err) {
+					saving = false;
+					notifyTransfer((err && err.message) || 'Không lưu được phiếu xuất.', true);
+				});
 			});
 		}
 	}

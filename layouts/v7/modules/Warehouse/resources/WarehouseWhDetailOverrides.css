@@ -466,10 +466,20 @@ body[data-module="Warehouse"][data-view="WhDetail"][data-app="INVENTORY"] .mk-wh
 	text-align: right;
 }
 
-body[data-module="Warehouse"][data-view="WhDetail"][data-app="INVENTORY"] .mk-wh-proto-lines__table .mk-wh-proto-col-lot input,
+body[data-module="Warehouse"][data-view="WhDetail"][data-app="INVENTORY"] .mk-wh-proto-lines__table .mk-wh-proto-col-sku {
+	min-width: 280px !important;
+	width: 280px !important;
+}
+body[data-module="Warehouse"][data-view="WhDetail"][data-app="INVENTORY"] .mk-wh-proto-lines__table .mk-wh-proto-col-lot input {
+	overflow: visible !important;
+	text-overflow: clip !important;
+}
 body[data-module="Warehouse"][data-view="WhDetail"][data-app="INVENTORY"] .mk-wh-proto-lines__table .mk-wh-proto-col-sku input {
 	overflow: visible !important;
 	text-overflow: clip !important;
+	white-space: nowrap !important;
+	min-width: 260px !important;
+	text-align: left !important;
 }
 
 body[data-module="Warehouse"][data-view="WhDetail"][data-app="INVENTORY"] .mk-wh-proto-col-loc {

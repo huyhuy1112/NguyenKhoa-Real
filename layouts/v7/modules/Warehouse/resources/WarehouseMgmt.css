@@ -1538,3 +1538,33 @@ body[data-module="Warehouse"][data-view="WhList"][data-app="INVENTORY"] .mk-wh-l
 		animation: none !important;
 	}
 }
+
+.mk-wh-trf-modal.mk-wh-mgmt-modal__panel--wide {
+	width: min(1280px, calc(100vw - 32px));
+	max-height: 90vh;
+	overflow: auto;
+}
+
+.mk-wh-trf-form .mk-wh-proto-lines__tableWrap {
+	overflow-x: auto;
+	max-width: 100%;
+}
+
+.mk-wh-trf-form .mk-wh-proto-lines__table {
+	min-width: 1420px;
+	width: max-content;
+}
+
+.mk-wh-trf-form .mk-wh-proto-col-sku {
+	min-width: 280px;
+	width: 280px;
+}
+
+.mk-wh-trf-form .mk-wh-proto-col-sku input {
+	width: 100%;
+	min-width: 260px;
+	text-align: left;
+	white-space: nowrap;
+	overflow: visible;
+	text-overflow: clip;
+}
