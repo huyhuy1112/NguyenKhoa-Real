@@ -294,7 +294,7 @@
 		function setMsg(text, isErr) { showToast(msg, text, !!isErr); }
 
 		function emptyLinesHtml() {
-			return '<tr class="mk-purchase-empty-row"><td colspan="7"><div class="mk-purchase-empty">' +
+			return '<tr class="mk-purchase-empty-row"><td colspan="9"><div class="mk-purchase-empty">' +
 				'<div class="mk-purchase-empty__icon" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>' +
 				'<p class="mk-purchase-empty__title">Chưa có dòng hàng</p>' +
 				'<p class="mk-purchase-empty__sub">Gõ mã hoặc tên sản phẩm rồi chọn để thêm.</p></div></td></tr>';
@@ -325,10 +325,12 @@
 				return '<tr data-idx="' + idx + '">' +
 					'<td><span class="mk-purchase-code">' + esc(ln.sku || '—') + '</span></td>' +
 					'<td>' + esc(ln.name) + '</td>' +
-					'<td><input class="mk-purchase-cell" data-f="lot" value="' + esc(ln.lot || '') + '" placeholder="LOT-…" /></td>' +
+					'<td><input class="mk-purchase-cell" data-f="lot" value="' + esc(ln.lot || '') + '" placeholder="Nhập lô" required /></td>' +
+					'<td><input class="mk-purchase-cell mk-purchase-cell--date" data-f="mfg" type="date" value="' + esc(ln.mfg || '') + '" /></td>' +
+					'<td><input class="mk-purchase-cell mk-purchase-cell--date" data-f="expiry" type="date" value="' + esc(ln.expiry || '') + '" required /></td>' +
 					'<td class="is-num"><input class="mk-purchase-cell mk-purchase-cell--num" data-f="qty" type="number" min="0" step="1" value="' + esc(ln.qty) + '" /></td>' +
 					'<td class="is-num"><input class="mk-purchase-cell mk-purchase-cell--num" data-f="price" type="number" min="0" step="1000" value="' + esc(ln.price) + '" /></td>' +
-					'<td class="is-num">' + money(amount) + '</td>' +
+					'<td class="is-num mk-purchase-line-amount">' + money(amount) + '</td>' +
 					'<td class="is-action"><button type="button" class="mk-purchase-remove" data-idx="' + idx + '">×</button></td></tr>';
 			}).join('');
 			updateTotals();
@@ -351,11 +353,13 @@
 			if (idx < 0 || !lines[idx]) return;
 			var f = t.getAttribute('data-f');
 			if (f === 'lot') lines[idx].lot = t.value;
+			if (f === 'mfg') lines[idx].mfg = t.value;
+			if (f === 'expiry') lines[idx].expiry = t.value;
 			if (f === 'qty') lines[idx].qty = Number(t.value) || 0;
 			if (f === 'price') lines[idx].price = Number(t.value) || 0;
 			updateTotals();
 			if (f === 'qty' || f === 'price') {
-				var amtCell = tr.querySelectorAll('td')[5];
+				var amtCell = tr.querySelector('.mk-purchase-line-amount');
 				if (amtCell) amtCell.textContent = money((Number(lines[idx].qty) || 0) * (Number(lines[idx].price) || 0));
 			}
 		});
@@ -418,7 +422,7 @@
 			if (!name) return;
 			var existing = lines.find(function (ln) { return ln.product_id === id && id > 0; });
 			if (existing) existing.qty = (Number(existing.qty) || 0) + 1;
-			else lines.push({ product_id: id, sku: btn.getAttribute('data-sku') || '', name: name, lot: '', qty: 1, price: Number(btn.getAttribute('data-price') || 0) });
+			else lines.push({ product_id: id, sku: btn.getAttribute('data-sku') || '', name: name, lot: '', mfg: '', expiry: '', qty: 1, price: Number(btn.getAttribute('data-price') || 0) });
 			productQ.value = '';
 			productSuggest.hidden = true;
 			renderLines();
@@ -441,7 +445,20 @@
 				if (!wh) throw new Error('Chọn kho nhận.');
 				if (!name) throw new Error('Chọn hoặc nhập nhà cung cấp.');
 				var clean = lines.filter(function (ln) { return (Number(ln.qty) || 0) > 0 && ln.name; }).map(function (ln) {
-					return { product_id: ln.product_id || 0, sku: ln.sku || '', name: ln.name, lot: ln.lot || '', qty: Number(ln.qty) || 0, price: Number(ln.price) || 0 };
+					var lot = String(ln.lot || '').trim();
+					var expiry = String(ln.expiry || '').trim();
+					if (!lot) throw new Error('Dòng "' + ln.name + '" chưa nhập lô.');
+					if (!expiry) throw new Error('Dòng "' + ln.name + '" chưa nhập hạn sử dụng.');
+					return {
+						product_id: ln.product_id || 0,
+						sku: ln.sku || '',
+						name: ln.name,
+						lot: lot,
+						mfg: String(ln.mfg || '').trim(),
+						expiry: expiry,
+						qty: Number(ln.qty) || 0,
+						price: Number(ln.price) || 0
+					};
 				});
 				if (!clean.length) throw new Error('Thêm ít nhất một dòng hàng.');
 				var payload = {

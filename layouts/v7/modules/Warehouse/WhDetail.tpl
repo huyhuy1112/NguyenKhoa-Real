@@ -187,6 +187,7 @@
 								<col class="mk-wh-stock-col-forecast" />
 								<col class="mk-wh-stock-col-price" />
 								<col class="mk-wh-stock-col-loc" />
+								<col class="mk-wh-stock-col-unit" />
 								<col class="mk-wh-stock-col-qty" />
 							</colgroup>
 							<thead>
@@ -198,6 +199,7 @@
 									<th class="mk-wh-stock-col-forecast">Dự kiến hết</th>
 									<th class="mk-wh-stock-col-price">Giá</th>
 									<th class="mk-wh-stock-col-loc">Vị trí</th>
+									<th class="mk-wh-stock-col-unit">ĐVT</th>
 									<th class="mk-wh-stock-col-qty">Tồn</th>
 								</tr>
 							</thead>

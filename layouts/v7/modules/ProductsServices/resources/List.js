@@ -8,7 +8,7 @@
 	var CANONICAL_HEADERS = ['sku', 'productsservicesname', 'price_lt_1m', 'price_tuibao'];
 	var PAGE_SIZE = 20;
 	var SEARCH_DEBOUNCE_MS = 180;
-	var COL_COUNT = 10;
+	var COL_COUNT = 12;
 	var FILTER_PANEL_STORAGE_KEY = 'mk_ps_filters_open_v1';
 
 	var catalogItems = [];
@@ -463,6 +463,7 @@
 				'<th class="mk-col-ps-tuibao" scope="col">Giá Tuibao</th>' +
 				'<th class="mk-col-ps-miutea" scope="col">Giá Miutea</th>' +
 				'<th class="mk-col-ps-stock" scope="col">Tồn kho</th>' +
+				'<th class="mk-col-ps-unit" scope="col">Đơn vị tính</th>' +
 				'<th class="mk-col-ps-order" scope="col">Khách đặt</th>' +
 				'<th class="mk-col-ps-created" scope="col">Thời gian tạo</th>' +
 				'<th class="mk-col-ps-stockout" scope="col">Dự kiến hết hàng</th>' +
@@ -479,6 +480,7 @@
 				'<col style="width:110px" />' +
 				'<col style="width:110px" />' +
 				'<col style="width:90px" />' +
+				'<col style="width:110px" />' +
 				'<col style="width:90px" />' +
 				'<col style="width:140px" />' +
 				'<col style="width:120px" />' +
@@ -634,6 +636,9 @@
 			stockCls +
 			'">' +
 			esc(formatQty(stock)) +
+			'</span></td>' +
+			'<td class="listViewEntryValue mk-col-ps-unit" data-name="unit"><span class="value">' +
+			esc(String(it.unit || '').trim() || '—') +
 			'</span></td>' +
 			'<td class="listViewEntryValue mk-col-ps-order"><span class="' +
 			orderCls +

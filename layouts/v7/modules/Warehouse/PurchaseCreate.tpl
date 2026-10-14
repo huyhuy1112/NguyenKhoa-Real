@@ -87,7 +87,9 @@
 							<tr>
 								<th>Mã</th>
 								<th>Tên hàng</th>
-								<th>Lô</th>
+								<th>Lô *</th>
+								<th>NSX</th>
+								<th>HSD *</th>
 								<th class="is-num">SL</th>
 								<th class="is-num">Giá nhập</th>
 								<th class="is-num">Thành tiền</th>
@@ -96,7 +98,7 @@
 						</thead>
 						<tbody id="mkPurchaseLinesBody">
 							<tr class="mk-purchase-empty-row">
-								<td colspan="7">
+								<td colspan="9">
 									<div class="mk-purchase-empty">
 										<div class="mk-purchase-empty__icon" aria-hidden="true">
 											<svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>

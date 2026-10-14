@@ -1804,7 +1804,7 @@ body[data-module="ProductsServices"][data-view="List"].mk-ps-ba-list .mk-ps-mute
 }
 
 body[data-module="ProductsServices"][data-view="List"].mk-ps-ba-list #listview-table.mk-ps-ba-table {
-	min-width: 1080px !important;
+	min-width: 1180px !important;
 }
 
 body[data-module="ProductsServices"][data-view="List"].mk-ps-ba-list #listview-table .mk-col-ps-price,
@@ -1813,6 +1813,11 @@ body[data-module="ProductsServices"][data-view="List"].mk-ps-ba-list #listview-t
 body[data-module="ProductsServices"][data-view="List"].mk-ps-ba-list #listview-table .mk-col-ps-stock,
 body[data-module="ProductsServices"][data-view="List"].mk-ps-ba-list #listview-table .mk-col-ps-order {
 	text-align: right !important;
+}
+
+body[data-module="ProductsServices"][data-view="List"].mk-ps-ba-list #listview-table .mk-col-ps-unit {
+	text-align: left !important;
+	white-space: nowrap;
 }
 
 body[data-module="ProductsServices"][data-view="List"].mk-ps-ba-list #listview-table .mk-col-ps-star {

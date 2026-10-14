@@ -27,19 +27,19 @@
 <link rel="stylesheet" type="text/css" href="{vresource_url('layouts/v7/modules/Vtiger/resources/MkInventoryListShared.css')}?mk_v=20261006_stock_import1" />
 <link rel="stylesheet" type="text/css" href="{vresource_url('layouts/v7/modules/Warehouse/resources/WarehousePrototype.css')}?mk_v=20261006_stock_import1" />
 {if $VIEW eq 'WhDetail'}
-<link rel="stylesheet" type="text/css" href="{vresource_url('layouts/v7/modules/Warehouse/resources/WarehouseWhDetailOverrides.css')}?mk_v=20261011_stockui2" />
+<link rel="stylesheet" type="text/css" href="{vresource_url('layouts/v7/modules/Warehouse/resources/WarehouseWhDetailOverrides.css')}?mk_v=20261014_unit1" />
 {elseif $VIEW eq 'PurchaseCreate' || $VIEW eq 'PurchaseHistory' || $VIEW eq 'PurchaseDetail' || $VIEW eq 'VendorList'}
 <link rel="stylesheet" type="text/css" href="{vresource_url('layouts/v7/modules/Warehouse/resources/WarehouseMgmt.css')}?mk_v=20261006_stock_import1" />
-<link rel="stylesheet" type="text/css" href="{vresource_url('layouts/v7/modules/Warehouse/resources/PurchaseMgmt.css')}?mk_v=20261013_ncc2" />
+<link rel="stylesheet" type="text/css" href="{vresource_url('layouts/v7/modules/Warehouse/resources/PurchaseMgmt.css')}?mk_v=20261014_lotdate1" />
 {else}
 <link rel="stylesheet" type="text/css" href="{vresource_url('layouts/v7/modules/Warehouse/resources/WarehouseMgmt.css')}?mk_v=20261006_stock_import1" />
 {/if}
 <script type="text/javascript" src="{vresource_url('layouts/v7/modules/Vtiger/resources/DashboardSidebarNav.js')}"></script>
 <script type="text/javascript" src="{vresource_url('layouts/v7/modules/Warehouse/resources/WarehouseLocalStore.js')}?mk_v=20261011_confirm1"></script>
 {if $VIEW eq 'WhDetail'}
-	<script type="text/javascript" src="{vresource_url('layouts/v7/modules/Warehouse/resources/WarehouseWhDetailPrototype.js')}?mk_v=20261011_confirm1"></script>
+	<script type="text/javascript" src="{vresource_url('layouts/v7/modules/Warehouse/resources/WarehouseWhDetailPrototype.js')}?mk_v=20261014_lotdate1"></script>
 {elseif $VIEW eq 'PurchaseCreate' || $VIEW eq 'PurchaseHistory' || $VIEW eq 'PurchaseDetail' || $VIEW eq 'VendorList'}
-	<script type="text/javascript" src="{vresource_url('layouts/v7/modules/Warehouse/resources/PurchaseMgmt.js')}?mk_v=20261013_ncc2"></script>
+	<script type="text/javascript" src="{vresource_url('layouts/v7/modules/Warehouse/resources/PurchaseMgmt.js')}?mk_v=20261014_lotdate1"></script>
 {else}
 	<script type="text/javascript" src="{vresource_url('layouts/v7/modules/Warehouse/resources/WarehouseMgmt.js')}?mk_v=20261011_confirm1"></script>
 {/if}

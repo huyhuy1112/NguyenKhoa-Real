@@ -1645,6 +1645,7 @@
 				'<td class="mk-wh-stock-col-forecast ' + (soSoon ? 'mk-wh-proto-hsd mk-wh-proto-hsd--soon' : 'mk-wh-proto-muted') + '">' + escText(soLabel) + '</td>' +
 				'<td class="mk-wh-stock-col-price">' + escText(fmtPrice(s.price)) + '</td>' +
 				'<td class="mk-wh-stock-col-loc">' + locCell + '</td>' +
+				'<td class="mk-wh-stock-col-unit">' + escText(s.unit || '—') + '</td>' +
 				'<td class="mk-wh-stock-col-qty' + qtyCls + '"' + (qtyTitle ? ' title="' + escText(qtyTitle) + '"' : '') + '><strong>' + escText(formatStockQty(s.qty)) + '</strong></td>' +
 			'</tr>';
 		}).join('');
@@ -3078,7 +3079,7 @@
 					'<th class="mk-wh-proto-col-name">Tên hàng *</th><th class="mk-wh-proto-col-sku">SKU</th>' +
 					'<th class="mk-wh-proto-col-unit">Đơn vị</th>' +
 					'<th class="mk-wh-proto-col-lot">Lô *</th><th class="mk-wh-proto-col-qty">SL *</th>' +
-					'<th class="mk-wh-proto-col-date">NSX</th><th class="mk-wh-proto-col-date">HSD</th>' +
+					'<th class="mk-wh-proto-col-date">NSX</th><th class="mk-wh-proto-col-date">HSD *</th>' +
 					locTh + '<th class="mk-wh-proto-col-act"></th>' +
 					'</tr></thead><tbody data-mk-lines-body="1"></tbody></table></div></div></div></div>';
 			}
@@ -3795,6 +3796,7 @@
 			var rows = Array.prototype.slice.call(form.querySelectorAll('[data-mk-line="1"]'));
 			var lines = [];
 			var missingSku = false;
+			var missingLotDate = false;
 			rows.forEach(function (row) {
 				var productIdEl = row.querySelector('[data-mk-line-product-id="1"]');
 				var productId = productIdEl ? (parseInt(productIdEl.value, 10) || 0) : 0;
@@ -3815,16 +3817,23 @@
 				if (!unit && row.querySelector('[data-mk-line-unit="1"]')) {
 					unit = row.querySelector('[data-mk-line-unit="1"]').value.trim();
 				}
-				if (!productId && !lot && !qty) return;
-				if (!productId || !name || !lot || qty <= 0) return;
+				if (!productId && !lot && !qty && !expiry) return;
+				if (!productId || !name || !lot || qty <= 0 || !expiry) {
+					missingLotDate = true;
+					return;
+				}
 				if (productId && !sku) {
 					missingSku = true;
 					return;
 				}
-				lines.push({ product_id: productId, sku: sku, name: name, lot: lot, mfg: mfg || '', expiry: expiry || '—', qty: qty, price: price, unit: unit, location: location, needsQc: needsQc });
+				lines.push({ product_id: productId, sku: sku, name: name, lot: lot, mfg: mfg || '', expiry: expiry, qty: qty, price: price, unit: unit, location: location, needsQc: needsQc });
 			});
 			if (missingSku) {
 				showError('Một hoặc nhiều sản phẩm chưa có SKU. Hãy cập nhật SKU trong Products & Services trước khi nhập kho.');
+				return;
+			}
+			if (missingLotDate) {
+				showError('Mỗi dòng hàng phải nhập lô và hạn sử dụng.');
 				return;
 			}
 			if (!lines.length) {

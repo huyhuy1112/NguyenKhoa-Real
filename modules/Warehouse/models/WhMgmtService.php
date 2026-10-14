@@ -2635,6 +2635,7 @@ class Warehouse_WhMgmtService {
 		}
 
 		$warnMap = self::productExpiryWarnDaysMap($db, array_values($productIds));
+		$unitMap = self::productUnitMap($db, array_values($productIds));
 		$velocity = self::salesVelocityMap($db);
 		$onHandByKey = array();
 		foreach ($out as $item) {
@@ -2660,6 +2661,9 @@ class Warehouse_WhMgmtService {
 				}
 			}
 			$out[$i]['avgDailySales'] = $avg;
+			$out[$i]['unit'] = ($pid > 0 && isset($unitMap[$pid]))
+				? $unitMap[$pid]
+				: ($pid > 0 ? '' : self::lookupProductUnit($db, 0, $item['sku'], $item['name']));
 			$groupKey = self::stockVelocityKey($pid, $item['sku']);
 			$onHand = isset($onHandByKey[$groupKey]) ? (float) $onHandByKey[$groupKey] : (float) $item['qty'];
 			if ($avg > 0) {
@@ -2725,6 +2729,33 @@ class Warehouse_WhMgmtService {
 			}
 		}
 		return $cache;
+	}
+
+	/**
+	 * @param int[] $productIds
+	 * @return array<int,string>
+	 */
+	protected static function productUnitMap(PearDatabase $db, array $productIds) {
+		$out = array();
+		$ids = array();
+		foreach ($productIds as $id) {
+			$id = (int) $id;
+			if ($id > 0) {
+				$ids[$id] = $id;
+			}
+		}
+		if (empty($ids)) {
+			return $out;
+		}
+		$placeholders = implode(',', array_fill(0, count($ids), '?'));
+		$rs = $db->pquery(
+			'SELECT productsservicesid, unit FROM vtiger_productsservices WHERE productsservicesid IN (' . $placeholders . ')',
+			array_values($ids)
+		);
+		while ($rs && ($row = $db->fetchByAssoc($rs))) {
+			$out[(int) $row['productsservicesid']] = self::decodeDisplayTextDeep(trim((string) (isset($row['unit']) ? $row['unit'] : '')));
+		}
+		return $out;
 	}
 
 	/**
@@ -3161,7 +3192,7 @@ class Warehouse_WhMgmtService {
 	 * - vendorId: Vendors id → source_name + mk_meta
 	 * - discount, paidAmount, paymentNote: stored in meta (MISA later)
 	 * - poRef optional → auto MH-…
-	 * - empty lot → auto LOT-YYYYMMDD
+	 * - lot and expiry (HSD) are required; blank lot is not invented
 	 *
 	 * @param array $payload supplier, poRef, lines[{product_id,sku,name,lot,qty,mfg,expiry}]
 	 */
@@ -3220,15 +3251,23 @@ class Warehouse_WhMgmtService {
 				$sku = self::resolveProductSku($db, $productId);
 			}
 			$lot = trim((string) (isset($line['lot']) ? $line['lot'] : ''));
-			if ($lot === '') {
-				$lot = 'LOT-' . date('Ymd');
-			}
 			$qty = (float) (isset($line['qty']) ? $line['qty'] : 0);
 			$location = trim((string) (isset($line['location']) ? $line['location'] : ''));
 			$expiry = isset($line['expiry']) && $line['expiry'] !== '—' ? $line['expiry'] : null;
 			$mfg = isset($line['mfg']) && $line['mfg'] !== '' && $line['mfg'] !== '—' ? $line['mfg'] : null;
 			if ($name === '' || $qty <= 0) {
 				continue;
+			}
+			if ($lot === '') {
+				throw new Exception('Dòng "' . $name . '" chưa nhập lô.');
+			}
+			$expiry = self::normalizeDateValue($expiry);
+			if ($expiry === '') {
+				throw new Exception('Dòng "' . $name . '" chưa nhập hạn sử dụng.');
+			}
+			if ($mfg !== null) {
+				$mfgNorm = self::normalizeDateValue($mfg);
+				$mfg = $mfgNorm !== '' ? $mfgNorm : null;
 			}
 			if ($productId > 0 && $sku === '') {
 				throw new Exception('Sản phẩm "' . $name . '" chưa có SKU. Hãy cập nhật SKU trong Products & Services trước khi nhập kho.');
@@ -3478,12 +3517,41 @@ class Warehouse_WhMgmtService {
 		);
 		$qcLineCount = 0;
 		$directLineCount = 0;
+		$readyLines = array();
 		while ($item = $db->fetchByAssoc($items)) {
 			$itemId = (string) (int) $item['itemid'];
 			$productId = (int) $item['productid'];
+			$name = trim((string) $item['product_name']);
+			$qty = (float) $item['quantity'];
+			if ($name === '' || $qty <= 0) {
+				continue;
+			}
+			$lot = trim((string) $item['serial_number']);
+			$expiry = self::normalizeDateValue(isset($item['expired_date']) ? $item['expired_date'] : '');
+			if ($lot === '') {
+				throw new Exception('Dòng "' . $name . '" chưa nhập lô.');
+			}
+			if ($expiry === '') {
+				throw new Exception('Dòng "' . $name . '" chưa nhập hạn sử dụng.');
+			}
 			$needsQc = !empty($lineNeedsQcMeta[$itemId]) || self::productNeedsQc($db, $productId);
 			$lineNeedsQcMeta[$itemId] = $needsQc ? 1 : 0;
-			if ($needsQc) {
+			$readyLines[] = array(
+				'itemId' => $itemId,
+				'needsQc' => $needsQc,
+				'product_id' => $productId,
+				'sku' => trim((string) $item['line_note']),
+				'name' => $name,
+				'lot' => $lot,
+				'qty' => $qty,
+				'mfg' => self::normalizeDateValue(isset($item['mfg_date']) ? $item['mfg_date'] : ''),
+				'expiry' => $expiry,
+				'location' => (string) (isset($item['storage_location']) ? $item['storage_location'] : ''),
+			);
+		}
+		foreach ($readyLines as $line) {
+			$itemId = $line['itemId'];
+			if (!empty($line['needsQc'])) {
 				$qcLineCount++;
 				continue;
 			}
@@ -3492,15 +3560,15 @@ class Warehouse_WhMgmtService {
 				continue;
 			}
 			self::applyInboundStockLine($db, $warehouseCode, $whName, array(
-				'product_id' => $productId,
-				'sku' => trim((string) $item['line_note']),
-				'name' => (string) $item['product_name'],
-				'lot' => trim((string) $item['serial_number']) !== '' ? trim((string) $item['serial_number']) : ('LOT-' . date('Ymd')),
-				'qty' => (float) $item['quantity'],
-				'mfg' => $item['mfg_date'],
-				'expiry' => $item['expired_date'],
+				'product_id' => $line['product_id'],
+				'sku' => $line['sku'],
+				'name' => $line['name'],
+				'lot' => $line['lot'],
+				'qty' => $line['qty'],
+				'mfg' => $line['mfg'] !== '' ? $line['mfg'] : null,
+				'expiry' => $line['expiry'],
 				'price' => 0,
-				'location' => (string) (isset($item['storage_location']) ? $item['storage_location'] : ''),
+				'location' => $line['location'],
 			), $userId);
 			$stockedItemIds[$itemId] = 1;
 			$directLineCount++;
