@@ -108,18 +108,32 @@ html.mk-sc-ui-ready .mk-sc-list-hide-legacy {
 	font-size: 12px;
 }
 
-/* Compact table: fit viewport, no forced 1600px width */
+/* KPI cards share each row. A leftover card grows instead of sitting alone. */
+#mk-sc-kpi.mk-leads-kpi-grid {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+}
+#mk-sc-kpi .mk-leads-kpi-card {
+	flex: 1 1 168px;
+	min-width: 168px;
+	max-width: 100%;
+	min-height: 88px;
+}
+
+/* Table scrolls sideways; cells wrap instead of cutting a word in half. */
 .mk-sc-page--lovable .mk-leads-table-scroll {
 	overflow-x: auto;
 	-webkit-overflow-scrolling: touch;
+	max-width: 100%;
 }
 
 .mk-sc-page--lovable #mk-sc-table,
 #mk-sc-table {
-	min-width: 0 !important;
+	min-width: 1180px !important;
 	width: 100% !important;
-	max-width: 100%;
-	table-layout: fixed;
+	max-width: none;
+	table-layout: auto;
 }
 
 .mk-sc-page--lovable #mk-sc-table th,

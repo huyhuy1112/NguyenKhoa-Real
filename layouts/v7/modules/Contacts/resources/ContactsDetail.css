@@ -3070,8 +3070,23 @@ body[data-module="Contacts"][data-view="Detail"] #mk-dash-split-root .mk-contact
 }
 body[data-module="Contacts"][data-view="Detail"] #mk-dash-split-root .mk-contact-lane.is-off,
 body[data-module="Contacts"][data-view="Detail"] #mk-dash-split-root .mk-contact-activities-host,
-body[data-module="Contacts"][data-view="Detail"] #mk-dash-split-root .mk-contact-kv-empty {
+body[data-view="Detail"] #mk-dash-split-root .mk-contact-detail-kv-wrap tr.summaryViewEntries.mk-contact-kv-empty {
 	display: none !important;
+}
+body[data-view="Detail"] #mk-dash-split-root .mk-contact-detail-kv-wrap .summary-table tbody {
+	grid-template-columns: 1fr !important;
+	gap: 0 !important;
+}
+body[data-view="Detail"] #mk-dash-split-root .mk-contact-detail-kv-wrap .summary-table td.fieldValue,
+body[data-view="Detail"] #mk-dash-split-root .mk-contact-detail-kv-wrap .summary-table td.fieldValue .value {
+	white-space: normal !important;
+	overflow-wrap: anywhere !important;
+	word-break: break-word !important;
+	max-width: 100% !important;
+	display: block !important;
+	position: static !important;
+	overflow: visible !important;
+	text-overflow: clip !important;
 }
 body[data-module="Contacts"][data-view="Detail"] #mk-dash-split-root .mk-contact-lane--courses,
 body[data-module="Contacts"][data-view="Detail"] #mk-dash-split-root .mk-contact-lane--materials {

@@ -269,8 +269,15 @@
 
 	function compactContactKeyFields() {
 		document.querySelectorAll('.mk-contact-detail-kv-wrap tr.summaryViewEntries').forEach(function (tr) {
-			var val = tr.querySelector('.fieldValue .value, .fieldValue');
-			var text = val ? String(val.textContent || '').replace(/\s+/g, ' ').trim() : '';
+			var val = tr.querySelector('.fieldValue .value');
+			var text = '';
+			if (val) {
+				var clone = val.cloneNode(true);
+				clone.querySelectorAll('.hide, .action, .editAction, .fieldBasicData').forEach(function (node) {
+					node.remove();
+				});
+				text = String(clone.textContent || '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
+			}
 			tr.classList.toggle('mk-contact-kv-empty', !text || text === '—' || text === '-');
 		});
 	}
