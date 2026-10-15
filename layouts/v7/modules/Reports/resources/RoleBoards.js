@@ -29,25 +29,54 @@
 			box.innerHTML = '<div class="mk-admin-kpi-detail-loading">Chưa có báo cáo cho vai này.</div>';
 			return;
 		}
+		box.__mkBoards = boards;
+		box.__mkRole = keys.indexOf('ceo') >= 0 ? 'ceo' : keys[0];
+		renderRole(box);
+	}
+
+	function renderRole(box) {
+		var boards = box.__mkBoards || {};
+		var keys = Object.keys(boards);
+		var active = boards[box.__mkRole] ? box.__mkRole : keys[0];
+		box.__mkRole = active;
+		var board = boards[active] || {};
 		var html = '';
-		box.__mkGoods = null;
-		keys.forEach(function (key) {
-			var board = boards[key] || {};
-			if (board.goods) {
-				box.__mkGoods = board.goods;
-			}
-			html += '<h3 class="mk-admin-kpi-subtitle">' + esc(board.title || key) + '</h3>';
-			html += '<div class="mk-admin-kpi-grid" role="list">';
-			(board.cards || []).forEach(function (card, index) {
-				html += cardHtml(card, index);
+		if (keys.length > 1) {
+			html += '<div class="mk-role-switch" role="tablist">';
+			keys.forEach(function (key) {
+				var title = (boards[key] && boards[key].title) || key;
+				html += '<button type="button" role="tab" data-mk-role="' + esc(key) + '"'
+					+ (key === active ? ' class="is-on" aria-selected="true"' : ' aria-selected="false"')
+					+ '>' + esc(title) + '</button>';
 			});
 			html += '</div>';
-			if (board.goods) {
-				html += goodsHtml(board.goods);
-			}
+		}
+		box.__mkGoods = board.goods || null;
+		html += '<h3 class="mk-admin-kpi-subtitle">' + esc(board.title || active) + '</h3>';
+		html += '<div class="mk-admin-kpi-grid" role="list">';
+		(board.cards || []).forEach(function (card, index) {
+			html += cardHtml(card, index);
 		});
+		html += '</div>';
+		if (board.goods) {
+			html += goodsHtml(board.goods);
+		}
 		box.innerHTML = html;
+		bindRoleSwitch(box);
 		bindGoods(box);
+	}
+
+	function bindRoleSwitch(box) {
+		var sw = box.querySelector('.mk-role-switch');
+		if (!sw) return;
+		sw.addEventListener('click', function (e) {
+			var btn = e.target.closest ? e.target.closest('[data-mk-role]') : null;
+			if (!btn) return;
+			var next = btn.getAttribute('data-mk-role');
+			if (!next || next === box.__mkRole) return;
+			box.__mkRole = next;
+			renderRole(box);
+		});
 	}
 
 	function fmtQty(n) {

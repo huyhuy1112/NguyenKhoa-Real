@@ -149,6 +149,30 @@
 	margin-bottom: 0;
 }
 
+.mk-role-switch {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin: 0 0 16px;
+}
+
+.mk-role-switch button {
+	border: 1px solid #dbe3ee;
+	background: #fff;
+	color: #334155;
+	border-radius: 999px;
+	padding: 8px 16px;
+	font-size: 15px;
+	font-weight: 650;
+	cursor: pointer;
+}
+
+.mk-role-switch button.is-on {
+	background: #0f172a;
+	border-color: #0f172a;
+	color: #fff;
+}
+
 .mk-goods-report {
 	margin: 8px 0 22px;
 }
