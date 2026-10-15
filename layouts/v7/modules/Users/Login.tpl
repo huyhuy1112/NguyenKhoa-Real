@@ -750,7 +750,7 @@
 							<div class="nk-field">
 								<label for="username">Email / Tài khoản</label>
 								<div class="nk-field-input-wrap">
-									<input id="username" type="text" name="username" placeholder="username@nguyenkhoa.vn" autocomplete="username" required>
+									<input id="username" type="text" name="username" placeholder="username@nguyenkhoa.vn" autocomplete="username" value="{$REMEMBER_USER|escape:'html'}" required>
 								</div>
 							</div>
 
@@ -779,7 +779,7 @@
 
 							<div class="nk-form-row">
 								<label class="nk-remember">
-									<input type="checkbox" name="remember" value="1">
+									<input type="checkbox" name="remember" value="1"{if $REMEMBER_USER neq ''} checked="checked"{/if}>
 									<span class="nk-remember__chip" aria-hidden="true">
 										<span class="material-symbols-outlined nk-remember__icon">bookmark</span>
 										<span>Ghi nhớ</span>
@@ -838,7 +838,12 @@
 
 				document.body.classList.add('nk-login-ready');
 
-				loginFormDiv.find('#username').focus();
+				var rememberedUser = loginFormDiv.find('#username');
+				if (rememberedUser.val()) {
+					loginFormDiv.find('#password').focus();
+				} else {
+					rememberedUser.focus();
+				}
 
 				(function () {
 					var $slideshow = jQuery('.nk-split-brand__slideshow');

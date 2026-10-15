@@ -812,11 +812,11 @@ class Home_AdminKpiService {
 		}
 		if ($persona === 'admin' || $persona === 'ceo' || $persona === 'bgd') {
 			require_once 'modules/Reports/models/MktSheetReportService.php';
-			$sheet = array('error' => 'Chưa tải được sheet Tổng Hợp Data.', 'months' => array());
+			$sheet = array('error' => 'Chưa tải được báo cáo Marketing.', 'months' => array());
 			try {
 				$sheet = Reports_MktSheetReportService::payload($db);
 			} catch (Exception $e) {
-				$sheet['error'] = 'Chưa tải được sheet Tổng Hợp Data.';
+				$sheet['error'] = 'Chưa tải được báo cáo Marketing.';
 			}
 			$selected['marketing'] = array(
 				'title' => 'Marketing',

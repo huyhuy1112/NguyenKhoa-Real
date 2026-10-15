@@ -299,7 +299,7 @@
 		}
 		var month = monthOf(sheet, monthKey);
 		var html = '<section class="mk-sheet-report">';
-		html += '<p class="mk-sheet-note">Số liệu từ sheet Tổng Hợp Data. Ô tiền quảng cáo nhập tay mỗi ngày. Ngân sách và chi phí tự tính lại, dòng tổng đã cộng VAT 10%.</p>';
+		html += '<p class="mk-sheet-note">Số liệu đếm từ dữ liệu CRM. Ô tiền quảng cáo nhập tay mỗi ngày. Ngân sách tuần là tổng tiền từ thứ Hai đến Chủ nhật. Dòng tổng đã cộng VAT 10%.</p>';
 		html += '<div class="mk-sheet-months">';
 		(sheet.months || []).forEach(function (item) {
 			html += '<button type="button" data-mk-sheet-month="' + esc(item.key) + '"'
@@ -374,7 +374,7 @@
 		var html = '<h3 class="mk-admin-kpi-subtitle">Funnel theo ngày học</h3>';
 		var body = '';
 		if (!rows.length) {
-			body = '<tr><td colspan="22" class="mk-sheet-empty">Chưa có ngày học trên sheet.</td></tr>';
+			body = '<tr><td colspan="22" class="mk-sheet-empty">Chưa có ngày học trong CRM.</td></tr>';
 		}
 		rows.forEach(function (row) {
 			body += '<tr><td>' + esc(row.month) + '</td><td>' + esc(row.weekday) + '</td><td>' + esc(row.date) + '</td>'
@@ -461,7 +461,7 @@
 				+ '<td class="is-num">' + numCell(row.close) + '</td></tr>';
 		});
 		html += sheetTable(['Tuần', 'Ngày học', 'Số hẹn', 'Tham gia thực tế', 'PCTH / MQ'], body);
-		html += '<p class="mk-sheet-note">Ngân sách QC (đã VAT): ' + moneyCell(sum.budget)
+		html += '<p class="mk-sheet-note">Ngân sách là cùng số tiền quảng cáo đã nhập theo ngày, đã cộng VAT: ' + moneyCell(sum.budget)
 			+ '. Chi phí mỗi lead chuẩn: ' + moneyCell(sum.cost_qualified)
 			+ ' (mục tiêu dưới ' + moneyCell(sum.target_qualified) + ').'
 			+ ' Chi phí mỗi khách tới lớp: ' + moneyCell(sum.cost_show)

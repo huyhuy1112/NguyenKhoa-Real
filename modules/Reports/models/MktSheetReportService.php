@@ -17,19 +17,11 @@ class Reports_MktSheetReportService {
 			$db = PearDatabase::getInstance();
 		}
 		self::ensureTable($db);
-		$parsed = self::parsedSheet();
-		if (!empty($parsed['error'])) {
-			return array(
-				'error' => $parsed['error'],
-				'months' => array(),
-				'classes' => array(),
-				'perf990' => array('weeks' => array(), 'summary' => array()),
-				'perfFree' => array('weeks' => array(), 'summary' => array()),
-				'status' => array('dates' => array(), 'rows' => array()),
-			);
-		}
+		require_once 'modules/Reports/models/MktSaleReportService.php';
 		$saved = self::savedSpend($db);
-		return self::compose($parsed, $saved);
+		$range = self::reportRange($db, $saved);
+		$bundle = Reports_MktSaleReportService::marketingBundle($range['from'], $range['to']);
+		return self::composeCrm($bundle, $saved, $range);
 	}
 
 	public static function saveSpend($date, $amount, $userId, $db = null) {
@@ -45,8 +37,7 @@ class Reports_MktSheetReportService {
 		if ($amount < 0) {
 			$amount = 0;
 		}
-		$parsed = self::parsedSheet();
-		$campaign = self::campaignFor($parsed, $date);
+		$campaign = 'day';
 		$userId = (int) $userId;
 		$db->pquery(
 			'INSERT INTO vtiger_mk_ad_spend (spend_date, campaign, amount, userid, modified_at)
@@ -96,12 +87,303 @@ class Reports_MktSheetReportService {
 			return $out;
 		}
 		while ($row = $db->fetch_array($res)) {
-			$out[$row['spend_date']] = array(
+			$date = substr((string) $row['spend_date'], 0, 10);
+			if ($date === '') {
+				continue;
+			}
+			$out[$date] = array(
 				'campaign' => (string) $row['campaign'],
 				'amount' => (float) $row['amount'],
 			);
 		}
 		return $out;
+	}
+
+	protected static function reportRange($db, array $saved) {
+		$current = date('Y-m-01');
+		$to = date('Y-m-t');
+		$floor = date('Y-m-01', strtotime($current . ' -11 months'));
+		$earliest = $current;
+		$rs = $db->pquery(
+			"SELECT MIN(DATE(ce.createdtime)) AS d
+			 FROM vtiger_leaddetails l
+			 INNER JOIN vtiger_crmentity ce ON ce.crmid = l.leadid AND ce.deleted = 0 AND ce.setype = 'Leads'",
+			array()
+		);
+		if ($rs && ($row = $db->fetchByAssoc($rs)) && !empty($row['d']) && $row['d'] !== '0000-00-00') {
+			$leadMonth = date('Y-m-01', strtotime($row['d']));
+			if ($leadMonth < $earliest) {
+				$earliest = $leadMonth < $floor ? $floor : $leadMonth;
+			}
+		}
+		foreach ($saved as $date => $unused) {
+			$month = date('Y-m-01', strtotime($date));
+			if ($month < $earliest && $month >= $floor) {
+				$earliest = $month;
+			}
+		}
+		return array('from' => $earliest, 'to' => $to);
+	}
+
+	protected static function composeCrm(array $bundle, array $saved, array $range) {
+		$byDay = array();
+		foreach ($bundle['daily'] as $row) {
+			$byDay[$row['date']] = $row;
+		}
+		$qualifiedByDay = array();
+		$paidByDay = array();
+		foreach ($bundle['leads'] as $lead) {
+			$day = $lead['created_day'];
+			if (!isset($qualifiedByDay[$day])) {
+				$qualifiedByDay[$day] = 0;
+				$paidByDay[$day] = 0;
+			}
+			if (self::leadQualified($lead)) {
+				$qualifiedByDay[$day]++;
+			}
+			if (self::leadPaid($lead)) {
+				$paidByDay[$day]++;
+			}
+		}
+		$months = array();
+		$cursor = strtotime($range['from'] . ' 12:00:00');
+		$end = strtotime($range['to'] . ' 12:00:00');
+		while ($cursor <= $end) {
+			$date = date('Y-m-d', $cursor);
+			$key = substr($date, 0, 7);
+			if (!isset($months[$key])) {
+				$months[$key] = array(
+					'key' => $key,
+					'label' => 'Tháng ' . date('n', $cursor) . '/' . date('Y', $cursor),
+					'days' => array(),
+				);
+			}
+			$src = isset($byDay[$date]) ? $byDay[$date] : array();
+			$total = isset($src['total_leads']) ? (float) $src['total_leads'] : 0;
+			$spend = isset($saved[$date]) ? (float) $saved[$date]['amount'] : 0;
+			$months[$key]['days'][] = array(
+				'date' => $date,
+				'label' => date('d/m/Y', $cursor),
+				'total' => $total,
+				'nkhoa' => isset($src['n_khoa']) ? (float) $src['n_khoa'] : 0,
+				'tiktok' => isset($src['tiktok']) ? (float) $src['tiktok'] : 0,
+				'kv1' => isset($src['kv1']) ? (float) $src['kv1'] : 0,
+				'kv2' => isset($src['kv2']) ? (float) $src['kv2'] : 0,
+				'kv3' => isset($src['kv3']) ? (float) $src['kv3'] : 0,
+				'unknown' => isset($src['region_unknown']) ? (float) $src['region_unknown'] : 0,
+				'consulting' => isset($src['consulting']) ? (float) $src['consulting'] : 0,
+				'unreachable' => isset($src['unreachable']) ? (float) $src['unreachable'] : 0,
+				'khong_hoc' => isset($src['invalid']) ? (float) $src['invalid'] : 0,
+				'online' => isset($src['online_class']) ? (float) $src['online_class'] : 0,
+				'spend' => $spend,
+				'edited' => isset($saved[$date]),
+				'cost_data' => $total > 0 ? round($spend / $total, 2) : null,
+			);
+			$cursor = strtotime('+1 day', $cursor);
+		}
+
+		$weeks = array();
+		$sumBudget = 0;
+		$sumData = 0;
+		$sumQualified = 0;
+		$sumPaid = 0;
+		$startTs = strtotime($range['from'] . ' 12:00:00');
+		$weekStart = strtotime('-' . ((int) date('N', $startTs) - 1) . ' day', $startTs);
+		$rangeEnd = strtotime($range['to'] . ' 12:00:00');
+		$currentMonth = date('Y-m');
+		while ($weekStart <= $rangeEnd) {
+			$days = array();
+			for ($i = 0; $i < 7; $i++) {
+				$dayTs = strtotime('+' . $i . ' day', $weekStart);
+				$iso = date('Y-m-d', $dayTs);
+				if ($iso < $range['from'] || $iso > $range['to']) {
+					continue;
+				}
+				$days[] = $iso;
+			}
+			$budget = 0;
+			$data = 0;
+			$qualified = 0;
+			$paid = 0;
+			$kv = array('kv1' => 0, 'kv2' => 0, 'kv3' => 0, 'unknown' => 0);
+			$inCurrent = false;
+			foreach ($days as $iso) {
+				if (substr($iso, 0, 7) === $currentMonth) {
+					$inCurrent = true;
+				}
+				$budget += isset($saved[$iso]) ? (float) $saved[$iso]['amount'] : 0;
+				$src = isset($byDay[$iso]) ? $byDay[$iso] : array();
+				$data += isset($src['total_leads']) ? (float) $src['total_leads'] : 0;
+				$qualified += isset($qualifiedByDay[$iso]) ? (float) $qualifiedByDay[$iso] : 0;
+				$paid += isset($paidByDay[$iso]) ? (float) $paidByDay[$iso] : 0;
+				$kv['kv1'] += isset($src['kv1']) ? (float) $src['kv1'] : 0;
+				$kv['kv2'] += isset($src['kv2']) ? (float) $src['kv2'] : 0;
+				$kv['kv3'] += isset($src['kv3']) ? (float) $src['kv3'] : 0;
+				$kv['unknown'] += isset($src['region_unknown']) ? (float) $src['region_unknown'] : 0;
+			}
+			if ($days && ($inCurrent || $budget > 0 || $data > 0)) {
+				$sumBudget += $budget;
+				$sumData += $data;
+				$sumQualified += $qualified;
+				$sumPaid += $paid;
+				$fromLabel = date('d/m', strtotime($days[0]));
+				$toLabel = date('d/m', strtotime($days[count($days) - 1]));
+				$weeks[] = array(
+					'label' => 'Tuần ' . date('W', strtotime($days[0])),
+					'range' => $fromLabel . ' - ' . $toLabel,
+					'budget' => round($budget, 2),
+					'data' => $data,
+					'cost_data' => $data > 0 ? round($budget / $data, 2) : null,
+					'qualified' => $qualified,
+					'cost_qualified' => $qualified > 0 ? round($budget / $qualified, 2) : null,
+					'paid' => $paid,
+					'paid_rate' => $qualified > 0 ? $paid / $qualified : null,
+					'kv1' => $kv['kv1'],
+					'kv2' => $kv['kv2'],
+					'kv3' => $kv['kv3'],
+					'unknown' => $kv['unknown'],
+				);
+			}
+			$weekStart = strtotime('+7 day', $weekStart);
+		}
+		$budgetVat = $sumBudget * self::VAT;
+
+		$classes = array();
+		$freeWeeks = array();
+		$freeAppt = 0;
+		$freeShow = 0;
+		$freeClose = 0;
+		foreach ($bundle['classes'] as $row) {
+			if (!empty($row['is_summary'])) {
+				continue;
+			}
+			$appt = (float) $row['appointments'];
+			$show = (float) $row['show'];
+			$confirmed = (float) $row['confirmed'];
+			$closed = (float) $row['closed'];
+			$classes[] = array(
+				'month' => $row['month_label'],
+				'weekday' => $row['weekday'],
+				'date' => $row['label'],
+				'total' => (float) $row['total_leads'],
+				'appointments' => $appt,
+				'reschedule' => (float) $row['reschedule'],
+				'khong_hoc' => (float) $row['khong_hoc'],
+				'confirmed' => $confirmed,
+				'show' => $show,
+				'pct_potential' => self::ratio($row['potential'], $appt),
+				'pct_show' => self::ratio($show, $appt),
+				'pct_confirm' => self::ratio($confirmed, $appt),
+				'pct_actual' => self::ratio($show, $confirmed > 0 ? $confirmed : $appt),
+				'pcth' => (float) $row['pcth'],
+				'pcth_mq' => (float) $row['pcth_mq'],
+				'mq' => (float) $row['mq'],
+				'pct_close' => self::ratio($closed, $appt),
+				'knm' => (float) $row['knm_ban'],
+				'potential' => (float) $row['potential'],
+				'unsure' => (float) $row['phan_van'],
+				'invite' => (float) $row['moi_lai'],
+				'stop' => (float) $row['stop_care'],
+				'franchise' => (float) $row['quan_tam_nq'],
+				'material' => (float) $row['quan_tam_nl'],
+			);
+			$freeAppt += $appt;
+			$freeShow += $show;
+			$freeClose += $closed;
+			$freeWeeks[] = array(
+				'label' => $row['weekday'],
+				'date' => $row['label'],
+				'appointments' => $appt,
+				'show' => $show,
+				'close' => $closed,
+			);
+		}
+		$freeQualified = $sumQualified;
+		$statusDates = array();
+		$statusRows = array();
+		if (!empty($bundle['status']['columns'])) {
+			foreach ($bundle['status']['columns'] as $col) {
+				$statusDates[] = $col['label'];
+			}
+			foreach ($bundle['status']['rows'] as $row) {
+				$statusRows[] = array(
+					'label' => $row['label'],
+					'cells' => $row['cells'],
+				);
+			}
+		}
+		return array(
+			'error' => '',
+			'months' => array_values($months),
+			'classes' => $classes,
+			'perf990' => array(
+				'weeks' => $weeks,
+				'summary' => array(
+					'budget' => round($budgetVat, 2),
+					'data' => $sumData,
+					'cost_data' => $sumData > 0 ? round($budgetVat / $sumData, 2) : null,
+					'qualified' => $sumQualified,
+					'cost_qualified' => $sumQualified > 0 ? round($budgetVat / $sumQualified, 2) : null,
+					'paid' => $sumPaid,
+					'paid_rate' => $sumQualified > 0 ? $sumPaid / $sumQualified : null,
+					'cost_per_paid' => $sumPaid > 0 ? round($budgetVat / $sumPaid, 2) : null,
+					'revenue' => round($sumPaid * 990000, 2),
+					'target_qualified' => 350000,
+				),
+			),
+			'perfFree' => array(
+				'weeks' => $freeWeeks,
+				'summary' => array(
+					'budget' => round($budgetVat, 2),
+					'appointments' => $freeAppt,
+					'show' => $freeShow,
+					'close' => $freeClose,
+					'data' => $sumData,
+					'cost_qualified' => $freeQualified > 0 ? round($budgetVat / $freeQualified, 2) : null,
+					'cost_show' => $freeShow > 0 ? round($budgetVat / $freeShow, 2) : null,
+					'target_qualified' => 200000,
+					'target_show' => $freeQualified > 0 ? round(($budgetVat / $freeQualified) * 3.5, 2) : null,
+				),
+			),
+			'status' => array(
+				'dates' => $statusDates,
+				'rows' => $statusRows,
+			),
+		);
+	}
+
+	protected static function leadQualified(array $lead) {
+		if (!empty($lead['potential'])) {
+			return true;
+		}
+		foreach ($lead['tags'] as $tag) {
+			$tag = strtolower((string) $tag);
+			if ($tag === 'du_dk' || strpos($tag, 'gd14') === 0 || strpos($tag, 'binh_thuong') !== false || strpos($tag, 'sieu_tiem') !== false) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	protected static function leadPaid(array $lead) {
+		if (!empty($lead['closed'])) {
+			return true;
+		}
+		foreach ($lead['tags'] as $tag) {
+			$tag = strtolower((string) $tag);
+			if ($tag === 'da_990k' || strpos($tag, 'gd14_da') === 0) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	protected static function ratio($num, $den) {
+		$den = (float) $den;
+		if ($den <= 0) {
+			return null;
+		}
+		return ((float) $num) / $den;
 	}
 
 	protected static function compose(array $parsed, array $saved) {
