@@ -3383,3 +3383,57 @@ body[data-module="Invoice"][data-view="List"][data-app="SALES"] .mk-inv-inline-d
 body[data-module="Invoice"][data-view="List"][data-app="SALES"] .mk-inv-inline-detail__hint p {
 	margin: 0;
 }
+
+body[data-module="Invoice"][data-view="List"][data-app="SALES"] .mk-inv-inline-detail .mk-so-inline-detail__fields {
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 10px 14px;
+	margin: 0 0 16px;
+	padding: 12px;
+	border: 1px solid #e2e8f0;
+	border-radius: 14px;
+	background: #fff;
+}
+
+body[data-module="Invoice"][data-view="List"][data-app="SALES"] .mk-inv-inline-detail .mk-so-inline-detail__field-label {
+	font-size: 13px;
+}
+
+body[data-module="Invoice"][data-view="List"][data-app="SALES"] .mk-inv-inline-detail .mk-so-inline-detail__field-view {
+	min-height: 40px;
+	font-size: 15px;
+	line-height: 1.4;
+	overflow-wrap: anywhere;
+}
+
+body[data-module="Invoice"][data-view="List"][data-app="SALES"] .mk-inv-inline-detail .mk-so-inline-detail__lines {
+	min-width: 720px;
+}
+
+body[data-module="Invoice"][data-view="List"][data-app="SALES"] .mk-inv-inline-detail .mk-so-inline-detail__lines thead th,
+body[data-module="Invoice"][data-view="List"][data-app="SALES"] .mk-inv-inline-detail .mk-so-inline-detail__lines tbody td {
+	font-size: 15px;
+}
+
+body[data-module="Invoice"][data-view="List"][data-app="SALES"] .mk-inv-inline-detail .mk-so-inline-detail__lines td.is-name {
+	min-width: 280px;
+	white-space: normal !important;
+	text-overflow: clip !important;
+	overflow: visible !important;
+	overflow-wrap: anywhere;
+	line-height: 1.4;
+}
+
+body[data-module="Invoice"][data-view="List"][data-app="SALES"] .mk-inv-inline-detail .mk-so-inline-detail__total-label,
+body[data-module="Invoice"][data-view="List"][data-app="SALES"] .mk-inv-inline-detail .mk-so-inline-detail__total-value {
+	font-size: 15px;
+}
+
+body[data-module="Invoice"][data-view="List"][data-app="SALES"] #listview-table th.mk-so-col-paid,
+body[data-module="Invoice"][data-view="List"][data-app="SALES"] #listview-table td.mk-so-col-paid,
+body[data-module="Invoice"][data-view="List"][data-app="SALES"] #listview-table td[data-name="received"],
+body[data-module="Invoice"][data-view="List"][data-app="SALES"] #listview-table td[data-name="paid"],
+body[data-module="Invoice"][data-view="List"][data-app="SALES"] #listview-table th:has(a[data-columnname="received"]),
+body[data-module="Invoice"][data-view="List"][data-app="SALES"] #listview-table th:has(a[data-columnname="paid"]),
+body[data-module="Invoice"][data-view="List"][data-app="SALES"] #listview-table col.mk-so-col-paid {
+	display: none !important;
+}

@@ -92,14 +92,6 @@
 				<span class="mk-so-inline-detail__total-label">Tổng tiền hàng</span>
 				<strong class="mk-so-inline-detail__total-value">{$FINAL_DETAILS.hdnSubTotal|default:'0'}</strong>
 			</div>
-			<div class="mk-so-inline-detail__total-row mk-so-inline-detail__total-row--paid">
-				<span class="mk-so-inline-detail__total-label">Khách đã trả</span>
-				<strong class="mk-so-inline-detail__total-value">{$INLINE_PAID_DISPLAY|default:'0'}</strong>
-			</div>
-			<div class="mk-so-inline-detail__total-row">
-				<span class="mk-so-inline-detail__total-label">Còn lại</span>
-				<strong class="mk-so-inline-detail__total-value">{$INLINE_REMAINING_DISPLAY|default:'0'}</strong>
-			</div>
 			<div class="mk-so-inline-detail__total-row mk-so-inline-detail__total-row--grand">
 				<span class="mk-so-inline-detail__total-label">Tổng cộng</span>
 				<strong class="mk-so-inline-detail__total-value mk-so-inline-detail__grand-value">{$FINAL_DETAILS.grandTotal|default:'0'}</strong>

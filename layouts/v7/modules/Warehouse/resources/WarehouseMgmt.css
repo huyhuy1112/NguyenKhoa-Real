@@ -1568,3 +1568,38 @@ body[data-module="Warehouse"][data-view="WhList"][data-app="INVENTORY"] .mk-wh-l
 	overflow: visible;
 	text-overflow: clip;
 }
+
+body[data-module="Warehouse"][data-view="WhTransfer"] .mk-wh-proto-title__h1 {
+	font-size: 34px;
+}
+
+body[data-module="Warehouse"][data-view="WhTransfer"] .mk-wh-proto-title__sub,
+body[data-module="Warehouse"][data-view="WhTransfer"] .mk-wh-mgmt-btn {
+	font-size: 16px;
+}
+
+body[data-module="Warehouse"][data-view="WhTransfer"] .mk-wh-mgmt-panel__title {
+	font-size: 20px;
+}
+
+body[data-module="Warehouse"][data-view="WhTransfer"] .mk-wh-mgmt-table {
+	font-size: 16px;
+}
+
+body[data-module="Warehouse"][data-view="WhTransfer"] .mk-wh-mgmt-table thead th {
+	padding: 16px 14px;
+	font-size: 13px;
+	letter-spacing: 0.04em;
+}
+
+body[data-module="Warehouse"][data-view="WhTransfer"] .mk-wh-mgmt-table tbody td {
+	padding: 16px 14px;
+	font-size: 16px;
+	line-height: 1.45;
+	vertical-align: top;
+}
+
+body[data-module="Warehouse"][data-view="WhTransfer"] .mk-wh-mgmt-table tbody td:nth-child(6) {
+	min-width: 320px;
+	white-space: normal;
+}

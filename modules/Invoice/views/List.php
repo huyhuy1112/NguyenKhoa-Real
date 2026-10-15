@@ -106,9 +106,6 @@ class Invoice_List_View extends Inventory_List_View {
 		} elseif ($this->isInvoiceListFieldAvailable($moduleModel, 'contact_id')) {
 			$preferredHeaders[] = 'contact_id';
 		}
-		if ($paidField) {
-			$preferredHeaders[] = $paidField;
-		}
 		if ($statusField) {
 			$preferredHeaders[] = $statusField;
 		}
@@ -160,7 +157,6 @@ class Invoice_List_View extends Inventory_List_View {
 			'contact_id' => 'Tên khách hàng',
 			'hdnGrandTotal' => 'Tổng cộng',
 			'total' => 'Tổng cộng',
-			$paidField => 'Khách đã trả',
 			$statusField => 'Trạng thái MISA',
 			$numberField => 'Mã hóa đơn',
 		);

@@ -340,32 +340,12 @@ class Invoice_Detail_View extends Inventory_Detail_View {
 
 	protected function getInlineInfoFields(Vtiger_Module_Model $moduleModel, Vtiger_Record_Model $recordModel, array $soMeta) {
 		$fields = array();
-		if (!empty($soMeta['id'])) {
-			$soLabel = $soMeta['no'] !== '' ? $soMeta['no'] : ('#' . $soMeta['id']);
-			$soHtml = '<a href="' . htmlspecialchars($soMeta['url'], ENT_QUOTES, 'UTF-8') . '" target="_blank" rel="noopener">'
-				. htmlspecialchars($soLabel, ENT_QUOTES, 'UTF-8') . '</a>';
-			if ($soMeta['status'] !== '') {
-				$soHtml .= ' <span class="mk-inv-inline-so-status">' . htmlspecialchars($soMeta['status'], ENT_QUOTES, 'UTF-8') . '</span>';
-			}
-			$fields[] = array(
-				'name' => 'salesorder_id',
-				'label' => 'Đơn hàng nguồn',
-				'value' => $soHtml,
-				'raw_value' => (string) $soMeta['id'],
-				'data_type' => 'reference',
-				'editable' => false,
-				'is_html' => true,
-				'picklist_values' => array(),
-			);
-		}
-
 		$statusField = $this->resolveInvoiceStatusFieldName($moduleModel);
 		$candidates = array(
 			array('names' => array($statusField), 'label' => 'Trạng thái MISA'),
-			array('names' => array('createdtime'), 'label' => 'Thời gian'),
-			array('names' => array('received', 'paid', 'mk_customer_paid'), 'label' => 'Khách đã trả'),
-			array('names' => array('assigned_user_id'), 'label' => 'Người phụ trách'),
 			array('names' => array('invoicedate', 'duedate'), 'label' => 'Ngày hóa đơn'),
+			array('names' => array('createdtime'), 'label' => 'Thời gian'),
+			array('names' => array('assigned_user_id'), 'label' => 'Người phụ trách'),
 		);
 		$seen = array('salesorder_id' => true);
 		foreach ($candidates as $candidate) {
@@ -382,8 +362,8 @@ class Invoice_Detail_View extends Inventory_Detail_View {
 				$value = trim((string) $recordModel->getDisplayValue($fieldName));
 				if ($fieldName === $statusField) {
 					$value = $this->resolveInvoiceStatusLabel($rawValue, $value);
-				} elseif (in_array($fieldName, array('received', 'paid', 'mk_customer_paid'), true)) {
-					$value = Vtiger_Currency_UIType::transformDisplayValue((float) preg_replace('/[^\d.-]/', '', $rawValue), null, true);
+				} elseif ($fieldName === 'assigned_user_id') {
+					$value = $this->plainOwnerName($recordModel);
 				}
 				if ($value === '') {
 					$value = '—';
@@ -402,5 +382,17 @@ class Invoice_Detail_View extends Inventory_Detail_View {
 			}
 		}
 		return $fields;
+	}
+
+	protected function plainOwnerName(Vtiger_Record_Model $recordModel) {
+		$ownerId = (int) $recordModel->get('assigned_user_id');
+		$name = '';
+		if ($ownerId > 0 && function_exists('getOwnerName')) {
+			$name = trim(decode_html((string) getOwnerName($ownerId)));
+		}
+		if ($name === '') {
+			$name = trim(strip_tags(decode_html((string) $recordModel->getDisplayValue('assigned_user_id'))));
+		}
+		return $name;
 	}
 }
