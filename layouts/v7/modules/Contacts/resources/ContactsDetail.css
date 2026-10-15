@@ -3061,3 +3061,72 @@ body[data-module="Contacts"][data-view="Detail"][data-app="MARKETING"] .mk-conta
 .mk-contact-class-panel__gift-hint {
 	margin-top: 10px;
 }
+
+/* Lane layout: one tab fills the row, inactive tabs take no space. */
+body[data-module="Contacts"][data-view="Detail"] #mk-dash-split-root .mk-contact-lanes {
+	display: block;
+	width: 100%;
+	min-width: 0;
+}
+body[data-module="Contacts"][data-view="Detail"] #mk-dash-split-root .mk-contact-lane.is-off,
+body[data-module="Contacts"][data-view="Detail"] #mk-dash-split-root .mk-contact-activities-host,
+body[data-module="Contacts"][data-view="Detail"] #mk-dash-split-root .mk-contact-kv-empty {
+	display: none !important;
+}
+body[data-module="Contacts"][data-view="Detail"] #mk-dash-split-root .mk-contact-lane--courses,
+body[data-module="Contacts"][data-view="Detail"] #mk-dash-split-root .mk-contact-lane--materials {
+	display: grid !important;
+	grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+	gap: 14px;
+	align-items: stretch;
+	width: 100%;
+}
+body[data-module="Contacts"][data-view="Detail"] #mk-dash-split-root .mk-contact-lane--franchise {
+	display: block !important;
+	width: 100%;
+}
+body[data-module="Contacts"][data-view="Detail"] #mk-dash-split-root .mk-contact-lane__key,
+body[data-module="Contacts"][data-view="Detail"] #mk-dash-split-root .mk-contact-lane__main {
+	min-width: 0;
+	min-height: 0;
+}
+body[data-module="Contacts"][data-view="Detail"] #mk-dash-split-root .mk-contact-detail-card--key,
+body[data-module="Contacts"][data-view="Detail"] #mk-dash-split-root .mk-contact-detail-card--purchases,
+body[data-module="Contacts"][data-view="Detail"] #mk-dash-split-root .mk-contact-detail-card--franchise,
+body[data-module="Contacts"][data-view="Detail"] #mk-dash-split-root .mk-contact-lane__main .mk-contact-class-panel {
+	height: 100%;
+	min-height: 0 !important;
+	margin: 0;
+}
+body[data-module="Contacts"][data-view="Detail"] #mk-dash-split-root .mk-contact-class-panel__grid {
+	display: grid !important;
+	grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr) !important;
+	grid-template-areas: "reg edubit" "reg creds" !important;
+	gap: 12px !important;
+	align-items: start !important;
+	height: auto;
+}
+body[data-module="Contacts"][data-view="Detail"] #mk-dash-split-root .mk-contact-class-panel__reg {
+	grid-area: reg;
+}
+body[data-module="Contacts"][data-view="Detail"] #mk-dash-split-root .mk-contact-class-panel__edubit {
+	grid-area: edubit;
+	margin-top: 0;
+}
+body[data-module="Contacts"][data-view="Detail"] #mk-dash-split-root .mk-contact-class-panel__creds {
+	grid-area: creds;
+}
+body[data-module="Contacts"][data-view="Detail"] #mk-dash-split-root .mk-contact-detail-card--franchise .mk-contact-franchise-lane__body {
+	display: grid;
+	gap: 8px;
+}
+@media (max-width: 1100px) {
+	body[data-module="Contacts"][data-view="Detail"] #mk-dash-split-root .mk-contact-lane--courses,
+	body[data-module="Contacts"][data-view="Detail"] #mk-dash-split-root .mk-contact-lane--materials {
+		grid-template-columns: 1fr !important;
+	}
+	body[data-module="Contacts"][data-view="Detail"] #mk-dash-split-root .mk-contact-class-panel__grid {
+		grid-template-columns: 1fr !important;
+		grid-template-areas: "reg" "edubit" "creds" !important;
+	}
+}

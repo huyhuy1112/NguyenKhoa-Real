@@ -129,10 +129,6 @@
 				<i class="fa fa-times" aria-hidden="true"></i>
 				<span>Hủy sửa</span>
 			</button>
-			<button type="button" class="mk-so-inline-detail__action mk-so-inline-detail__action--ghost mk-so-inline-detail__view-full-btn">
-				<i class="fa fa-expand" aria-hidden="true"></i>
-				<span>Xem đầy đủ</span>
-			</button>
 		</div>
 		<div class="mk-so-inline-detail__actions-right">
 			<button type="button" class="mk-so-inline-detail__action mk-so-inline-detail__action--primary mk-so-inline-detail__process-btn">

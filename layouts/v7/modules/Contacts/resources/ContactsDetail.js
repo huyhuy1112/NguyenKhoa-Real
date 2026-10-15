@@ -267,6 +267,23 @@
 		});
 	}
 
+	function compactContactKeyFields() {
+		document.querySelectorAll('.mk-contact-detail-kv-wrap tr.summaryViewEntries').forEach(function (tr) {
+			var val = tr.querySelector('.fieldValue .value, .fieldValue');
+			var text = val ? String(val.textContent || '').replace(/\s+/g, ' ').trim() : '';
+			tr.classList.toggle('mk-contact-kv-empty', !text || text === '—' || text === '-');
+		});
+	}
+
+	function placeContactKeyCard(lane) {
+		var card = document.getElementById('mk-contact-key-card');
+		if (!card) return;
+		var slot = document.querySelector('[data-mk-key-slot="' + lane + '"]');
+		if (slot && card.parentNode !== slot) {
+			slot.appendChild(card);
+		}
+	}
+
 	function activateContactLane(lane) {
 		var key = lane || 'courses';
 		var root = document.querySelector('[data-mk-contact-lane-root="1"]');
@@ -277,11 +294,13 @@
 			btn.classList.toggle('is-active', on);
 			btn.setAttribute('aria-selected', on ? 'true' : 'false');
 		});
-		root.querySelectorAll('[data-mk-lane-show]').forEach(function (el) {
-			var lanes = String(el.getAttribute('data-mk-lane-show') || '').split(/\s+/);
-			var show = lanes.indexOf(key) >= 0;
-			el.classList.toggle('hide', !show);
+		root.querySelectorAll('[data-mk-lane]').forEach(function (el) {
+			el.classList.toggle('is-off', el.getAttribute('data-mk-lane') !== key);
 		});
+		if (key === 'courses' || key === 'materials') {
+			placeContactKeyCard(key);
+		}
+		compactContactKeyFields();
 	}
 
 	function bindLaneTabs() {
@@ -573,6 +592,7 @@
 		bindClassPanel();
 		bindEdubitProvision();
 		injectCccdField();
+		compactContactKeyFields();
 
 		if (typeof app !== 'undefined' && app.event && app.event.on) {
 			app.event.on('post.summaryview.load', function () {
@@ -582,6 +602,7 @@
 				bindClassPanel();
 				bindEdubitProvision();
 				injectCccdField();
+				compactContactKeyFields();
 			});
 			app.event.on('post.detailedview.load', function () {
 				refreshRelatedBadges();
