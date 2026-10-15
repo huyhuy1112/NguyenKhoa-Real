@@ -49,32 +49,20 @@
         filters: { franchiseStatus: "Đã Kí Quỹ" },
       },
       {
-        id: "zalo",
-        name: "Zalo",
-        filters: { dataSource: "Zalo" },
-      },
-      {
-        id: "facebook",
-        name: "Facebook",
-        filters: { dataSource: "Facebook" },
-      },
-      {
-        id: "tiktok",
-        name: "TikTok",
-        filters: { dataSource: "TikTok" },
-      },
-      {
-        id: "no_call",
-        name: pick("Chưa gọi", "Not called"),
-        filters: { contactStatus: "Chưa gọi" },
-      },
-      {
-        id: "no_tags",
-        name: pick("Chưa có thẻ", "No tags"),
-        filters: { noTags: true },
+        id: "care",
+        name: pick("Chăm sóc", "Care"),
+        filters: {},
       },
     ];
   }
+
+  var CARE_FILTERS = [
+    { key: "goi_lai", label: "Hẹn gọi lại" },
+    { key: "khong_nghe", label: "Không nghe máy" },
+    { key: "thue_bao", label: "Thuê bao/Sai số" },
+    { key: "goi_lai_sau", label: "Gọi lại sau" },
+    { key: "ngung", label: "Ngưng chăm sóc" },
+  ];
 
   var EMPTY = {
     search: "",
@@ -85,6 +73,7 @@
     owner: ANY,
     tag: ANY,
     noTags: false,
+    careStatus: ANY,
   };
 
   var state = {
@@ -334,6 +323,7 @@
       if (f.franchiseStatus !== ANY && String(c.franchise_status || "") !== f.franchiseStatus) return false;
       if (f.dataSource !== ANY && String(c.data_source || "") !== f.dataSource) return false;
       if (f.contactStatus !== ANY && String(c.contact_status || "") !== f.contactStatus) return false;
+      if (f.careStatus !== ANY && !matchesCare(c, f.careStatus)) return false;
       if (f.referrer !== ANY && String(c.referrer || "") !== f.referrer) return false;
       if (f.owner !== ANY && ownerLabel(c) !== f.owner) return false;
       return true;
@@ -913,7 +903,38 @@
         );
       })
       .join("");
+    if (state.activeSegment === "care") {
+      var care = state.filters.careStatus || ANY;
+      html +=
+        '<span class="mk-leads-offline-filters" role="group" aria-label="Lọc chăm sóc">';
+      html +=
+        '<button type="button" class="mk-leads-offline-filter' +
+        (care === ANY ? " is-active" : "") +
+        '" data-care-status="' +
+        ANY +
+        '">Tất cả chăm sóc</button>';
+      CARE_FILTERS.forEach(function (it) {
+        html +=
+          '<button type="button" class="mk-leads-offline-filter' +
+          (care === it.key ? " is-active" : "") +
+          '" data-care-status="' +
+          esc(it.key) +
+          '">' +
+          esc(it.label) +
+          "</button>";
+      });
+      html += "</span>";
+    }
     host.innerHTML = html;
+  }
+
+  function matchesCare(c, key) {
+    var st = String((c && c.contact_status) || "");
+    if (key === "goi_lai" || key === "goi_lai_sau") return st === "Gọi lại sau";
+    if (key === "khong_nghe") return st === "Chưa liên hệ được" || st.indexOf("Ko nghe") === 0;
+    if (key === "thue_bao") return st === "Thuê bao/Sai số" || st === "Thuê bao";
+    if (key === "ngung") return st === "Ngưng chăm sóc";
+    return true;
   }
 
   function selectOptions(pairs) {
@@ -1985,6 +2006,14 @@
     var segHost = $("mk-sc-segments");
     if (segHost) {
       segHost.addEventListener("click", function (e) {
+        var careBtn = e.target.closest("[data-care-status]");
+        if (careBtn) {
+          state.filters.careStatus = careBtn.getAttribute("data-care-status") || ANY;
+          state.activeSegment = "care";
+          state.page = 1;
+          renderAll();
+          return;
+        }
         var btn = e.target.closest("[data-seg]");
         if (!btn) return;
         applySegment(btn.getAttribute("data-seg"));

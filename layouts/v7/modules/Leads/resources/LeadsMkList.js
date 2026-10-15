@@ -1704,9 +1704,14 @@
       }
     }
     var foot = document.querySelector("#mk-leads-verify-panel .mk-leads-verify-panel__foot");
+    var keepSchedule = lockedAnswers && !online;
     if (foot) {
-      foot.style.display = locked ? "none" : "";
+      foot.style.display = locked && !keepSchedule ? "none" : "";
     }
+    var saveBtn = document.querySelector('#mk-leads-verify-panel [data-mk-verify-action="save"]');
+    if (saveBtn) saveBtn.textContent = keepSchedule ? "Lưu lịch học" : "Lưu xác minh";
+    var previewBtn = document.querySelector('#mk-leads-verify-panel [data-mk-verify-action="preview"]');
+    if (previewBtn) previewBtn.hidden = !!keepSchedule;
   }
 
   function listVerifyStatusHtml(lead) {
@@ -1958,6 +1963,24 @@
     var c3 = lead.verify_c3 || lead.form_c3 || "";
     var answersLocked = Number(lead.answers_locked) === 1;
     paintListVerifyHeader(lead, false);
+    var scheduleFields =
+      '<label class="mk-leads-verify-field"><span>Lịch học sau xác minh <em>(Offline 1.1)</em></span>' +
+      listVerifySelectHtml(
+        "schedule_outcome",
+        [
+          { code: "chua_xac_nhan_lich", label: "Chưa xác nhận lịch học" },
+          { code: "da_xac_nhan_lich", label: "Đã xác nhận lịch học" },
+        ],
+        lead.offline_status === "offline_da_xac_nhan_lich" || lead.offline_status === "offline_hen_lich_lai"
+          ? "da_xac_nhan_lich"
+          : "chua_xac_nhan_lich",
+        "— Chọn —"
+      ) +
+      "</label>" +
+      '<label class="mk-leads-verify-field"><span>Ngày học (nếu đã xác nhận)</span>' +
+      '<input type="date" class="mk-leads-verify-select" data-mk-verify="class_date" value="' +
+      esc(lead.offline_class_date || "") +
+      '" /></label>';
     var editFields = answersLocked
       ? '<p class="mk-leads-verify-offline__meta" style="color:#b45309"><strong>Đáp án đã khoá</strong> sau khi thông báo kết quả. C1=' +
         esc(c1 || "—") +
@@ -1965,7 +1988,8 @@
         esc(c2 || "—") +
         " · C3=" +
         esc(c3 || "—") +
-        ". Muốn đổi: khách đăng ký lại form sau 3 tháng.</p>"
+        ". Ba câu không sửa. Vẫn bổ sung được lịch học và ngày học bên dưới.</p>" +
+        scheduleFields
       : '<label class="mk-leads-verify-field"><span>Câu 1 — Tình trạng</span>' +
         listVerifySelectHtml("c1", opts.c1, c1) +
         listVerifyFormHint(lead.form_c1, lead.form_c1_label) +
@@ -1981,21 +2005,7 @@
         listVerifyFormHint(lead.form_c3, lead.form_c3_label) +
         "</label>" +
         extraQuestionsHtml(opts, lead) +
-        '<label class="mk-leads-verify-field"><span>Lịch học sau xác minh <em>(Offline 1.1)</em></span>' +
-        listVerifySelectHtml(
-          "schedule_outcome",
-          [
-            { code: "chua_xac_nhan_lich", label: "Chưa xác nhận lịch học" },
-            { code: "da_xac_nhan_lich", label: "Đã xác nhận lịch học" },
-          ],
-          lead.offline_status === "offline_da_xac_nhan_lich" ? "da_xac_nhan_lich" : "chua_xac_nhan_lich",
-          "— Chọn —"
-        ) +
-        "</label>" +
-        '<label class="mk-leads-verify-field"><span>Ngày học (nếu đã xác nhận)</span>' +
-        '<input type="date" class="mk-leads-verify-select" data-mk-verify="class_date" value="' +
-        esc(lead.offline_class_date || "") +
-        '" /></label>';
+        scheduleFields;
     body.innerHTML =
       '<div class="mk-leads-verify-hero">' +
       '<div class="mk-leads-verify-hero__name">' +
@@ -3254,19 +3264,13 @@
         });
       return;
     }
-    if (lead && Number(lead.answers_locked) === 1 && action === "save") {
-      setListVerifyMsg(
-        "Đáp án đã khoá sau khi thông báo kết quả. Khách muốn đổi thì đăng ký lại form sau 3 tháng.",
-        ""
-      );
-      return;
-    }
+    var scheduleOnly = !!(lead && Number(lead.answers_locked) === 1 && !online);
     if (online) {
       if (!payload.q1 || !payload.q2 || !payload.q3) {
         setListVerifyMsg("Vui lòng chọn đủ 3 câu (C1–C3).", "");
         return;
       }
-    } else {
+    } else if (!scheduleOnly) {
       if (!payload.c1 || !payload.c2 || !payload.c3) {
         setListVerifyMsg("Vui lòng chọn đủ C1, C2, C3.", "");
         return;
@@ -3350,9 +3354,7 @@
               : "Đã lưu xác minh Online (4 câu)."
             : res.convert && res.convert.converted
               ? "Đã lưu Bộ B & tạo Cơ hội."
-              : res.convert && res.convert.reason === "await_step2"
-                ? "Đã lưu Bộ B — nhập giờ học Bước 2 rồi mới xuống Opp."
-                : "Đã lưu xác minh Bộ B.",
+              : okMsg,
         });
       }
     });

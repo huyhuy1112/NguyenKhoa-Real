@@ -966,6 +966,57 @@ class Leads_SalesVerifyService {
 		}
 	}
 
+	/**
+	 * Đáp án đã khóa: chỉ bổ sung lịch học và ngày học, không ghi lại C1–C3.
+	 */
+	public static function saveLockedSchedule($leadId, array $payload, $userId = 0) {
+		$leadId = (int) $leadId;
+		$adb = PearDatabase::getInstance();
+		$res = $adb->pquery(
+			'SELECT eligibility_result FROM bace_lead_profile WHERE leadid = ?',
+			array($leadId)
+		);
+		$elig = ($res && $adb->num_rows($res) > 0)
+			? trim((string) $adb->query_result($res, 0, 'eligibility_result'))
+			: '';
+		$schedule = isset($payload['schedule_outcome']) ? trim((string) $payload['schedule_outcome']) : '';
+		$classDate = isset($payload['class_date']) ? trim((string) $payload['class_date']) : '';
+		$offlineMeta = null;
+		if ($elig === 'du_dk' && $schedule === 'da_xac_nhan_lich') {
+			if ($classDate === '') {
+				throw new Exception('Đã xác nhận lịch học thì cần ngày học.');
+			}
+			require_once 'modules/Leads/models/OfflineGd11Service.php';
+			$offlineMeta = Leads_OfflineGd11Service::onSalesVerified($leadId, array(
+				'eligibility_result' => 'du_dk',
+				'schedule_outcome' => 'da_xac_nhan_lich',
+				'class_date' => $classDate,
+			), $userId);
+		}
+		$fresh = Leads_ModernService::getLead((string) $leadId, $userId);
+		$out = array(
+			'success' => true,
+			'lead' => $fresh,
+			'schedule_only' => true,
+		);
+		if (!is_array($offlineMeta)) {
+			$out['convert'] = array(
+				'converted' => false,
+				'skipped' => true,
+				'reason' => 'await_step2',
+			);
+			return $out;
+		}
+		if (!empty($offlineMeta['convert'])) {
+			$out['convert'] = $offlineMeta['convert'];
+		}
+		if (!empty($offlineMeta['calendar'])) {
+			$out['calendar'] = $offlineMeta['calendar'];
+		}
+		$out['offline'] = $offlineMeta;
+		return $out;
+	}
+
 	public static function saveForLead($leadIdOrCacheId, array $payload, $userId = 0) {
 		require_once 'modules/Leads/models/ModernService.php';
 		require_once 'modules/Leads/models/SheetImportService.php';
@@ -983,9 +1034,7 @@ class Leads_SalesVerifyService {
 		}
 
 		if (self::isAnswersLocked($leadId)) {
-			throw new Exception(
-				'Đáp án đã khoá sau khi thông báo kết quả. Khách muốn đổi thì đăng ký lại form sau 3 tháng.'
-			);
+			return self::saveLockedSchedule($leadId, $payload, $userId);
 		}
 
 		$c1 = strtoupper(trim((string) (isset($payload['c1']) ? $payload['c1'] : '')));

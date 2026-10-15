@@ -980,6 +980,7 @@
 			return;
 		}
 
+		var creating = !String(payload.id || "").trim();
 		setSaving(true);
 		runDuplicateCheck()
 			.then(function (dup) {
@@ -996,11 +997,11 @@
 				if (!res) return;
 				var c = (res && res.contract) || {};
 				var id = c.id || c.crmid || payload.id;
-				if (id) {
-					window.location.href = detailUrl(id);
+				if (creating || !id) {
+					window.location.href = listUrl();
 					return;
 				}
-				window.location.href = listUrl();
+				window.location.href = detailUrl(id);
 			})
 			.catch(function (err) {
 				setSaving(false);
