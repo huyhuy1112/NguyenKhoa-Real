@@ -790,22 +790,27 @@ class Home_AdminKpiService {
 			),
 		);
 		if ($persona === 'admin' || $persona === 'ceo' || $persona === 'bgd') {
-			return $boards;
+			$selected = $boards;
+		} else {
+			$map = array(
+				'supervisor' => 'manager',
+				'sale_manager' => 'manager',
+				'sale' => 'sale',
+				'accountant' => 'accountant',
+				'chief_accountant' => 'accountant',
+				'warehouse' => 'warehouse',
+				'supply' => 'warehouse',
+			);
+			$key = isset($map[$persona]) ? $map[$persona] : '';
+			if ($key === '' || !isset($boards[$key])) {
+				return array();
+			}
+			$selected = array($key => $boards[$key]);
 		}
-		$map = array(
-			'supervisor' => 'manager',
-			'sale_manager' => 'manager',
-			'sale' => 'sale',
-			'accountant' => 'accountant',
-			'chief_accountant' => 'accountant',
-			'warehouse' => 'warehouse',
-			'supply' => 'warehouse',
-		);
-		$key = isset($map[$persona]) ? $map[$persona] : '';
-		if ($key === '' || !isset($boards[$key])) {
-			return array();
+		if (isset($selected['warehouse'])) {
+			$selected['warehouse']['goods'] = self::goodsReport($db);
 		}
-		return array($key => $boards[$key]);
+		return $selected;
 	}
 
 	protected static function monthRevenue(PearDatabase $db, $from, $to) {
@@ -953,6 +958,354 @@ class Home_AdminKpiService {
 			array()
 		);
 		return $r ? (float) $db->query_result($r, 0, 'c') : 0;
+	}
+
+	/**
+	 * Goods report for the Kho board: stock, sell-through alerts, and real sales.
+	 * Profit is included only when a purchase cost is stored. Returns are omitted
+	 * because this CRM has no return-quantity source.
+	 *
+	 * @return array<string,mixed>|null
+	 */
+	protected static function goodsReport(PearDatabase $db) {
+		$hasStock = self::tableExists($db, 'vtiger_warehouse_stock') && self::columnExists($db, 'vtiger_warehouse_stock', 'quantity');
+		$hasSales = self::tableExists($db, 'vtiger_inventoryproductrel') && self::tableExists($db, 'vtiger_salesorder');
+		if (!$hasStock && !$hasSales) {
+			return null;
+		}
+		$stockRows = $hasStock ? self::goodsStockRows($db) : array();
+		$daily = $hasSales ? self::goodsDailySales($db, 183) : array();
+		$sold30 = $hasSales ? self::goodsProductSales($db, 30) : array();
+		$hasCost = false;
+		foreach ($sold30 as $row) {
+			if ((float) $row['cost'] > 0) {
+				$hasCost = true;
+				break;
+			}
+		}
+
+		$skuCount = 0;
+		$qtySum = 0.0;
+		$valueSum = 0.0;
+		$alerts = array('out_today' => 0, 'out_7' => 0, 'out_30' => 0, 'unsold' => 0, 'overstock' => 0);
+		$groups = array();
+		foreach ($stockRows as $row) {
+			$qty = (float) $row['qty'];
+			$value = (float) $row['value'];
+			if ($qty > 0) {
+				$skuCount++;
+				$qtySum += $qty;
+				$valueSum += $value;
+			}
+			$sold = isset($sold30[$row['key']]) ? (float) $sold30[$row['key']]['qty'] : 0.0;
+			$avg = $sold / 30.0;
+			if ($qty <= 0 || ($avg > 0 && ($qty / $avg) < 1)) {
+				$alerts['out_today']++;
+			} elseif ($avg <= 0) {
+				$alerts['unsold']++;
+			} else {
+				$cover = $qty / $avg;
+				if ($cover <= 7) {
+					$alerts['out_7']++;
+				} elseif ($cover <= 30) {
+					$alerts['out_30']++;
+				} elseif ($cover > 90) {
+					$alerts['overstock']++;
+				}
+			}
+			$group = $row['group'];
+			if (!isset($groups[$group])) {
+				$groups[$group] = array('name' => $group, 'qty' => 0, 'value' => 0);
+			}
+			$groups[$group]['qty'] += $qty;
+			$groups[$group]['value'] += $value;
+		}
+		$groupList = array_values($groups);
+		usort($groupList, function ($a, $b) {
+			if ($a['qty'] == $b['qty']) {
+				return $b['value'] <=> $a['value'];
+			}
+			return $b['qty'] <=> $a['qty'];
+		});
+
+		$byQty = $stockRows;
+		usort($byQty, function ($a, $b) {
+			return $b['qty'] <=> $a['qty'];
+		});
+		$byValue = $stockRows;
+		usort($byValue, function ($a, $b) {
+			return $b['value'] <=> $a['value'];
+		});
+
+		$fast = array_values($sold30);
+		usort($fast, function ($a, $b) {
+			return $b['qty'] <=> $a['qty'];
+		});
+		$slow = array();
+		foreach ($stockRows as $row) {
+			if ((float) $row['qty'] <= 0) {
+				continue;
+			}
+			$sale = isset($sold30[$row['key']]) ? $sold30[$row['key']] : null;
+			$slow[] = array(
+				'name' => $row['name'],
+				'sku' => $row['sku'],
+				'qty' => $sale ? (float) $sale['qty'] : 0,
+				'revenue' => $sale ? (float) $sale['revenue'] : 0,
+				'cost' => $sale ? (float) $sale['cost'] : 0,
+			);
+		}
+		usort($slow, function ($a, $b) {
+			if ($a['qty'] == $b['qty']) {
+				return $a['revenue'] <=> $b['revenue'];
+			}
+			return $a['qty'] <=> $b['qty'];
+		});
+
+		return array(
+			'has_cost' => $hasCost,
+			'has_returns' => false,
+			'stock' => array(
+				'sku_count' => $skuCount,
+				'qty' => $qtySum,
+				'value' => $valueSum,
+			),
+			'alerts' => $alerts,
+			'periods' => array(
+				'day' => self::goodsPeriodBuckets($daily, 'day', 14),
+				'week' => self::goodsPeriodBuckets($daily, 'week', 8),
+				'month' => self::goodsPeriodBuckets($daily, 'month', 6),
+			),
+			'groups' => array_slice($groupList, 0, 8),
+			'stock_top_qty' => self::goodsTrimStock($byQty, 8),
+			'stock_top_value' => self::goodsTrimStock($byValue, 8),
+			'fast' => self::goodsTrimSales(array_slice($fast, 0, 10), $hasCost),
+			'slow' => self::goodsTrimSales(array_slice($slow, 0, 10), $hasCost),
+		);
+	}
+
+	protected static function goodsStockRows(PearDatabase $db) {
+		$priceExpr = '0';
+		if (self::columnExists($db, 'vtiger_warehouse_stock', 'last_price')) {
+			$priceExpr = 'COALESCE(s.last_price, 0)';
+		}
+		if (self::tableExists($db, 'vtiger_productsservices') && self::columnExists($db, 'vtiger_productsservices', 'price')) {
+			$priceExpr = 'CASE WHEN ' . $priceExpr . ' > 0 THEN ' . $priceExpr . ' ELSE COALESCE(ps.price, 0) END';
+		}
+		$nameExpr = "COALESCE(s.product_name, '')";
+		$skuExpr = "''";
+		$join = '';
+		if (self::tableExists($db, 'vtiger_productsservices')) {
+			$join = ' LEFT JOIN vtiger_productsservices ps ON ps.productsservicesid = s.productid ';
+			$nameExpr = "COALESCE(NULLIF(ps.productsservicesname, ''), s.product_name, '')";
+			if (self::columnExists($db, 'vtiger_productsservices', 'sku')) {
+				$skuExpr = "COALESCE(ps.sku, '')";
+			}
+		}
+		$r = $db->pquery(
+			"SELECT s.productid AS product_id, $nameExpr AS name, $skuExpr AS sku,
+				SUM(COALESCE(s.quantity, 0)) AS qty,
+				SUM(COALESCE(s.quantity, 0) * ($priceExpr)) AS value
+			 FROM vtiger_warehouse_stock s
+			 $join
+			 GROUP BY s.productid, $nameExpr, $skuExpr",
+			array()
+		);
+		$out = array();
+		if (!$r) {
+			return $out;
+		}
+		while ($row = $db->fetchByAssoc($r)) {
+			$name = trim(decode_html((string) $row['name']));
+			$sku = trim(decode_html((string) $row['sku']));
+			$id = (int) $row['product_id'];
+			$key = $id > 0 ? ('id:' . $id) : ('sku:' . strtolower($sku !== '' ? $sku : $name));
+			$out[] = array(
+				'key' => $key,
+				'name' => $name !== '' ? $name : ($sku !== '' ? $sku : 'Chưa đặt tên'),
+				'sku' => $sku,
+				'qty' => (float) $row['qty'],
+				'value' => (float) $row['value'],
+				'group' => self::goodsGroupName($sku, $name),
+			);
+		}
+		return $out;
+	}
+
+	protected static function goodsGroupName($sku, $name) {
+		$sku = trim((string) $sku);
+		if ($sku !== '' && strpos($sku, '_') !== false) {
+			$prefix = strtok($sku, '_');
+			if ($prefix !== false && $prefix !== '') {
+				return $prefix;
+			}
+		}
+		$name = trim((string) $name);
+		if ($name === '') {
+			return 'Khác';
+		}
+		$parts = preg_split('/\s+/', $name);
+		return $parts && $parts[0] !== '' ? $parts[0] : 'Khác';
+	}
+
+	protected static function goodsNetSql() {
+		$db = PearDatabase::getInstance();
+		$net = '(ip.quantity * ip.listprice)';
+		if (self::columnExists($db, 'vtiger_inventoryproductrel', 'discount_percent')) {
+			$net = '(' . $net . ' * (1 - IFNULL(ip.discount_percent, 0) / 100))';
+		}
+		if (self::columnExists($db, 'vtiger_inventoryproductrel', 'discount_amount')) {
+			$net = '(' . $net . ' - IFNULL(ip.discount_amount, 0))';
+		}
+		return $net;
+	}
+
+	protected static function goodsCostSql() {
+		$db = PearDatabase::getInstance();
+		if (self::tableExists($db, 'vtiger_productsservices') && self::columnExists($db, 'vtiger_productsservices', 'purchase_cost')) {
+			return 'SUM(ip.quantity * COALESCE(ps.purchase_cost, 0))';
+		}
+		return '0';
+	}
+
+	protected static function goodsDailySales(PearDatabase $db, $days) {
+		list($notCancelSql, $excluded) = self::soNotCancelledSql('so');
+		$since = date('Y-m-d 00:00:00', strtotime('-' . (int) $days . ' days'));
+		$params = array_merge($excluded, array($since));
+		$net = self::goodsNetSql();
+		$r = $db->pquery(
+			"SELECT DATE(ce.createdtime) AS sale_date,
+				SUM(ip.quantity) AS qty,
+				SUM($net) AS revenue
+			 FROM vtiger_inventoryproductrel ip
+			 INNER JOIN vtiger_salesorder so ON so.salesorderid = ip.id
+			 INNER JOIN vtiger_crmentity ce ON ce.crmid = so.salesorderid AND ce.deleted = 0
+			 WHERE $notCancelSql AND ce.createdtime >= ?
+			 GROUP BY DATE(ce.createdtime)
+			 ORDER BY sale_date ASC",
+			$params
+		);
+		$out = array();
+		if (!$r) {
+			return $out;
+		}
+		while ($row = $db->fetchByAssoc($r)) {
+			$day = (string) $row['sale_date'];
+			if ($day === '') {
+				continue;
+			}
+			$out[$day] = array('qty' => (float) $row['qty'], 'revenue' => (float) $row['revenue']);
+		}
+		return $out;
+	}
+
+	protected static function goodsProductSales(PearDatabase $db, $days) {
+		list($notCancelSql, $excluded) = self::soNotCancelledSql('so');
+		$since = date('Y-m-d 00:00:00', strtotime('-' . (int) $days . ' days'));
+		$params = array_merge($excluded, array($since));
+		$net = self::goodsNetSql();
+		$cost = self::goodsCostSql();
+		$join = self::tableExists($db, 'vtiger_productsservices')
+			? ' LEFT JOIN vtiger_productsservices ps ON ps.productsservicesid = ip.productid '
+			: '';
+		$name = self::tableExists($db, 'vtiger_productsservices')
+			? "COALESCE(NULLIF(ps.productsservicesname, ''), '')"
+			: "''";
+		$sku = (self::tableExists($db, 'vtiger_productsservices') && self::columnExists($db, 'vtiger_productsservices', 'sku'))
+			? "COALESCE(ps.sku, '')"
+			: "''";
+		$r = $db->pquery(
+			"SELECT ip.productid AS product_id, $name AS name, $sku AS sku,
+				SUM(ip.quantity) AS qty, SUM($net) AS revenue, $cost AS cost
+			 FROM vtiger_inventoryproductrel ip
+			 INNER JOIN vtiger_salesorder so ON so.salesorderid = ip.id
+			 INNER JOIN vtiger_crmentity ce ON ce.crmid = so.salesorderid AND ce.deleted = 0
+			 $join
+			 WHERE $notCancelSql AND ce.createdtime >= ?
+			 GROUP BY ip.productid, $name, $sku",
+			$params
+		);
+		$out = array();
+		if (!$r) {
+			return $out;
+		}
+		while ($row = $db->fetchByAssoc($r)) {
+			$id = (int) $row['product_id'];
+			$nameText = trim(decode_html((string) $row['name']));
+			$skuText = trim(decode_html((string) $row['sku']));
+			$key = $id > 0 ? ('id:' . $id) : ('sku:' . strtolower($skuText !== '' ? $skuText : $nameText));
+			$out[$key] = array(
+				'name' => $nameText !== '' ? $nameText : ($skuText !== '' ? $skuText : 'Chưa đặt tên'),
+				'sku' => $skuText,
+				'qty' => (float) $row['qty'],
+				'revenue' => (float) $row['revenue'],
+				'cost' => (float) $row['cost'],
+			);
+		}
+		return $out;
+	}
+
+	protected static function goodsPeriodBuckets(array $daily, $grain, $limit) {
+		$buckets = array();
+		foreach ($daily as $day => $row) {
+			$ts = strtotime($day . ' 12:00:00');
+			if (!$ts) {
+				continue;
+			}
+			if ($grain === 'month') {
+				$key = date('Y-m', $ts);
+				$label = date('m/Y', $ts);
+			} elseif ($grain === 'week') {
+				$key = date('o-\\WW', $ts);
+				$label = 'Tuần ' . date('W/Y', $ts);
+			} else {
+				$key = $day;
+				$label = date('d/m/Y', $ts);
+			}
+			if (!isset($buckets[$key])) {
+				$buckets[$key] = array('label' => $label, 'qty' => 0, 'revenue' => 0);
+			}
+			$buckets[$key]['qty'] += (float) $row['qty'];
+			$buckets[$key]['revenue'] += (float) $row['revenue'];
+		}
+		$list = array_values($buckets);
+		if (count($list) > $limit) {
+			$list = array_slice($list, -$limit);
+		}
+		return $list;
+	}
+
+	protected static function goodsTrimStock(array $rows, $limit) {
+		$out = array();
+		foreach (array_slice($rows, 0, $limit) as $row) {
+			if ((float) $row['qty'] == 0 && (float) $row['value'] == 0) {
+				continue;
+			}
+			$out[] = array(
+				'name' => $row['name'],
+				'sku' => $row['sku'],
+				'qty' => $row['qty'],
+				'value' => $row['value'],
+			);
+		}
+		return $out;
+	}
+
+	protected static function goodsTrimSales(array $rows, $hasCost) {
+		$out = array();
+		foreach ($rows as $row) {
+			$item = array(
+				'name' => $row['name'],
+				'sku' => isset($row['sku']) ? $row['sku'] : '',
+				'qty' => (float) $row['qty'],
+				'revenue' => (float) $row['revenue'],
+			);
+			if ($hasCost) {
+				$item['profit'] = (float) $row['revenue'] - (float) $row['cost'];
+			}
+			$out[] = $item;
+		}
+		return $out;
 	}
 
 	protected static function warehouseStockFacts(PearDatabase $db) {

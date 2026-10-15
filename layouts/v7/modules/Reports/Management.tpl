@@ -81,7 +81,7 @@
 			</div>
 			<div id="mkRoleReportsBody"><div class="mk-admin-kpi-detail-loading">Đang tải…</div></div>
 		</section>
-		<script type="text/javascript" src="{vresource_url('layouts/v7/modules/Reports/resources/RoleBoards.js')}?mk_v=20261001_role2"></script>
+		<script type="text/javascript" src="{vresource_url('layouts/v7/modules/Reports/resources/RoleBoards.js')}?mk_v=20261015_goods1"></script>
 
 		<section class="mk-mkt-enterprise" aria-label="MKT SALE báo cáo">
 
