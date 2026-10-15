@@ -3321,8 +3321,12 @@
           ? "Đã lưu & chuyển sang Cơ hội (đủ ĐK Online)."
           : "Đã lưu & chuyển sang Cơ hội (đủ ĐK Offline).";
       } else if (res.convert && res.convert.reason === "await_step2") {
-        okMsg =
-          "Đã lưu xác minh. Nhập giờ học ở Bước 2 rồi bấm Lưu giờ/địa điểm để chuyển xuống Opp.";
+        var offSt = String((fresh && fresh.offline_status) || "");
+        var hasClassDate = !!(fresh && String(fresh.offline_class_date || "").trim());
+        var scheduleOk = offSt === "offline_da_xac_nhan_lich" || offSt === "offline_hen_lich_lai";
+        okMsg = !scheduleOk || !hasClassDate
+          ? "Đã lưu xác minh. Chưa xuống Cơ hội vì chưa xác nhận lịch học và ngày học."
+          : "Đã lưu xác minh. Nhập giờ học ở Bước 2 rồi bấm Lưu giờ/địa điểm để chuyển xuống Cơ hội.";
       } else if (res.convert && res.convert.skipped) {
         okMsg = "Đã lưu xác minh (Opp đã tồn tại).";
       } else if (res.convert && res.convert.reason && res.convert.reason !== "ok" && !res.convert.skipped) {

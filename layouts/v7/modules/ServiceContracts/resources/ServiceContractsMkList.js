@@ -29,7 +29,7 @@
     "Chuyển sang Nguyên Khoa",
   ];
   var DATA_SOURCE_OPTS = ["Website", "Zalo", "Facebook", "TikTok", "Được giới thiệu"];
-  var CONTACT_STATUS_OPTS = ["Chưa gọi", "Đã gửi tư vấn", "Thuê bao", "Ko nghe Máy Lần 1"];
+  var CONTACT_STATUS_OPTS = ["Chưa gọi", "Đã gọi/Đã tư vấn", "Đã gửi tư vấn", "Chưa liên hệ được", "Thuê bao/Sai số", "Thuê bao", "Gọi lại sau", "Ngưng chăm sóc", "Ko nghe Máy Lần 1"];
 
   function getPresetSegments() {
     return [
@@ -1470,12 +1470,16 @@
       '<p class="mk-lead-lt-modal__meta" id="mk-sc-lt-meta"></p>' +
       '<label class="mk-lead-lt-modal__label" for="mk-sc-lt-result">Kết quả cuộc gọi</label>' +
       '<select id="mk-sc-lt-result" class="mk-lead-lt-modal__select" autocomplete="off">' +
-      '<option value="Không nghe máy">Không nghe máy</option>' +
-      '<option value="Nghe máy">Nghe máy</option>' +
+      '<option value="Không nghe máy">Không nghe máy — Chưa liên hệ được</option>' +
+      '<option value="Thuê bao/Sai số">Thuê bao / Sai số</option>' +
+      '<option value="Gọi lại sau">Gọi lại sau</option>' +
+      '<option value="Nghe máy">Nghe máy — Đã gọi/Đã tư vấn</option>' +
       "</select>" +
+      '<label class="mk-lead-lt-modal__label" for="mk-sc-lt-callback" id="mk-sc-lt-callback-wrap" hidden>Giờ hẹn gọi lại</label>' +
+      '<input id="mk-sc-lt-callback" class="mk-lead-lt-modal__select inputElement" type="datetime-local" hidden />' +
       '<label class="mk-lead-lt-modal__label" for="mk-sc-lt-note">Ghi chú</label>' +
       '<textarea id="mk-sc-lt-note" class="mk-lead-lt-modal__note inputElement" rows="6" placeholder="Ví dụ: Khách quan tâm mặt bằng / cần tư vấn thêm"></textarea>' +
-      '<p class="mk-lead-lt-modal__tip">Chọn <strong>Nghe máy</strong> → Liên hệ = Đã gửi tư vấn (không sang Opp). Ghi chú hiện ở <strong>Tương tác gần đây</strong> (Last Touch Call). <strong>Không nghe máy</strong> → nhắc sau khoảng 5 giờ.</p>' +
+      '<p class="mk-lead-lt-modal__tip">Mỗi tag R1 tối đa 3 lần. <strong>Không nghe máy</strong> nhắc sau 3 giờ. <strong>Thuê bao/Sai số</strong> nhắc sau 24 giờ. Hết 3 lượt một tag thì ngưng chăm sóc. <strong>Nghe máy</strong> gắn Đã gọi/Đã tư vấn, không sang Opp.</p>' +
       "</div>" +
       '<div class="mk-lead-lt-modal__foot">' +
       '<button type="button" class="btn btn-default" data-mk-sc-lt-close="1">Hủy</button>' +
@@ -1495,6 +1499,10 @@
         e.preventDefault();
         submitScLastTouchCall();
       });
+    }
+    var resultPick = document.getElementById("mk-sc-lt-result");
+    if (resultPick) {
+      resultPick.addEventListener("change", syncScLastTouchCallback);
     }
     return wrap;
   }
@@ -1543,17 +1551,26 @@
         ""
     ).trim();
     var meta = document.getElementById("mk-sc-lt-meta");
+    var hint = String(
+      (btn && btn.getAttribute("data-lt-hint")) ||
+        (host && host.getAttribute("data-lt-hint")) ||
+        ""
+    ).trim();
     if (meta) {
       meta.textContent =
-        "Ghi nhận Call #" +
-        nextN +
-        (reminder ? " · Nhắc lần trước: " + reminder : "") +
-        ". Khoảng 5 giờ giữa các lần gọi (chuông Thông báo).";
+        hint ||
+        ("Ghi nhận Call #" +
+          nextN +
+          (reminder ? " · Nhắc lần trước: " + reminder : "") +
+          ". Không nghe máy nhắc sau 3 giờ.");
     }
     var resultEl = document.getElementById("mk-sc-lt-result");
     var noteEl = document.getElementById("mk-sc-lt-note");
+    var callbackEl = document.getElementById("mk-sc-lt-callback");
     if (resultEl) resultEl.value = "Không nghe máy";
     if (noteEl) noteEl.value = "";
+    if (callbackEl) callbackEl.value = "";
+    syncScLastTouchCallback();
     modal._mkScId = recordId;
     modal._mkCallBtn = btn;
     modal.hidden = false;
@@ -1568,7 +1585,7 @@
     var nextN = lt.next_n || 1;
     var count = typeof lt.count === "number" ? lt.count : (lt.calls || []).length;
     var max = lt.max_calls || 3;
-    var hint = lt.hint || "Call #1 → 5 giờ → #2 → #3. Không nghe máy: nhắc sau 5 giờ. Nghe máy → dừng chuỗi gọi.";
+    var hint = lt.hint || "R1 mỗi tag tối đa 3. Không nghe máy nhắc sau 3 giờ. Nghe máy → Đã gọi/Đã tư vấn.";
     host.setAttribute("data-lt-next", String(nextN));
     host.setAttribute("data-lt-hint", hint);
     host.setAttribute("data-lt-count", String(count));
@@ -1636,6 +1653,15 @@
     }
   }
 
+  function syncScLastTouchCallback() {
+    var resultEl = document.getElementById("mk-sc-lt-result");
+    var wrap = document.getElementById("mk-sc-lt-callback-wrap");
+    var input = document.getElementById("mk-sc-lt-callback");
+    var on = resultEl && resultEl.value === "Gọi lại sau";
+    if (wrap) wrap.hidden = !on;
+    if (input) input.hidden = !on;
+  }
+
   function submitScLastTouchCall() {
     var modal = document.getElementById("mk-sc-lt-modal");
     var recordId = modal && modal._mkScId;
@@ -1643,10 +1669,16 @@
     var resultEl = document.getElementById("mk-sc-lt-result");
     var noteEl = document.getElementById("mk-sc-lt-note");
     var saveBtn = document.getElementById("mk-sc-lt-save");
+    var callbackEl = document.getElementById("mk-sc-lt-callback");
     var result = resultEl ? String(resultEl.value || "").trim() : "";
     var note = noteEl ? String(noteEl.value || "").trim() : "";
+    var callbackAt = callbackEl ? String(callbackEl.value || "").trim() : "";
     if (!result) {
       window.alert("Vui lòng chọn kết quả cuộc gọi.");
+      return;
+    }
+    if (result === "Gọi lại sau" && !callbackAt) {
+      window.alert("Gọi lại sau cần giờ hẹn cụ thể.");
       return;
     }
     if (saveBtn) saveBtn.disabled = true;
@@ -1661,6 +1693,7 @@
       record: recordId,
       call_result: result,
       note: note,
+      callback_at: result === "Gọi lại sau" ? callbackAt : "",
     };
     function done(err, res) {
       if (saveBtn) saveBtn.disabled = false;
