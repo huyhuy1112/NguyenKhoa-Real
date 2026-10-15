@@ -1897,3 +1897,94 @@ button.mk-nl-row.is-open {
 		stroke-dashoffset: var(--donut-off);
 	}
 }
+
+.mk-sheet-report {
+	margin-top: 8px;
+}
+
+.mk-sheet-note {
+	margin: 8px 0 12px;
+	color: #475569;
+	font-size: 13px;
+	line-height: 1.45;
+}
+
+.mk-sheet-months {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin: 0 0 12px;
+}
+
+.mk-sheet-months button {
+	border: 1px solid #dbe3ee;
+	background: #fff;
+	color: #334155;
+	border-radius: 999px;
+	padding: 6px 12px;
+	font-size: 13px;
+	cursor: pointer;
+}
+
+.mk-sheet-months button.is-on {
+	background: #0f766e;
+	border-color: #0f766e;
+	color: #fff;
+}
+
+.mk-sheet-scroll {
+	overflow-x: auto;
+	max-width: 100%;
+	margin: 0 0 16px;
+}
+
+.mk-sheet-table {
+	width: max-content;
+	min-width: 100%;
+	border-collapse: collapse;
+	font-size: 13px;
+}
+
+.mk-sheet-table th,
+.mk-sheet-table td {
+	border: 1px solid #e2e8f0;
+	padding: 6px 8px;
+	white-space: nowrap;
+	vertical-align: middle;
+}
+
+.mk-sheet-table th {
+	background: #f8fafc;
+	font-weight: 650;
+	position: sticky;
+	top: 0;
+}
+
+.mk-sheet-table td.is-num,
+.mk-sheet-table th:not(:first-child) {
+	text-align: right;
+}
+
+.mk-sheet-table tr.is-hot td {
+	background: #f0fdf4;
+}
+
+.mk-sheet-table tr.is-total td {
+	background: #f8fafc;
+	font-weight: 700;
+}
+
+.mk-sheet-spend {
+	width: 120px;
+	text-align: right;
+	border: 1px solid #99f6e4;
+	background: #fff;
+	border-radius: 6px;
+	padding: 4px 6px;
+}
+
+.mk-sheet-empty {
+	text-align: center;
+	color: #64748b;
+	padding: 12px;
+}

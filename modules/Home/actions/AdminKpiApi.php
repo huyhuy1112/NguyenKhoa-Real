@@ -26,6 +26,11 @@ class Home_AdminKpiApi_Action extends Vtiger_Action_Controller {
 	}
 
 	public function validateRequest(Vtiger_Request $request) {
+		$mode = strtolower((string) $request->get('mode'));
+		if ($mode === 'save_ad_spend') {
+			$request->validateWriteAccess();
+			return;
+		}
 		$request->validateReadAccess();
 	}
 
@@ -87,6 +92,21 @@ class Home_AdminKpiApi_Action extends Vtiger_Action_Controller {
 						'success' => true,
 						'persona' => $persona,
 						'boards' => Home_AdminKpiService::getRoleBoards($persona, (int) $user->getId()),
+					));
+					break;
+
+				case 'save_ad_spend':
+					require_once 'modules/Reports/models/MktSheetReportService.php';
+					$user = Users_Record_Model::getCurrentUserModel();
+					$amount = Reports_MktSheetReportService::parseMoneyInput($request->get('amount'));
+					Reports_MktSheetReportService::saveSpend(
+						(string) $request->get('spend_date'),
+						$amount,
+						(int) $user->getId()
+					);
+					$response->setResult(array(
+						'success' => true,
+						'sheet' => Reports_MktSheetReportService::payload(),
 					));
 					break;
 

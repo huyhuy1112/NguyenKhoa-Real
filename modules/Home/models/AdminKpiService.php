@@ -810,6 +810,20 @@ class Home_AdminKpiService {
 		if (isset($selected['warehouse'])) {
 			$selected['warehouse']['goods'] = self::goodsReport($db);
 		}
+		if ($persona === 'admin' || $persona === 'ceo' || $persona === 'bgd') {
+			require_once 'modules/Reports/models/MktSheetReportService.php';
+			$sheet = array('error' => 'Chưa tải được sheet Tổng Hợp Data.', 'months' => array());
+			try {
+				$sheet = Reports_MktSheetReportService::payload($db);
+			} catch (Exception $e) {
+				$sheet['error'] = 'Chưa tải được sheet Tổng Hợp Data.';
+			}
+			$selected['marketing'] = array(
+				'title' => 'Marketing',
+				'cards' => array(),
+				'sheet' => $sheet,
+			);
+		}
 		return $selected;
 	}
 
