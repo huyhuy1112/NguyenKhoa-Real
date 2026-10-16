@@ -8,11 +8,11 @@
 	</header>
 	<div class="mk-tre-toolbar-bar">
 		<div class="mk-tre-tabs" role="tablist">
-			<a class="mk-tre-tab" href="index.php?module=HelpDesk&amp;view=Rules&amp;app=SUPPORT#tab=rules">Rule</a>
-			<a class="mk-tre-tab" href="index.php?module=HelpDesk&amp;view=Rules&amp;app=SUPPORT#tab=tags">Tag</a>
-			<a class="mk-tre-tab" href="index.php?module=HelpDesk&amp;view=Rules&amp;app=SUPPORT#tab=scenarios">Kịch bản</a>
-			<a class="mk-tre-tab" href="index.php?module=HelpDesk&amp;view=Rules&amp;app=SUPPORT#tab=affiliate">Mã giới thiệu</a>
-			<a class="mk-tre-tab" href="index.php?module=HelpDesk&amp;view=Rules&amp;app=SUPPORT#tab=questions">Câu hỏi</a>
+			<a class="mk-tre-tab" href="index.php?module=HelpDesk&amp;view=Rules&amp;app=SUPPORT&amp;tab=rules">Rule</a>
+			<a class="mk-tre-tab" href="index.php?module=HelpDesk&amp;view=Rules&amp;app=SUPPORT&amp;tab=tags">Tag</a>
+			<a class="mk-tre-tab" href="index.php?module=HelpDesk&amp;view=Rules&amp;app=SUPPORT&amp;tab=scenarios">Kịch bản</a>
+			<a class="mk-tre-tab" href="index.php?module=HelpDesk&amp;view=Rules&amp;app=SUPPORT&amp;tab=affiliate">Mã giới thiệu</a>
+			<a class="mk-tre-tab" href="index.php?module=HelpDesk&amp;view=Rules&amp;app=SUPPORT&amp;tab=questions">Câu hỏi</a>
 			<a class="mk-tre-tab is-active" href="index.php?module=HelpDesk&amp;view=MaterialAlerts&amp;app=SUPPORT" aria-current="page">Cảnh báo nguyên liệu</a>
 		</div>
 	</div>
