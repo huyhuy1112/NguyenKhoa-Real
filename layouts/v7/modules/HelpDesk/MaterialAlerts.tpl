@@ -23,7 +23,10 @@
 				<h2>Chọn khi nào thì báo</h2>
 				<p>Điền số vào ô muốn bật. Ô để trống thì việc đó không báo. Việc đang mở và chỉ số một khách nằm ở menu Cảnh báo.</p>
 			</div>
-			<button type="submit" class="mk-nl-save">Lưu ngưỡng</button>
+			<div class="mk-nl-settings__actions">
+				<p class="mk-nl-msg" data-nl-msg hidden></p>
+				<button type="submit" class="mk-nl-save">Lưu ngưỡng</button>
+			</div>
 		</div>
 		<div class="mk-nl-settings__groups">
 		{assign var=NL_GROUP value=''}
@@ -43,18 +46,13 @@
 		{/foreach}
 		{if $NL_GROUP neq ''}</div></section>{/if}
 		</div>
-		<div class="mk-nl-settings__foot">
-			<p class="mk-nl-msg" data-nl-msg hidden></p>
-			<button type="submit" class="mk-nl-save">Lưu ngưỡng</button>
-		</div>
 	</form>
 
 </div>
 <style>
 .mk-nl-page { width: 100%; max-width: none; box-sizing: border-box; }
 .mk-nl-settings__bar,
-.mk-nl-group,
-.mk-nl-settings__foot {
+.mk-nl-group {
 	background: #fff;
 	border: 1px solid #e2e8f0;
 	border-radius: 16px;
@@ -150,13 +148,11 @@
 	box-shadow: 0 1px 2px rgba(8, 160, 69, 0.25);
 }
 .mk-nl-save:hover { background: #078a3b; }
-.mk-nl-settings__foot {
+.mk-nl-settings__actions {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
 	gap: 12px;
-	margin-top: 14px;
-	padding: 14px 20px;
+	flex-shrink: 0;
 }
 .mk-nl-msg {
 	margin: 0;
@@ -164,8 +160,8 @@
 	font-weight: 700;
 }
 @media (max-width: 800px) {
-	.mk-nl-settings__bar,
-	.mk-nl-settings__foot { flex-direction: column; align-items: stretch; }
+	.mk-nl-settings__bar { flex-direction: column; align-items: stretch; }
+	.mk-nl-settings__actions { justify-content: flex-end; }
 	.mk-nl-grid { grid-template-columns: 1fr; }
 }
 </style>
