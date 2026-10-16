@@ -17,7 +17,7 @@
 		</div>
 	</div>
 
-	<p class="mk-nl__sub">Điền số vào ô muốn bật. Ô để trống thì việc đó không báo. Bấm Lưu ngưỡng sau khi chỉnh.</p>
+	<p class="mk-nl__sub">Điền số vào ô muốn bật. Ô để trống thì việc đó không báo. Bấm Lưu ngưỡng sau khi chỉnh. Việc đang mở nằm ở menu Cảnh báo.</p>
 
 	<form class="mk-nl__card" id="mk-nl-settings">
 		<div class="mk-nl__card-head">
@@ -75,39 +75,6 @@
 		{/if}
 	</form>
 
-	<section class="mk-nl__card">
-		<h2>Việc đang mở</h2>
-		{if $NL_ALERTS|@count eq 0}
-			<p class="mk-nl__empty">Chưa có việc. Báo giá quá hạn và đơn quá hạn thanh toán sẽ hiện khi có dữ liệu. Kỳ mua lại chỉ hiện sau khi nhập ngưỡng.</p>
-		{/if}
-		{foreach from=$NL_ALERTS item=ALERT}
-			<article class="mk-nl__alert" data-id="{$ALERT.id}">
-				<header>
-					<strong>{$ALERT.code|escape}</strong>
-					<span>{$ALERT.name|escape}</span>
-					<em>{$ALERT.status|escape}</em>
-				</header>
-				<p>{$ALERT.title|escape}</p>
-				<small>{$ALERT.detail|escape}</small>
-				<div class="mk-nl__actions">
-					<button type="button" data-next="accepted">Đã nhận</button>
-					<button type="button" data-next="working">Đang xử lý</button>
-					<button type="button" data-next="done">Hoàn thành</button>
-					<button type="button" data-next="snoozed">Tạm hoãn</button>
-					<button type="button" data-next="na">Không áp dụng</button>
-				</div>
-				<div class="mk-nl__close" hidden>
-					<input type="text" data-field="result_note" placeholder="Kết quả / lý do" />
-					<input type="text" data-field="evidence_ref" placeholder="Bằng chứng: đơn, cuộc gọi, chứng từ" />
-					<input type="text" data-field="next_task" placeholder="Việc tiếp theo" />
-					<input type="text" data-field="next_owner" placeholder="Người phụ trách" />
-					<input type="date" data-field="next_due" title="Hạn việc tiếp theo" />
-					<input type="date" data-field="snooze_until" title="Ngày kiểm tra lại nếu tạm hoãn" />
-					<button type="button" data-send="1">Ghi</button>
-				</div>
-			</article>
-		{/foreach}
-	</section>
 </div>
 <style>
 .mk-nl-page { width: 100%; max-width: none; box-sizing: border-box; }
@@ -183,40 +150,6 @@
 			window.location.href = "index.php?module=HelpDesk&view=MaterialAlerts&app=SUPPORT&contact_id=" + encodeURIComponent(id);
 		});
 	}
-	document.querySelectorAll(".mk-nl__alert").forEach(function (card) {
-		var next = "";
-		card.querySelectorAll("[data-next]").forEach(function (btn) {
-			btn.addEventListener("click", function () {
-				next = btn.getAttribute("data-next");
-				if (next === "accepted" || next === "working") {
-					post({
-						module: "HelpDesk", action: "MaterialAlertsApi", mode: "transition",
-						id: card.getAttribute("data-id"), next: next
-					}).then(function () { window.location.reload(); });
-					return;
-				}
-				card.querySelector(".mk-nl__close").hidden = false;
-			});
-		});
-		var send = card.querySelector("[data-send]");
-		if (!send) return;
-		send.addEventListener("click", function () {
-			var data = {
-				module: "HelpDesk", action: "MaterialAlertsApi", mode: "transition",
-				id: card.getAttribute("data-id"), next: next
-			};
-			card.querySelectorAll("[data-field]").forEach(function (input) {
-				data[input.getAttribute("data-field")] = input.value;
-			});
-			post(data).then(function (err, res) {
-				if (err || (res && res.error)) {
-					window.alert((err && err.message) || "Chưa đủ điều kiện để tắt việc.");
-					return;
-				}
-				window.location.reload();
-			});
-		});
-	});
 })();
 </script>
 {/strip}

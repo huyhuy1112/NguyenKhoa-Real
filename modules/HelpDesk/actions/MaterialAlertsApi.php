@@ -22,6 +22,11 @@ class HelpDesk_MaterialAlertsApi_Action extends Vtiger_Action_Controller {
 				$response->setResult(array('success' => true, 'settings' => HelpDesk_MaterialAlertService::saveSettings($payload)));
 			} elseif ($mode === 'refresh') {
 				$response->setResult(array('success' => true) + HelpDesk_MaterialAlertService::refresh());
+			} elseif ($mode === 'list') {
+				$response->setResult(array(
+					'success' => true,
+					'alerts' => HelpDesk_MaterialAlertService::listAlerts(),
+				));
 			} elseif ($mode === 'transition') {
 				HelpDesk_MaterialAlertService::transition((int) $request->get('id'), (string) $request->get('next'), array(
 					'result_note' => $request->get('result_note'),

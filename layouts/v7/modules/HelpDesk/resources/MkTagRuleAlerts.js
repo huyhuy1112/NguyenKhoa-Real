@@ -88,6 +88,8 @@
 				return;
 			}
 			this.$root.data('mk-tre-inited', 1);
+			this.nlAlerts = (global.MK_TAG_RULE_STATE && Array.isArray(global.MK_TAG_RULE_STATE.nl_alerts))
+				? global.MK_TAG_RULE_STATE.nl_alerts : [];
 			var seeded = [];
 			if (global.MK_TAG_RULE_STATE && Array.isArray(global.MK_TAG_RULE_STATE.alerts)) {
 				seeded = global.MK_TAG_RULE_STATE.alerts;
@@ -301,9 +303,13 @@
 				+ '    <div class="mk-tre-hero__copy">'
 				+ '      <p class="mk-tre-eyebrow">Tag Rule Engine · Hỗ trợ</p>'
 				+ '      <h1 class="mk-tre-title">Cảnh báo</h1>'
-				+ '      <p class="mk-tre-desc">Rule quá hạn (tag khớp + idle ≥ alert_days) và <strong>Cần CSKH</strong> (không tương tác ≥ ' + cskhDays + ' ngày).</p>'
+				+ '      <p class="mk-tre-desc">Việc nguyên liệu đang mở, rule quá hạn (tag khớp + idle ≥ alert_days) và <strong>Cần CSKH</strong> (không tương tác ≥ ' + cskhDays + ' ngày).</p>'
 				+ '    </div>'
 				+ '  </header>'
+				+ '  <section class="mk-nl-open" aria-label="Việc nguyên liệu đang mở">'
+				+ '    <div class="mk-nl-open__head"><h2>Việc nguyên liệu đang mở</h2><span class="js-nl-open-count"></span></div>'
+				+ '    <div class="js-nl-open-list"></div>'
+				+ '  </section>'
 				+ '  <div class="mk-tre-alert-filters" role="search">'
 				+ '    <label class="mk-tre-alert-filters__search">'
 				+ '      <span class="mk-tre-muted">Tìm</span>'
@@ -334,7 +340,103 @@
 				+ '</div>';
 			this.$root.html(html);
 			this.shellReady = true;
+			this.renderNlOpen();
 			this.renderResults();
+		},
+
+		nlStatusLabel: function (status) {
+			var map = {
+				new: 'Mới',
+				accepted: 'Đã nhận',
+				working: 'Đang xử lý',
+				done: 'Hoàn thành',
+				snoozed: 'Tạm hoãn',
+				na: 'Không áp dụng'
+			};
+			return map[status] || status || 'Mới';
+		},
+
+		renderNlOpen: function () {
+			if (!this.$root || !this.$root.length) return;
+			var box = this.$root.find('.js-nl-open-list');
+			if (!box.length) return;
+			var rows = this.nlAlerts || [];
+			this.$root.find('.js-nl-open-count').text(rows.length ? (rows.length + ' việc') : '');
+			if (!rows.length) {
+				box.html('<p class="mk-nl-open__empty">Chưa có việc nguyên liệu. Việc hiện khi báo giá hoặc đơn quá hạn, hoặc khi ngưỡng đã nhập khớp khách.</p>');
+				return;
+			}
+			var self = this;
+			box.html(rows.map(function (a) {
+				var href = a.contact_id
+					? ('index.php?module=Contacts&view=Detail&record=' + encodeURIComponent(a.contact_id) + '&app=SALES')
+					: '';
+				var name = href
+					? ('<a href="' + esc(href) + '">' + esc(a.name) + '</a>')
+					: esc(a.name);
+				return ''
+					+ '<article class="mk-nl-open__card" data-id="' + esc(a.id) + '">'
+					+ '  <header><strong>' + esc(a.code) + '</strong>' + name
+					+ '    <em>' + esc(self.nlStatusLabel(a.status)) + '</em></header>'
+					+ '  <p>' + esc(a.title) + '</p>'
+					+ '  <small>' + esc(a.detail) + '</small>'
+					+ '  <div class="mk-nl-open__actions">'
+					+ '    <button type="button" data-next="accepted">Đã nhận</button>'
+					+ '    <button type="button" data-next="working">Đang xử lý</button>'
+					+ '    <button type="button" data-next="done">Hoàn thành</button>'
+					+ '    <button type="button" data-next="snoozed">Tạm hoãn</button>'
+					+ '    <button type="button" data-next="na">Không áp dụng</button>'
+					+ '  </div>'
+					+ '  <div class="mk-nl-open__close" hidden>'
+					+ '    <input type="text" data-field="result_note" placeholder="Kết quả / lý do" />'
+					+ '    <input type="text" data-field="evidence_ref" placeholder="Bằng chứng: đơn, cuộc gọi, chứng từ" />'
+					+ '    <input type="text" data-field="next_task" placeholder="Việc tiếp theo" />'
+					+ '    <input type="text" data-field="next_owner" placeholder="Người phụ trách" />'
+					+ '    <input type="date" data-field="next_due" title="Hạn việc tiếp theo" />'
+					+ '    <input type="date" data-field="snooze_until" title="Ngày kiểm tra lại nếu tạm hoãn" />'
+					+ '    <button type="button" data-send="1">Ghi</button>'
+					+ '  </div>'
+					+ '</article>';
+			}).join(''));
+		},
+
+		reloadNlOpen: function () {
+			var self = this;
+			if (typeof app === 'undefined' || !app.request) return;
+			app.request.post({
+				data: { module: 'HelpDesk', action: 'MaterialAlertsApi', mode: 'list' }
+			}).then(function (err, res) {
+				var data = res && res.alerts ? res : (res && res.result ? res.result : null);
+				if (err || !data || !data.alerts) {
+					window.alert((err && err.message) || 'Không tải lại được việc nguyên liệu.');
+					return;
+				}
+				self.nlAlerts = data.alerts;
+				self.renderNlOpen();
+			});
+		},
+
+		transitionNl: function (card, next) {
+			var self = this;
+			var data = {
+				module: 'HelpDesk',
+				action: 'MaterialAlertsApi',
+				mode: 'transition',
+				id: card.getAttribute('data-id'),
+				next: next
+			};
+			card.querySelectorAll('[data-field]').forEach(function (input) {
+				data[input.getAttribute('data-field')] = input.value;
+			});
+			app.request.post({ data: data }).then(function (err, res) {
+				var failed = err || (res && res.error);
+				if (failed) {
+					window.alert((err && (err.message || err)) || (res && res.error && res.error.message) || 'Chưa đủ điều kiện để tắt việc.');
+					return;
+				}
+				toast('Đã cập nhật việc nguyên liệu');
+				self.reloadNlOpen();
+			});
 		},
 
 		/**
@@ -417,6 +519,28 @@
 				} catch (e) {
 					window.alert(e.message || 'Lỗi');
 				}
+			});
+			this.$root.on('click', '.mk-nl-open__card [data-next]', function () {
+				var next = $(this).attr('data-next');
+				var card = this.closest('.mk-nl-open__card');
+				if (!card) return;
+				if (next === 'accepted' || next === 'working') {
+					self.transitionNl(card, next);
+					return;
+				}
+				var close = card.querySelector('.mk-nl-open__close');
+				if (close) close.hidden = false;
+				card.setAttribute('data-next', next);
+			});
+			this.$root.on('click', '.mk-nl-open__card [data-send]', function () {
+				var card = this.closest('.mk-nl-open__card');
+				if (!card) return;
+				var next = card.getAttribute('data-next') || '';
+				if (!next) {
+					window.alert('Chọn Hoàn thành, Tạm hoãn hoặc Không áp dụng trước khi ghi.');
+					return;
+				}
+				self.transitionNl(card, next);
 			});
 		},
 	};
