@@ -65,6 +65,7 @@
     hasNextAction: false,
     hasOpenTicket: false,
     phoneDupOnly: false,
+    gd14Status: ANY,
   };
 
   var OFFLINE_STATUS_FILTERS = [
@@ -89,6 +90,21 @@
   var PROGRAM_EXTRA_TABS = [
     { id: "pcth", label: "PCTH" },
     { id: "mqbb", label: "MQBB" },
+    { id: "gd14", label: "990k" },
+  ];
+
+  var GD14_STATUS_FILTERS = [
+    { key: "gd14_moi_dang_ky", label: "Mới đăng ký" },
+    { key: "gd14_hen_goi_lai", label: "Hẹn gọi lại" },
+    { key: "gd14_khong_nghe_may", label: "Không nghe máy" },
+    { key: "gd14_sai_thong_tin", label: "Sai thông tin liên hệ" },
+    { key: "gd14_dang_can_nhac", label: "Đang cân nhắc" },
+    { key: "gd14_cho_thanh_toan", label: "Chờ thanh toán" },
+    { key: "gd14_chua_xep_buoi", label: "Chưa xếp buổi học" },
+    { key: "gd14_da_xac_nhan_lich", label: "Đã xác nhận lịch học" },
+    { key: "gd14_khong_tham_gia", label: "Không tham gia lớp học" },
+    { key: "gd14_da_tham_gia", label: "Đã tham gia lớp học" },
+    { key: "gd14_ngung_cham_soc", label: "Ngưng chăm sóc" },
   ];
 
   var PROGRAM_DROP_FILTERS = OFFLINE_STATUS_FILTERS.slice();
@@ -103,7 +119,7 @@
     filtersOpen: false,
     listMode: "active", // active | trash
     trashCache: null,
-    productTab: "all", // all | unclassified | online | offline | nvl | pcth | mqbb
+    productTab: "all", // all | unclassified | online | offline | nvl | pcth | mqbb | gd14
   };
 
   var FALLBACK_PRODUCT_CATALOG = {
@@ -186,6 +202,9 @@
   }
 
   function leadHasProductGroup(lead, group) {
+    if (group === "gd14") {
+      return isGd14Lead(lead);
+    }
     if (group === "pcth" || group === "mqbb") {
       return leadMatchesProgramTab(lead, group);
     }
@@ -493,38 +512,41 @@
       aria = "Lọc điểm rơi " + (tab === "pcth" ? "PCTH" : "MQBB");
       attr = "data-offline-status";
       active = (state.filters && state.filters.offlineStatus) || ANY;
-      tone = tab === "pcth" ? " mk-leads-offline-filters--pcth" : " mk-leads-offline-filters--mqbb";
+      tone = tab === "pcth" ? " mk-leads-child-status--pcth" : " mk-leads-child-status--mqbb";
+    } else if (tab === "gd14") {
+      items = GD14_STATUS_FILTERS;
+      allLabel = "Tất cả 990k";
+      aria = "Lọc tag 990k";
+      attr = "data-gd14-status";
+      active = (state.filters && state.filters.gd14Status) || ANY;
+      tone = " mk-leads-child-status--gd14";
     } else {
       return "";
     }
+    var kind = tab === "online" ? "online" : tab === "gd14" ? "gd14" : "offline";
     var html =
-      '<span class="mk-leads-offline-filters' +
+      '<label class="mk-leads-child-status' +
       tone +
-      '" role="group" aria-label="' +
+      '"><select data-mk-child-status="' +
+      kind +
+      '" aria-label="' +
       esc(aria) +
-      '">' +
-      '<button type="button" class="mk-leads-offline-filter' +
-      (active === ANY ? " is-active" : "") +
-      '" ' +
-      attr +
-      '="' +
+      '"><option value="' +
       ANY +
       '">' +
       esc(allLabel) +
-      "</button>";
+      "</option>";
     items.forEach(function (it) {
       html +=
-        '<button type="button" class="mk-leads-offline-filter' +
-        (active === it.key ? " is-active" : "") +
-        '" ' +
-        attr +
-        '="' +
+        '<option value="' +
         esc(it.key) +
-        '">' +
+        '"' +
+        (active === it.key ? " selected" : "") +
+        ">" +
         esc(it.label) +
-        "</button>";
+        "</option>";
     });
-    html += "</span>";
+    html += "</select></label>";
     return html;
   }
 
@@ -3511,11 +3533,18 @@
       if (f.owner !== ANY && l.owner !== f.owner) return false;
       if (f.area !== ANY && (l.area || "") !== f.area) return false;
       if (f.segment !== ANY && (l.segment || "") !== f.segment) return false;
-      if (f.offlineStatus && f.offlineStatus !== ANY) {
+      if (
+        (state.productTab === "offline" || state.productTab === "pcth" || state.productTab === "mqbb") &&
+        f.offlineStatus &&
+        f.offlineStatus !== ANY
+      ) {
         if (!leadStatusTagHit(l, f.offlineStatus)) return false;
       }
-      if (f.onlineStatus && f.onlineStatus !== ANY) {
+      if (state.productTab === "online" && f.onlineStatus && f.onlineStatus !== ANY) {
         if (!leadStatusTagHit(l, f.onlineStatus)) return false;
+      }
+      if (state.productTab === "gd14" && f.gd14Status && f.gd14Status !== ANY) {
+        if (!leadStatusTagHit(l, f.gd14Status)) return false;
       }
       if (!inTouchWindow(l.last_touch, f.touchRange)) return false;
       if (f.staleOnly && !d.stale) return false;
@@ -4483,6 +4512,18 @@
         renderAll();
       });
 
+    document.addEventListener("change", function (e) {
+      var sel = e.target.closest && e.target.closest("[data-mk-child-status]");
+      if (!sel || !state.filters) return;
+      var kind = sel.getAttribute("data-mk-child-status");
+      var value = sel.value || ANY;
+      if (kind === "online") state.filters.onlineStatus = value;
+      else if (kind === "gd14") state.filters.gd14Status = value;
+      else state.filters.offlineStatus = value;
+      state.page = 1;
+      refreshListBody();
+    });
+
     document.addEventListener("click", function (e) {
       var editBtn = e.target.closest && e.target.closest(".mk-leads-inline-edit");
       if (editBtn) {
@@ -4520,6 +4561,9 @@
           }
           if (state.productTab !== "online") {
             state.filters.onlineStatus = ANY;
+          }
+          if (state.productTab !== "gd14") {
+            state.filters.gd14Status = ANY;
           }
         }
         state.page = 1;

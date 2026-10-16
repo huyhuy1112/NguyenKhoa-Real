@@ -1612,6 +1612,28 @@ body.mk-leads-verify-open {
 	min-width: 36px;
 	text-align: right;
 }
+.mk-leads-child-status {
+	display: inline-flex;
+	align-items: center;
+	margin: 0 0 0 4px;
+}
+.mk-leads-child-status select {
+	height: 34px;
+	min-width: 220px;
+	max-width: 280px;
+	padding: 0 28px 0 12px;
+	border: 1px solid #dbe3ee;
+	border-radius: 999px;
+	background: #fff;
+	font: inherit;
+	font-size: 13px;
+	color: #0f172a;
+	cursor: pointer;
+}
+.mk-leads-child-status--gd14 select {
+	border-color: #99f6e4;
+	background: #f0fdfa;
+}
 .mk-leads-offline-filters {
 	display: flex;
 	flex-wrap: wrap;
