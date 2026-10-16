@@ -1174,3 +1174,49 @@
 	color: #475569;
 }
 .mk-gd14-compare__row strong { color: #0f172a; font-weight: 600; text-align: right; }
+.mk-opps-page .mk-leads-segments-card {
+	align-items: start;
+}
+.mk-opps-page #mk-opps-segments,
+.mk-opps-filters {
+	display: block;
+	height: auto;
+	min-height: 0;
+	overflow: visible;
+}
+.mk-opps-seg-rows {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	width: 100%;
+}
+.mk-opps-seg-row {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	min-width: 0;
+}
+.mk-opps-seg-row__label {
+	flex: 0 0 auto;
+	min-width: 72px;
+	margin-top: 6px;
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.02em;
+	color: #64748b;
+	text-transform: uppercase;
+}
+.mk-opps-seg-row__chips {
+	flex: 1 1 auto;
+	min-width: 0;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+}
+.mk-opps-seg-row[data-seg-group="course"] .mk-opps-seg-row__label {
+	color: #047857;
+}
+.mk-opps-seg-row[data-seg-group="product"] .mk-opps-seg-row__label {
+	color: #1d4ed8;
+}

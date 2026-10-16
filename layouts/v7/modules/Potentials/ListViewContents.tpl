@@ -8,7 +8,7 @@
 			<div class="mk-leads-segments-card__label">
 				<span class="mk-leads-segments-card__icon" id="mk-opps-segments-icon" aria-hidden="true"></span> {vtranslate('LBL_MK_SEGMENTS', 'Potentials')}
 			</div>
-			<div id="mk-opps-segments" class="mk-leads-segments"></div>
+			<div id="mk-opps-segments" class="mk-opps-filters"></div>
 		</div>
 
 		<div class="mk-leads-filters-card" role="region" aria-label="{vtranslate('LBL_FILTERS', 'Vtiger')}">

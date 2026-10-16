@@ -2102,8 +2102,18 @@
         );
       })
       .join("");
-    html += productTabItemsHtml(rows);
-    host.innerHTML = html;
+    host.innerHTML =
+      '<div class="mk-opps-seg-rows">' +
+      '<div class="mk-opps-seg-row" data-seg-group="course">' +
+      '<span class="mk-opps-seg-row__label">Lớp học</span>' +
+      '<div class="mk-opps-seg-row__chips">' +
+      html +
+      "</div></div>" +
+      '<div class="mk-opps-seg-row" data-seg-group="product">' +
+      '<span class="mk-opps-seg-row__label">Sản phẩm</span>' +
+      '<div class="mk-opps-seg-row__chips">' +
+      productTabItemsHtml(rows) +
+      "</div></div></div>";
   }
 
   function selectOptions(pairs) {
