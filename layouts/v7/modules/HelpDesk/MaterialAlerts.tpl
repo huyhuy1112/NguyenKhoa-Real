@@ -17,7 +17,7 @@
 		</div>
 	</div>
 
-	<p class="mk-nl__sub">Điền số vào ô muốn bật. Ô để trống thì việc đó không báo. Bấm Lưu ngưỡng sau khi chỉnh. Việc đang mở nằm ở menu Cảnh báo.</p>
+	<p class="mk-nl__sub">Điền số vào ô muốn bật. Ô để trống thì việc đó không báo. Bấm Lưu ngưỡng sau khi chỉnh. Việc đang mở và chỉ số một khách nằm ở menu Cảnh báo.</p>
 
 	<form class="mk-nl__card" id="mk-nl-settings">
 		<div class="mk-nl__card-head">
@@ -41,38 +41,6 @@
 		{/foreach}
 		{if $NL_GROUP neq ''}</div></section>{/if}
 		<p class="mk-nl__msg" data-nl-msg hidden></p>
-	</form>
-
-	<form class="mk-nl__card" id="mk-nl-metrics">
-		<div class="mk-nl__card-head">
-			<div>
-				<h2>Chỉ số một khách</h2>
-				<p class="mk-nl__sub" style="margin:4px 0 0;">CT01–CT09 trên hồ sơ khách nguyên liệu. Nhập mã để xem thử.</p>
-			</div>
-		</div>
-		<div class="mk-nl__lookup">
-			<label class="mk-nl__field mk-nl__field--id">Mã khách hàng
-				<input type="number" name="contact_id" min="1" value="{if $NL_CONTACT_ID}{$NL_CONTACT_ID|escape}{/if}" placeholder="Nhập mã khách" />
-			</label>
-			<button type="submit">Xem chỉ số</button>
-		</div>
-		{if $NL_METRICS}
-			<div class="mk-nl-board">
-				<div class="mk-nl-board__status">
-					<div><em>Vòng đời</em><strong>{$NL_METRICS.ct09_life|escape}</strong></div>
-					<div><em>Hạng</em><strong>{$NL_METRICS.ct09_tier|escape}</strong></div>
-				</div>
-				<div class="mk-nl-board__grid">
-					<article class="mk-nl-tile"><small>CT01</small><span>Tổng đã mua</span><strong>{$NL_METRICS.ct01|escape}</strong></article>
-					<article class="mk-nl-tile{if $NL_METRICS.ct02 eq 'chưa đủ dữ liệu'} is-empty{/if}"><small>CT02</small><span>Mua 90 ngày</span><strong>{$NL_METRICS.ct02|escape}</strong></article>
-					<article class="mk-nl-tile{if $NL_METRICS.ct03 eq 'chưa đủ dữ liệu'} is-empty{/if}"><small>CT03</small><span>Số đơn</span><strong>{$NL_METRICS.ct03|escape}</strong></article>
-					<article class="mk-nl-tile{if $NL_METRICS.ct04 eq 'chưa đủ dữ liệu'} is-empty{/if}"><small>CT04</small><span>Đơn trung bình</span><strong>{$NL_METRICS.ct04|escape}</strong></article>
-					<article class="mk-nl-tile{if $NL_METRICS.ct05 eq 'chưa đủ dữ liệu'} is-empty{/if}"><small>CT05</small><span>Mua gần nhất</span><strong>{$NL_METRICS.ct05|escape}</strong></article>
-					<article class="mk-nl-tile{if $NL_METRICS.ct07 eq 'chưa đủ dữ liệu'} is-empty{/if}"><small>CT07</small><span>Khoảng cách mua</span><strong>{$NL_METRICS.ct07|escape}</strong></article>
-					<article class="mk-nl-tile"><small>CT08</small><span>Chờ giao</span><strong>{$NL_METRICS.ct08|escape}</strong></article>
-				</div>
-			</div>
-		{/if}
 	</form>
 
 </div>
@@ -140,14 +108,6 @@
 				msg.hidden = false;
 				msg.textContent = err ? "Không lưu được ngưỡng." : "Đã lưu ngưỡng.";
 			});
-		});
-	}
-	var metrics = document.getElementById("mk-nl-metrics");
-	if (metrics) {
-		metrics.addEventListener("submit", function (e) {
-			e.preventDefault();
-			var id = metrics.querySelector("[name=contact_id]").value;
-			window.location.href = "index.php?module=HelpDesk&view=MaterialAlerts&app=SUPPORT&contact_id=" + encodeURIComponent(id);
 		});
 	}
 })();

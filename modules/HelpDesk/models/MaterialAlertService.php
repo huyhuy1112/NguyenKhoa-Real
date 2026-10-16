@@ -518,6 +518,7 @@ class HelpDesk_MaterialAlertService {
 					'detail' => $row['detail'],
 					'status' => $row['status'],
 					'snooze_until' => $row['snooze_until'],
+					'opened_at' => isset($row['opened_at']) ? (string) $row['opened_at'] : '',
 				);
 			}
 		}
