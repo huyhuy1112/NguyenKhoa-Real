@@ -880,12 +880,12 @@
       '<div class="mk-contacts-seg-rows">' +
       '<div class="mk-contacts-seg-row" data-seg-group="course">' +
       '<span class="mk-contacts-seg-row__label">Lớp học</span>' +
-      '<div class="mk-contacts-seg-row__chips mk-leads-segments">' +
+      '<div class="mk-contacts-seg-row__chips">' +
       courseHtml +
       "</div></div>" +
       '<div class="mk-contacts-seg-row" data-seg-group="product">' +
       '<span class="mk-contacts-seg-row__label">Sản phẩm</span>' +
-      '<div class="mk-contacts-seg-row__chips mk-leads-segments">' +
+      '<div class="mk-contacts-seg-row__chips">' +
       productHtml +
       "</div></div></div>";
   }
