@@ -901,6 +901,21 @@
         .replace(/"/g, "&quot;");
     },
 
+    withSalesApp: function (module, url) {
+      var needs = {
+        ServiceContracts: true,
+        Contacts: true,
+        Accounts: true,
+        Quotes: true,
+        SalesOrder: true,
+        Invoice: true,
+      };
+      if (!url || !needs[module] || /(?:^|[?&])app=/.test(url)) {
+        return url;
+      }
+      return url + (url.indexOf("?") >= 0 ? "&" : "?") + "app=SALES";
+    },
+
     renderNotificationItem: function (notif, container, isRead) {
       var self = this;
       var module = notif.module || "Vtiger";
@@ -929,6 +944,7 @@
         detailUrl =
           "index.php?module=" + module + "&view=Detail&record=" + recordId;
       }
+      detailUrl = this.withSalesApp(module, detailUrl);
 
       var li = document.createElement("li");
       li.className =

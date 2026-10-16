@@ -71,6 +71,12 @@ html.mk-contacts-ui-ready body[data-module="Contacts"][data-view="List"][data-ap
 .mk-contacts-seg-row[data-seg-group="product"] .mk-contacts-seg-row__label {
 	color: #1d4ed8;
 }
+.mk-contacts-page .mk-contacts-seg-row__chips.mk-leads-segments {
+	height: auto;
+	min-height: 0;
+	flex-wrap: wrap;
+	overflow: visible;
+}
 .mk-contacts-next-action {
 	width: 100%;
 	min-width: 140px;

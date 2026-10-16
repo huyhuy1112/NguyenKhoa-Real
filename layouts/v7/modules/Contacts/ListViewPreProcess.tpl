@@ -16,7 +16,7 @@
 <link rel="stylesheet" type="text/css" href="{vresource_url('layouts/v7/modules/Leads/resources/LeadsMkList.css')}&mk_v=20261016_ans3" />
 <link rel="stylesheet" type="text/css" href="{vresource_url('layouts/v7/modules/Leads/resources/LeadsMkListLovable.css')}&mk_v=20260916_touchfix2" />
 <link rel="stylesheet" type="text/css" href="{vresource_url('layouts/v7/modules/Leads/resources/LeadsMkTagPalette.css')}&mk_v=20260725_cred_tags1" />
-<link rel="stylesheet" type="text/css" href="{vresource_url('layouts/v7/modules/Contacts/resources/ContactsMkList.css')}&mk_v=20261012_addr1" />
+<link rel="stylesheet" type="text/css" href="{vresource_url('layouts/v7/modules/Contacts/resources/ContactsMkList.css')}&mk_v=20261016_seg1" />
 <style type="text/css">
 html.mk-contacts-ui-ready body[data-module="Contacts"][data-view="List"] .main-container .content-area,
 html.mk-contacts-ui-ready body[data-module="Contacts"][data-view="List"] #listViewContent,
