@@ -16,11 +16,14 @@
 			</div>
 		</header>
 
-		<div class="mk-admin-kpi-alerts" id="mkAdminKpiAlerts">
-			<span class="mk-admin-kpi-alert mk-admin-kpi-alert--muted">⚠ … KH tiềm năng chưa gọi</span>
-			<span class="mk-admin-kpi-alert mk-admin-kpi-alert--muted">⚠ … Đơn hàng đang nháp</span>
-			<span class="mk-admin-kpi-alert mk-admin-kpi-alert--muted">⚠ … Báo giá đang nháp</span>
-			<span class="mk-admin-kpi-alert mk-admin-kpi-alert--muted">⚠ … KH nhượng quyền chưa nghe máy</span>
+		<div class="mk-admin-kpi-alerts-row">
+			<div class="mk-admin-kpi-alerts" id="mkAdminKpiAlerts">
+				<span class="mk-admin-kpi-alert mk-admin-kpi-alert--muted">⚠ … KH tiềm năng chưa gọi</span>
+				<span class="mk-admin-kpi-alert mk-admin-kpi-alert--muted">⚠ … Đơn hàng đang nháp</span>
+				<span class="mk-admin-kpi-alert mk-admin-kpi-alert--muted">⚠ … Báo giá đang nháp</span>
+				<span class="mk-admin-kpi-alert mk-admin-kpi-alert--muted">⚠ … KH nhượng quyền chưa nghe máy</span>
+			</div>
+			<button type="button" class="mk-admin-kpi-alert-preview" id="mkAdminKpiAlertPreview">Xem thử cảnh báo</button>
 		</div>
 		<section class="mk-admin-kpi-drill mk-admin-kpi-alert-drill" id="mkAdminKpiAlertDrill" hidden aria-live="polite"></section>
 

@@ -195,10 +195,11 @@ html[data-theme="dark"] body .mk-leads-page--lovable .mk-leads-kpi-ic--indigo { 
 }
 .mk-leads-segments {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
     gap: 8px;
-    min-height: 34px;
+    height: 40px;
+    min-height: 40px;
     min-width: 0;
     overflow-x: auto;
     overflow-y: hidden;
@@ -223,13 +224,12 @@ html[data-theme="dark"] body .mk-leads-page--lovable .mk-leads-kpi-ic--indigo { 
     line-height: 1;
     box-sizing: border-box;
     white-space: nowrap;
-    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 .mk-leads-segment-btn:hover {
     background: #f8fafc;
     border-color: #93c5fd;
     color: #1d4ed8;
-    transform: translateY(-1px);
 }
 .mk-leads-segment-btn.is-active {
     background: #fff;

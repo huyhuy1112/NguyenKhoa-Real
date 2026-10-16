@@ -551,7 +551,7 @@
   }
 
   function refreshListBody() {
-    renderSegments();
+    syncSegmentChrome();
     renderTable();
   }
 
@@ -3740,13 +3740,57 @@
       .then(function (rows) {
         state.trashCache = rows || [];
         state._trashCountLoading = false;
-        renderSegments();
+        paintTrashCount();
       })
       .catch(function () {
         state.trashCache = [];
         state._trashCountLoading = false;
-        renderSegments();
+        paintTrashCount();
       });
+  }
+
+  function paintTrashCount() {
+    var btn = document.querySelector('#mk-leads-segments [data-segment="__trash__"]');
+    if (!btn || state.trashCache == null) return;
+    var n = btn.querySelector(".mk-leads-ptab__n");
+    if (!n) {
+      n = document.createElement("span");
+      n.className = "mk-leads-ptab__n";
+      btn.appendChild(document.createTextNode(" "));
+      btn.appendChild(n);
+    }
+    n.textContent = String(state.trashCache.length);
+  }
+
+  function syncSegmentChrome() {
+    var host = $("mk-leads-segments");
+    if (!host || !host.querySelector("[data-product-tab]")) {
+      renderSegments();
+      return;
+    }
+    var scroll = host.scrollLeft;
+    var allActive = !state.activeSegment && state.listMode !== "trash" && state.productTab === "all";
+    host.querySelectorAll("[data-segment]").forEach(function (btn) {
+      var id = btn.getAttribute("data-segment");
+      var on = false;
+      if (id === "__all__") on = allActive;
+      else if (id === "__trash__") on = state.listMode === "trash";
+      else on = state.listMode !== "trash" && state.activeSegment === id;
+      btn.classList.toggle("is-active", on);
+      var chip = btn.closest && btn.closest(".mk-leads-segment-chip");
+      if (chip) chip.classList.toggle("is-active", on);
+    });
+    host.querySelectorAll("[data-product-tab]").forEach(function (btn) {
+      var on =
+        state.listMode !== "trash" &&
+        !state.activeSegment &&
+        btn.getAttribute("data-product-tab") === state.productTab;
+      btn.classList.toggle("is-active", on);
+    });
+    var slot = host.querySelector("[data-mk-child-slot]");
+    var next = state.listMode === "trash" ? "" : childStatusFiltersHtml(state.productTab);
+    if (slot && slot.innerHTML !== next) slot.innerHTML = next;
+    host.scrollLeft = scroll;
   }
 
   function renderSegments() {
@@ -3793,9 +3837,10 @@
       );
     }).join("");
     html += productTabItemsHtml(getLeads());
-    if (state.listMode !== "trash") {
-      html += childStatusFiltersHtml(state.productTab);
-    }
+    html +=
+      '<span class="mk-leads-child-slot" data-mk-child-slot>' +
+      (state.listMode !== "trash" ? childStatusFiltersHtml(state.productTab) : "") +
+      "</span>";
     html += saved
       .map(function (s) {
         var on = state.activeSegment === s.id ? " is-active" : "";
@@ -4431,7 +4476,6 @@
 
   function renderAll() {
     renderKpi();
-    renderSegments();
     renderFiltersPanel();
     syncFilterControls();
     refreshListBody();
@@ -4441,7 +4485,6 @@
     state.filters = Object.assign({}, EMPTY);
     state.activeSegment = null;
     state.listMode = "active";
-    state.trashCache = null;
     state.productTab = "all";
     state.page = 1;
     var search = $("mk-leads-search");
@@ -4553,7 +4596,6 @@
       if (ptab) {
         e.preventDefault();
         state.listMode = "active";
-        state.trashCache = null;
         state.productTab = ptab.getAttribute("data-product-tab") || "all";
         if (state.filters) {
           if (state.productTab !== "offline" && state.productTab !== "pcth" && state.productTab !== "mqbb") {
@@ -4709,7 +4751,6 @@
         var id = btn.getAttribute("data-segment");
         if (id === "__all__") {
           state.listMode = "active";
-          state.trashCache = null;
           clearSelection();
           clearSegmentFilters();
           return;
@@ -4722,7 +4763,6 @@
           return;
         }
         state.listMode = "active";
-        state.trashCache = null;
         var custom = btn.getAttribute("data-custom");
         if (custom && store) {
           var seg = store.getSegments().find(function (s) { return s.id === id; });

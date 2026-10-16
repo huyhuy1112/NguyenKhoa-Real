@@ -180,6 +180,8 @@
 			.done(function (data) {
 				state.widgetsCache = data || {};
 				state.paintedPanels = {};
+				alertPreviewOn = false;
+				$root.find('#mkAdminKpiAlertPreview').removeClass('is-on').text('Xem thử cảnh báo');
 				renderAlerts($root, (data && data.alerts) || { items: [] });
 				renderFunnel($root, (data && data.funnel) || { stages: [] });
 				renderChart($root, (data && data.revenue_chart) || {});
@@ -247,6 +249,19 @@
 			.fail(function (msg) {
 				setError($root.find('#mkAdminKpiChartBody'), msg);
 			});
+	}
+
+	var alertPreviewOn = false;
+
+	function sampleAlerts() {
+		return {
+			items: [
+				{ level: 'warn', count: 3, label: 'KH tiềm năng chưa gọi', drill: { type: 'leads_urgency', key: 'not_contacted' } },
+				{ level: 'warn', count: 2, label: 'Đơn hàng đang nháp', drill: { type: 'orders_status', key: 'draft' } },
+				{ level: 'warn', count: 4, label: 'Báo giá đang nháp', drill: { type: 'quotes_status', key: 'draft' } },
+				{ level: 'warn', count: 1, label: 'KH nhượng quyền chưa nghe máy', drill: { type: 'franchise_missed', key: '' } },
+			],
+		};
 	}
 
 	function renderAlerts($root, alerts) {
@@ -1689,6 +1704,16 @@
 			// Chưa mở Data Table — chỉ khi bấm tiếp vào ô summary.
 			hideDrilldown($root);
 			loadDetail($root);
+		});
+
+		$root.on('click', '#mkAdminKpiAlertPreview', function () {
+			alertPreviewOn = !alertPreviewOn;
+			$(this).toggleClass('is-on', alertPreviewOn).text(alertPreviewOn ? 'Tắt xem thử' : 'Xem thử cảnh báo');
+			if (alertPreviewOn) {
+				renderAlerts($root, sampleAlerts());
+			} else {
+				renderAlerts($root, (state.widgetsCache && state.widgetsCache.alerts) || { items: [] });
+			}
 		});
 
 		$root.on('click', '[data-drill-type]', function (e) {

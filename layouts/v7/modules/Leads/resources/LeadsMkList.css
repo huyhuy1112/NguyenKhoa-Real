@@ -1612,13 +1612,21 @@ body.mk-leads-verify-open {
 	min-width: 36px;
 	text-align: right;
 }
+.mk-leads-child-slot {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	height: 32px;
+}
+.mk-leads-child-slot:empty { display: none; }
 .mk-leads-child-status {
 	display: inline-flex;
 	align-items: center;
-	margin: 0 0 0 4px;
+	margin: 0;
+	height: 32px;
 }
 .mk-leads-child-status select {
-	height: 34px;
+	height: 32px;
 	min-width: 220px;
 	max-width: 280px;
 	padding: 0 28px 0 12px;
