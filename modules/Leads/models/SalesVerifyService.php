@@ -1017,6 +1017,168 @@ class Leads_SalesVerifyService {
 		return $out;
 	}
 
+	/**
+	 * Sale đổi lại 3 đáp án của một khách đã chốt. Không chạy lại lịch học / bộ đếm R2.
+	 */
+	public static function reviseAnswers($leadIdOrCacheId, array $payload, $userId = 0) {
+		require_once 'modules/Leads/models/ModernService.php';
+		require_once 'modules/Leads/models/SheetImportService.php';
+		require_once 'modules/Vtiger/helpers/BusinessModelHelper.php';
+		$adb = PearDatabase::getInstance();
+		self::installSchema($adb);
+		Leads_ModernService::installSchema($adb);
+
+		$leadId = Leads_ModernService::resolveLeadRecordId($leadIdOrCacheId);
+		if (!$leadId && is_numeric($leadIdOrCacheId)) {
+			$leadId = (int) $leadIdOrCacheId;
+		}
+		if (!$leadId) {
+			throw new Exception('Lead not found.');
+		}
+
+		$c1 = strtoupper(trim((string) (isset($payload['c1']) ? $payload['c1'] : '')));
+		$c2 = strtoupper(trim((string) (isset($payload['c2']) ? $payload['c2'] : '')));
+		$c3 = strtoupper(trim((string) (isset($payload['c3']) ? $payload['c3'] : '')));
+		if ($c1 === '' || $c2 === '' || $c3 === '') {
+			throw new Exception('Chọn đủ 3 câu trước khi lưu.');
+		}
+
+		$result = self::compute(array('c1' => $c1, 'c2' => $c2, 'c3' => $c3));
+		if (empty($result['success'])) {
+			throw new Exception(isset($result['reason']) && $result['reason'] !== '' ? $result['reason'] : 'Không chấm được bộ 3 câu.');
+		}
+
+		$now = date('Y-m-d H:i:s');
+		$userId = (int) $userId;
+		$reason = isset($payload['change_reason']) ? trim((string) $payload['change_reason']) : '';
+		if ($reason === '') {
+			$reason = 'Sale sửa đáp án';
+		}
+		$adb->pquery(
+			'UPDATE bace_lead_profile SET
+				verify_c1=?, verify_c2=?, verify_c3=?,
+				eligibility_result=?, potential_level=?,
+				verify_change_reason=?, verified_at=?, verified_by=?, modified_at=?
+			 WHERE leadid=?',
+			array(
+				$c1,
+				$c2,
+				$c3,
+				$result['eligibility_result'],
+				$result['potential_level'] !== '' ? $result['potential_level'] : null,
+				$reason,
+				$now,
+				$userId > 0 ? $userId : null,
+				$now,
+				$leadId,
+			)
+		);
+
+		$biz = isset($result['business_model']) && $result['business_model'] !== ''
+			? $result['business_model']
+			: Vtiger_BusinessModel_Helper::fromFormAnswer($c2);
+		$screening = '';
+		if ($result['potential_level'] === 'sieu_tiem_nang' || $result['potential_level'] === 'tiem_nang') {
+			$screening = $result['potential_level'];
+		} elseif ($result['eligibility_result'] === 'khong_du_dk') {
+			$screening = 'so_luoc_khong_dk';
+		}
+		if ($screening !== '') {
+			$adb->pquery(
+				'UPDATE bace_lead_profile SET screening_result=? WHERE leadid=?',
+				array($screening, $leadId)
+			);
+		}
+
+		try {
+			$lead = Leads_ModernService::getLead((string) $leadId, $userId);
+			$tags = isset($lead['tags']) && is_array($lead['tags']) ? $lead['tags'] : array();
+			$tags = self::applyPotentialTags($tags, $result['potential_level'], $result['eligibility_result']);
+			$cust = Leads_SheetImportService::customerTagFromQ1($c1);
+			if ($cust !== '') {
+				$pool = array('chuan_bi_mo', 'co_quan', 'gia_dinh');
+				$tags = array_values(array_filter($tags, function ($t) use ($pool) {
+					return !in_array(strtolower((string) $t), $pool, true);
+				}));
+				$tags[] = $cust;
+			}
+			Leads_ModernService::saveLead(array(
+				'name' => isset($lead['name']) ? $lead['name'] : '',
+				'phone' => isset($lead['phone']) ? $lead['phone'] : '',
+				'email' => isset($lead['email']) ? $lead['email'] : '',
+				'address' => isset($lead['address']) ? $lead['address'] : '',
+				'district' => isset($lead['district']) ? $lead['district'] : '',
+				'tags' => $tags,
+				'business_model' => $biz,
+				'screening_result' => $screening !== '' ? $screening : (isset($lead['screening_result']) ? $lead['screening_result'] : ''),
+				'qa_raw' => isset($lead['qa_raw']) ? $lead['qa_raw'] : null,
+				'owner' => isset($lead['owner_username']) ? $lead['owner_username'] : '',
+			), $leadId);
+		} catch (Exception $e) {
+			// Đáp án đã ghi. Tag lead cập nhật ở lần mở sau nếu hồ sơ lead không đọc được.
+		}
+
+		$row = array(
+			'verify_c1' => $c1,
+			'verify_c2' => $c2,
+			'verify_c3' => $c3,
+			'eligibility_result' => $result['eligibility_result'],
+			'potential_level' => $result['potential_level'],
+			'screening_result' => $screening,
+		);
+		return array(
+			'success' => true,
+			'message' => 'Đã cập nhật đáp án.',
+			'c1' => $c1,
+			'c2' => $c2,
+			'c3' => $c3,
+			'lines' => self::linesForLeadColumns($row),
+		);
+	}
+
+	public static function screeningQuestionsForUi() {
+		static $cached = null;
+		if ($cached !== null) {
+			return $cached;
+		}
+		$bank = self::getScreeningBank();
+		$out = array();
+		foreach ($bank['questions'] as $q) {
+			$qid = isset($q['id']) ? (string) $q['id'] : '';
+			if (!in_array($qid, array('c1', 'c2', 'c3'), true)) {
+				continue;
+			}
+			$opts = array();
+			foreach ((isset($q['options']) ? $q['options'] : array()) as $opt) {
+				$code = strtoupper(trim((string) (isset($opt['code']) ? $opt['code'] : '')));
+				if ($code === '') {
+					continue;
+				}
+				$opts[] = array(
+					'code' => $code,
+					'label' => isset($opt['label']) ? (string) $opt['label'] : $code,
+				);
+			}
+			$out[] = array(
+				'id' => $qid,
+				'label' => isset($q['label']) ? (string) $q['label'] : $qid,
+				'options' => $opts,
+			);
+		}
+		$cached = $out;
+		return $cached;
+	}
+
+	public static function chosenAnswerCodes(array $row) {
+		$out = array();
+		foreach (array('c1', 'c2', 'c3') as $qid) {
+			$verify = isset($row['verify_' . $qid]) ? strtoupper(trim((string) $row['verify_' . $qid])) : '';
+			$form = isset($row['form_' . $qid]) ? strtoupper(trim((string) $row['form_' . $qid])) : '';
+			$out[$qid] = $verify !== '' ? $verify : $form;
+		}
+		return $out;
+	}
+
 	public static function saveForLead($leadIdOrCacheId, array $payload, $userId = 0) {
 		require_once 'modules/Leads/models/ModernService.php';
 		require_once 'modules/Leads/models/SheetImportService.php';
@@ -2062,7 +2224,7 @@ class Leads_SalesVerifyService {
 			return array();
 		}
 		$res = $adb->pquery(
-			'SELECT contact_id, verify_extra_json, eligibility_result, screening_result, potential_level,
+			'SELECT leadid, contact_id, verify_extra_json, eligibility_result, screening_result, potential_level,
 					form_c1, form_c2, form_c3, verify_c1, verify_c2, verify_c3,
 					offline_class_date, offline_class_time, offline_class_place
 			 FROM bace_lead_profile
@@ -2084,10 +2246,16 @@ class Leads_SalesVerifyService {
 				continue;
 			}
 			$extra = self::decodeStoredJson(isset($row['verify_extra_json']) ? $row['verify_extra_json'] : '');
+			$codes = self::chosenAnswerCodes($row);
 			$out[$cid] = array(
 				'lines' => self::linesForLeadColumns($row),
 				'gd14' => self::gd14PublicState($extra),
 				'compare' => self::gd14CompareState($extra, $row),
+				'leadid' => isset($row['leadid']) ? (int) $row['leadid'] : 0,
+				'c1' => $codes['c1'],
+				'c2' => $codes['c2'],
+				'c3' => $codes['c3'],
+				'questions' => self::screeningQuestionsForUi(),
 				'class_date' => isset($row['offline_class_date']) ? (string) $row['offline_class_date'] : '',
 				'class_time' => isset($row['offline_class_time']) ? (string) $row['offline_class_time'] : '',
 				'class_place' => isset($row['offline_class_place']) ? (string) $row['offline_class_place'] : '',

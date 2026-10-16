@@ -308,9 +308,13 @@ class Potentials_ModernService {
 			'is_online_gd12' => $isOnline ? 1 : 0,
 		);
 		$verifyLines = array();
+		$verifyCodes = array('c1' => '', 'c2' => '', 'c3' => '');
+		$answerQuestions = array();
 		try {
 			require_once 'modules/Leads/models/SalesVerifyService.php';
 			$verifyLines = Leads_SalesVerifyService::linesForLeadColumns($row);
+			$verifyCodes = Leads_SalesVerifyService::chosenAnswerCodes($row);
+			$answerQuestions = Leads_SalesVerifyService::screeningQuestionsForUi();
 		} catch (Exception $e) {
 			$verifyLines = array();
 		}
@@ -350,6 +354,11 @@ class Potentials_ModernService {
 			'next_action_timeframe' => $ruleMeta['timeframe_label'],
 			'linked_leadid' => !empty($row['linked_leadid']) ? (int) $row['linked_leadid'] : 0,
 			'verify_lines' => $verifyLines,
+			'answer_leadid' => !empty($row['linked_leadid']) ? (int) $row['linked_leadid'] : 0,
+			'answer_c1' => isset($verifyCodes['c1']) ? $verifyCodes['c1'] : '',
+			'answer_c2' => isset($verifyCodes['c2']) ? $verifyCodes['c2'] : '',
+			'answer_c3' => isset($verifyCodes['c3']) ? $verifyCodes['c3'] : '',
+			'answer_questions' => $answerQuestions,
 			'da_cap_bang' => self::normalizeOppCredential(
 				isset($row['contact_da_cap_bang']) ? $row['contact_da_cap_bang'] : '',
 				'bang'

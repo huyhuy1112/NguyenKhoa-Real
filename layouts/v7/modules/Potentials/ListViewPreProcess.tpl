@@ -13,7 +13,7 @@
 <link rel="stylesheet" type="text/css" href="{vresource_url('layouts/v7/modules/Vtiger/resources/MkLovableListShell.css')}&mk_v=20260709_lovable_shell4" />
 <link rel="stylesheet" type="text/css" href="{vresource_url('layouts/v7/modules/Potentials/resources/PotentialsMkListShell.css')}&mk_v=20260711_segments_ui2" />
 <link rel="stylesheet" type="text/css" href="{vresource_url('layouts/v7/modules/Leads/resources/LeadsMkShell.css')}&mk_v=20260711_segments_ui2" />
-<link rel="stylesheet" type="text/css" href="{vresource_url('layouts/v7/modules/Leads/resources/LeadsMkList.css')}&mk_v=20261016_ans2" />
+<link rel="stylesheet" type="text/css" href="{vresource_url('layouts/v7/modules/Leads/resources/LeadsMkList.css')}&mk_v=20261016_ans3" />
 <link rel="stylesheet" type="text/css" href="{vresource_url('layouts/v7/modules/Leads/resources/LeadsMkListLovable.css')}&mk_v=20260916_touchfix2" />
 <link rel="stylesheet" type="text/css" href="{vresource_url('layouts/v7/modules/Leads/resources/LeadsMkTagPalette.css')}&mk_v=20260725_cred_tags1" />
 <link rel="stylesheet" type="text/css" href="{vresource_url('layouts/v7/modules/Potentials/resources/PotentialsMkList.css')}&mk_v=20261002_gd14flow1" />
@@ -37,7 +37,7 @@ html.mk-opps-ui-ready body[data-module="Potentials"][data-view="List"] #mk-dash-
 <script type="text/javascript" src="{vresource_url('layouts/v7/modules/Potentials/resources/PotentialsLocalStore.js')}&mk_v=20260924_preclass1"></script>
 <script type="text/javascript" src="{vresource_url('layouts/v7/modules/Potentials/resources/PotentialsConvertCustomerTier.js')}&mk_v=20260724_vi_force1"></script>
 <script type="text/javascript" src="{vresource_url('layouts/v7/modules/Vtiger/resources/MkLastTouchCall.js')}?mk_v=20260910_oppns2"></script>
-<script type="text/javascript" src="{vresource_url('layouts/v7/modules/Potentials/resources/PotentialsMkList.js')}&mk_v=20261016_ans1"></script>
+<script type="text/javascript" src="{vresource_url('layouts/v7/modules/Potentials/resources/PotentialsMkList.js')}&mk_v=20261016_ans3"></script>
 <link rel="stylesheet" type="text/css" href="{vresource_url('layouts/v7/modules/Vtiger/resources/MkSalesPosInline.css')}?mk_v=20260910_oppns2" />
 <script type="text/javascript">
 window.__mkSalesPosInlineConfig = {

@@ -137,6 +137,11 @@ class Contacts_ModernService {
 				$item['class_date'] = isset($gd14ByContact[$contactId]['class_date']) ? $gd14ByContact[$contactId]['class_date'] : '';
 				$item['class_time'] = isset($gd14ByContact[$contactId]['class_time']) ? $gd14ByContact[$contactId]['class_time'] : '';
 				$item['class_place'] = isset($gd14ByContact[$contactId]['class_place']) ? $gd14ByContact[$contactId]['class_place'] : '';
+				$item['answer_leadid'] = isset($gd14ByContact[$contactId]['leadid']) ? (int) $gd14ByContact[$contactId]['leadid'] : 0;
+				$item['answer_c1'] = isset($gd14ByContact[$contactId]['c1']) ? $gd14ByContact[$contactId]['c1'] : '';
+				$item['answer_c2'] = isset($gd14ByContact[$contactId]['c2']) ? $gd14ByContact[$contactId]['c2'] : '';
+				$item['answer_c3'] = isset($gd14ByContact[$contactId]['c3']) ? $gd14ByContact[$contactId]['c3'] : '';
+				$item['answer_questions'] = isset($gd14ByContact[$contactId]['questions']) ? $gd14ByContact[$contactId]['questions'] : array();
 			} else {
 				$item['verify_lines'] = array();
 				$item['gd14'] = array();

@@ -1717,30 +1717,117 @@
     if (pop) pop.remove();
   }
 
+  function answerSelectHtml(question, chosen) {
+    var html = '<label class="mk-answer-field"><span>' + esc(question.label || "") + "</span>";
+    html += '<select data-answer-q="' + esc(question.id) + '">';
+    html += '<option value="">— Chọn —</option>';
+    (question.options || []).forEach(function (opt) {
+      var code = String(opt.code || "");
+      html +=
+        '<option value="' +
+        esc(code) +
+        '"' +
+        (code.toUpperCase() === String(chosen || "").toUpperCase() ? " selected" : "") +
+        ">" +
+        esc(opt.label || code) +
+        "</option>";
+    });
+    html += "</select></label>";
+    return html;
+  }
+
   function openAnswerPop(btn, row) {
     closeAnswerPop();
     var lines = row && Array.isArray(row.verify_lines) ? row.verify_lines : [];
     var classes = classRowsOf(row);
-    var html = '<div id="mk-answer-pop" class="mk-answer-pop" role="dialog">';
-    html += '<div class="mk-answer-pop__title">Đáp án từ lead</div>';
-    if (!lines.length) {
-      html += '<p class="mk-answer-pop__empty">Chưa có đáp án form.</p>';
+    var questions = row && Array.isArray(row.answer_questions) ? row.answer_questions : [];
+    var leadId = row && row.answer_leadid ? row.answer_leadid : 0;
+    var chosen = {
+      c1: (row && row.answer_c1) || "",
+      c2: (row && row.answer_c2) || "",
+      c3: (row && row.answer_c3) || "",
+    };
+    var html = '<div id="mk-answer-pop" class="mk-answer-backdrop">';
+    html += '<div class="mk-answer-dialog" role="dialog" aria-modal="true">';
+    html += '<div class="mk-answer-dialog__head"><h3>Đáp án 3 câu hỏi</h3>';
+    html += '<button type="button" class="mk-answer-dialog__close" data-mk-answer-close aria-label="Đóng">×</button></div>';
+    if (leadId && questions.length) {
+      html += '<p class="mk-answer-dialog__note">Sale chọn lại đáp án rồi bấm lưu. Kết luận tính lại. Lịch học giữ nguyên.</p>';
+      questions.forEach(function (question) {
+        html += answerSelectHtml(question, chosen[question.id] || "");
+      });
+      html += '<p class="mk-answer-dialog__msg" data-answer-msg></p>';
+      html += '<div class="mk-answer-dialog__actions"><button type="button" class="mk-answer-dialog__save" data-mk-answer-save>Lưu đáp án</button></div>';
+    } else if (!lines.length) {
+      html += '<p class="mk-answer-pop__empty">Chưa có đáp án.</p>';
     }
-    lines.forEach(function (line) {
-      html += '<div class="mk-answer-pop__row"><span>' + esc(line.label || "") + "</span><strong>" + esc(line.value || "") + "</strong></div>";
+    var summary = lines.filter(function (line) {
+      var lab = String((line && line.label) || "");
+      return lab.indexOf("Điều kiện") >= 0 || lab.indexOf("Mức tiềm năng") >= 0;
     });
+    if (summary.length) {
+      html += '<div class="mk-answer-pop__title">Kết luận hiện tại</div>';
+      summary.forEach(function (line) {
+        html += '<div class="mk-answer-pop__row"><span>' + esc(line.label || "") + "</span><strong>" + esc(line.value || "") + "</strong></div>";
+      });
+    }
     if (classes.length) {
       html += '<div class="mk-answer-pop__title">Lớp học</div>';
       classes.forEach(function (pair) {
         html += '<div class="mk-answer-pop__row"><span>' + esc(pair[0]) + "</span><strong>" + esc(pair[1]) + "</strong></div>";
       });
     }
-    html += "</div>";
+    html += "</div></div>";
     document.body.insertAdjacentHTML("beforeend", html);
     var pop = document.getElementById("mk-answer-pop");
-    var rect = btn.getBoundingClientRect();
-    pop.style.top = Math.min(rect.bottom + 6, window.innerHeight - 16) + "px";
-    pop.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - pop.offsetWidth - 8)) + "px";
+    if (pop) pop._mkRow = row;
+  }
+
+  function saveAnswerPop(btn) {
+    var pop = document.getElementById("mk-answer-pop");
+    var row = pop && pop._mkRow;
+    var msg = pop && pop.querySelector("[data-answer-msg]");
+    if (!pop || !row) return;
+    var leadId = row.answer_leadid || 0;
+    var payload = { id: leadId };
+    pop.querySelectorAll("[data-answer-q]").forEach(function (sel) {
+      payload[sel.getAttribute("data-answer-q")] = sel.value;
+    });
+    if (!payload.c1 || !payload.c2 || !payload.c3) {
+      if (msg) msg.textContent = "Chọn đủ 3 câu.";
+      return;
+    }
+    if (typeof app === "undefined" || !app.request) {
+      if (msg) msg.textContent = "API không sẵn sàng.";
+      return;
+    }
+    if (btn) btn.disabled = true;
+    if (msg) msg.textContent = "Đang lưu…";
+    app.request
+      .post({
+        data: {
+          module: "Leads",
+          action: "ModernApi",
+          mode: "revise_screening",
+          id: leadId,
+          record: leadId,
+          payload: JSON.stringify(payload),
+        },
+      })
+      .then(function (err, res) {
+        if (btn) btn.disabled = false;
+        var body = res && res.lines ? res : res && res.result && res.result.lines ? res.result : res;
+        if (err || !body || !body.lines) {
+          if (msg) msg.textContent = (err && (err.message || err)) || (res && (res.error || res.message)) || "Lưu đáp án thất bại.";
+          return;
+        }
+        row.verify_lines = body.lines;
+        row.answer_c1 = body.c1 || payload.c1;
+        row.answer_c2 = body.c2 || payload.c2;
+        row.answer_c3 = body.c3 || payload.c3;
+        closeAnswerPop();
+        renderTable();
+      });
   }
 
   function answerPillHtml(row) {
@@ -2592,6 +2679,26 @@
     });
 
     document.addEventListener("click", function (e) {
+      if (e.target.closest && e.target.closest("[data-mk-answer-close]")) {
+        e.preventDefault();
+        e.stopPropagation();
+        closeAnswerPop();
+        return;
+      }
+      if (e.target && e.target.id === "mk-answer-pop") {
+        closeAnswerPop();
+        return;
+      }
+      var answerSave = e.target.closest && e.target.closest("[data-mk-answer-save]");
+      if (answerSave) {
+        e.preventDefault();
+        e.stopPropagation();
+        saveAnswerPop(answerSave);
+        return;
+      }
+      if (e.target.closest && e.target.closest("#mk-answer-pop")) {
+        return;
+      }
       var answerBtn = e.target.closest && e.target.closest("[data-mk-answer]");
       if (answerBtn) {
         e.preventDefault();
