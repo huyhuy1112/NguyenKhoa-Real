@@ -521,7 +521,7 @@ button.mk-answer-pill {
 .mk-answer-pop {
 	position: fixed;
 	z-index: 80;
-	width: min(320px, calc(100vw - 16px));
+	width: min(440px, calc(100vw - 16px));
 	max-height: min(420px, calc(100vh - 24px));
 	overflow: auto;
 	background: #fff;
@@ -541,6 +541,7 @@ button.mk-answer-pill {
 .mk-answer-pop__title:first-child { margin-top: 0; }
 .mk-answer-pop__row {
 	display: flex;
+	align-items: flex-start;
 	justify-content: space-between;
 	gap: 12px;
 	padding: 6px 0;
@@ -548,7 +549,9 @@ button.mk-answer-pill {
 	font-size: 13px;
 	color: #334155;
 }
+.mk-answer-pop__row span { flex: 1 1 46%; }
 .mk-answer-pop__row strong {
+	flex: 1 1 50%;
 	text-align: right;
 	color: #0f172a;
 	font-weight: 650;

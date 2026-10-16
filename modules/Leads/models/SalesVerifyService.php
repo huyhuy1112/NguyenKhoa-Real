@@ -1882,46 +1882,53 @@ class Leads_SalesVerifyService {
 	protected static function linesFromPack(array $pack) {
 		$lines = array();
 		$extra = isset($pack['extra']) && is_array($pack['extra']) ? $pack['extra'] : array();
+		$shown = array();
+		static $screenBank = null;
+		if ($screenBank === null) {
+			$screenBank = self::getScreeningBank();
+		}
+		$qById = array();
+		foreach ($screenBank['questions'] as $sq) {
+			$qById[$sq['id']] = $sq;
+		}
+		foreach (array('c1' => 'Câu 1', 'c2' => 'Câu 2', 'c3' => 'Câu 3') as $qid => $fallback) {
+			$formCode = isset($pack['form_' . $qid]) ? strtoupper(trim((string) $pack['form_' . $qid])) : '';
+			$verifyCode = isset($pack['verify_' . $qid]) ? strtoupper(trim((string) $pack['verify_' . $qid])) : '';
+			$chosen = $verifyCode !== '' ? $verifyCode : $formCode;
+			if ($chosen === '' && isset($pack[$qid])) {
+				$chosen = strtoupper(trim((string) $pack[$qid]));
+			}
+			if ($chosen === '') {
+				continue;
+			}
+			$q = isset($qById[$qid]) ? $qById[$qid] : null;
+			$label = ($q && !empty($q['label'])) ? (string) $q['label'] : $fallback;
+			$lines[] = array(
+				'label' => $label,
+				'value' => $q ? self::gd14OptionText($q, $chosen) : $chosen,
+			);
+			$shown[$qid] = true;
+			if ($formCode !== '' && $verifyCode !== '' && $formCode !== $verifyCode) {
+				$lines[] = array(
+					'label' => 'Form · ' . $label,
+					'value' => $q ? self::gd14OptionText($q, $formCode) : $formCode,
+				);
+			}
+		}
 		$bank = self::defaultGd14QuestionBank();
 		$questions = isset($bank['questions']) ? $bank['questions'] : array();
 		$form = isset($extra['gd14_form_answers']) && is_array($extra['gd14_form_answers']) ? $extra['gd14_form_answers'] : array();
 		$verified = isset($extra['gd14_answers']) && is_array($extra['gd14_answers']) ? $extra['gd14_answers'] : array();
 		foreach ($questions as $q) {
 			$qid = $q['id'];
+			if (!empty($shown[$qid])) {
+				continue;
+			}
 			if (!empty($form[$qid])) {
 				$lines[] = array('label' => 'Form · ' . $q['label'], 'value' => self::gd14OptionText($q, $form[$qid]));
 			}
 			if (!empty($verified[$qid])) {
 				$lines[] = array('label' => 'Xác minh · ' . $q['label'], 'value' => self::gd14OptionText($q, $verified[$qid]));
-			}
-		}
-		if (empty($verified) && empty($form)) {
-			$screenBank = self::getScreeningBank();
-			$qById = array();
-			foreach ($screenBank['questions'] as $sq) {
-				$qById[$sq['id']] = $sq;
-			}
-			foreach (array('c1' => 'Câu 1', 'c2' => 'Câu 2', 'c3' => 'Câu 3') as $qid => $label) {
-				$formCode = isset($pack['form_' . $qid]) ? strtoupper(trim((string) $pack['form_' . $qid])) : '';
-				$verifyCode = isset($pack['verify_' . $qid]) ? strtoupper(trim((string) $pack['verify_' . $qid])) : '';
-				$q = isset($qById[$qid]) ? $qById[$qid] : null;
-				if ($formCode !== '') {
-					$lines[] = array(
-						'label' => 'Form · ' . $label,
-						'value' => $q ? self::gd14OptionText($q, $formCode) : $formCode,
-					);
-				}
-				if ($verifyCode !== '') {
-					$lines[] = array(
-						'label' => 'Xác minh · ' . $label,
-						'value' => $q ? self::gd14OptionText($q, $verifyCode) : $verifyCode,
-					);
-				} elseif ($formCode === '' && isset($pack[$qid])) {
-					$code = strtoupper(trim((string) $pack[$qid]));
-					if ($code !== '') {
-						$lines[] = array('label' => $label, 'value' => $code);
-					}
-				}
 			}
 		}
 		if (!empty($pack['potential_level']) && empty($pack['screening_result'])) {
