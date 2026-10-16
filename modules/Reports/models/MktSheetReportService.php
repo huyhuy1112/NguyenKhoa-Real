@@ -12,14 +12,20 @@ class Reports_MktSheetReportService {
 	const CACHE_SECONDS = 900;
 	const VAT = 1.1;
 
-	public static function payload($db = null) {
+	public static function payload($db = null, $from = '', $to = '') {
 		if ($db === null) {
 			$db = PearDatabase::getInstance();
 		}
 		self::ensureTable($db);
 		require_once 'modules/Reports/models/MktSaleReportService.php';
 		$saved = self::savedSpend($db);
-		$range = self::reportRange($db, $saved);
+		$fromDay = substr((string) $from, 0, 10);
+		$toDay = substr((string) $to, 0, 10);
+		if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $fromDay) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $toDay) && $fromDay <= $toDay) {
+			$range = array('from' => $fromDay, 'to' => $toDay);
+		} else {
+			$range = self::reportRange($db, $saved);
+		}
 		$bundle = Reports_MktSaleReportService::marketingBundle($range['from'], $range['to']);
 		return self::composeCrm($bundle, $saved, $range);
 	}

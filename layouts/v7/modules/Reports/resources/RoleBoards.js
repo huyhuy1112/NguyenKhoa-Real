@@ -2,6 +2,14 @@
 	'use strict';
 
 	var TONES = ['blue', 'emerald', 'amber', 'cyan', 'violet', 'rose'];
+	var PERIODS = [
+		['this_month', 'Tháng này'],
+		['prev_month', 'Tháng trước'],
+		['this_quarter', 'Quý này'],
+		['prev_quarter', 'Quý trước'],
+		['this_year', 'Năm này'],
+		['prev_year', 'Năm trước']
+	];
 
 	function esc(s) {
 		return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -30,7 +38,8 @@
 			return;
 		}
 		box.__mkBoards = boards;
-		box.__mkRole = keys.indexOf('ceo') >= 0 ? 'ceo' : keys[0];
+		var keep = box.__mkRole;
+		box.__mkRole = (keep && boards[keep]) ? keep : (keys.indexOf('ceo') >= 0 ? 'ceo' : keys[0]);
 		renderRole(box);
 	}
 
@@ -41,6 +50,14 @@
 		box.__mkRole = active;
 		var board = boards[active] || {};
 		var html = '';
+		var period = box.__mkPeriod || 'this_month';
+		html += '<div class="mk-role-switch mk-report-period" role="tablist">';
+		PERIODS.forEach(function (item) {
+			html += '<button type="button" data-mk-period="' + esc(item[0]) + '"'
+				+ (item[0] === period ? ' class="is-on"' : '')
+				+ '>' + esc(item[1]) + '</button>';
+		});
+		html += '</div>';
 		if (keys.length > 1) {
 			html += '<div class="mk-role-switch" role="tablist">';
 			keys.forEach(function (key) {
@@ -69,8 +86,23 @@
 		}
 		box.innerHTML = html;
 		bindRoleSwitch(box);
+		bindPeriod(box);
 		bindGoods(box);
 		bindSheet(box);
+	}
+
+	function bindPeriod(box) {
+		var sw = box.querySelector('.mk-report-period');
+		if (!sw || sw.getAttribute('data-bound')) return;
+		sw.setAttribute('data-bound', '1');
+		sw.addEventListener('click', function (e) {
+			var btn = e.target.closest ? e.target.closest('[data-mk-period]') : null;
+			if (!btn) return;
+			var next = btn.getAttribute('data-mk-period');
+			if (!next || next === box.__mkPeriod) return;
+			box.__mkPeriod = next;
+			load(next);
+		});
 	}
 
 	function bindRoleSwitch(box) {
@@ -129,7 +161,7 @@
 		html += alertCard('Không bán được', alerts.unsold, 'rose');
 		html += alertCard('Tồn cao hơn mức bán', alerts.overstock, 'violet');
 		html += '</div>';
-		html += '<p class="mk-goods-note">Cảnh báo lấy lượng bán 30 ngày gần nhất chia cho tồn hiện tại. Không bán được là hàng còn tồn nhưng không có đơn trong 30 ngày.</p>';
+		html += '<p class="mk-goods-note">Cảnh báo tồn kho lấy lượng bán 30 ngày gần nhất. Doanh thu, lượng bán, bán chạy và bán chậm theo kỳ đang chọn phía trên.</p>';
 
 		html += '<div class="mk-goods-block">';
 		html += '<div class="mk-goods-block__head"><h4>Doanh thu và lượng bán</h4>';
@@ -523,6 +555,7 @@
 				mode: 'save_ad_spend',
 				spend_date: date,
 				amount: input.value,
+				report_period: box.__mkPeriod || 'this_month',
 				__vtrftk: csrfToken()
 			}
 		}).done(function (res) {
@@ -546,14 +579,21 @@
 		box.innerHTML = '<div class="mk-admin-kpi-detail-error">' + esc(message || 'Không tải được báo cáo theo vai.') + '</div>';
 	}
 
-	function load() {
-		if (!document.getElementById('mkRoleReportsBody')) return;
+	function load(period) {
+		var box = document.getElementById('mkRoleReportsBody');
+		if (!box) return;
+		if (period) box.__mkPeriod = period;
 		$.ajax({
 			url: 'index.php',
 			type: 'GET',
 			dataType: 'json',
 			cache: false,
-			data: { module: 'Home', action: 'AdminKpiApi', mode: 'role_boards' }
+			data: {
+				module: 'Home',
+				action: 'AdminKpiApi',
+				mode: 'role_boards',
+				report_period: box.__mkPeriod || 'this_month'
+			}
 		}).done(function (res) {
 			if (res && res.result && typeof res.result === 'object') {
 				res = res.result;

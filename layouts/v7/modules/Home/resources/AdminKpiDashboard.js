@@ -185,6 +185,11 @@
 				renderChart($root, (data && data.revenue_chart) || {});
 				renderPerf($root, (data && data.performance) || {});
 				renderCompany($root, (data && data.company_report) || {});
+				var company = (data && data.company_report) || {};
+				if (company.period_revenue) {
+					$root.find('[data-key="revenue_month"]').text(company.period_revenue);
+					$root.find('[data-section="revenue"] .mk-admin-kpi-card-label').text('Doanh thu · ' + (company.period_label || ''));
+				}
 				syncStagePeriodNav($root, (data && data.stage_nav) || null);
 				paintActiveStagePanel($root);
 			})
@@ -853,8 +858,17 @@
 		$root.find('#mkAdminKpiPeriodLabel').text(label);
 		$root.find('[data-stage-nav="next"]').prop('disabled', !(nav.can_next || state.stageOffset > 0));
 		$root.find('[data-stage-nav="prev"]').prop('disabled', nav.can_prev === false);
-		$root.find('[data-stage-period]').removeClass('is-active');
-		$root.find('[data-stage-period="' + (state.stagePeriod || 'month') + '"]').addClass('is-active');
+		$root.find('[data-report-period]').removeClass('is-active');
+		var quick = '';
+		if (state.stagePeriod === 'month' && state.stageOffset === 0) quick = 'this_month';
+		else if (state.stagePeriod === 'month' && state.stageOffset === 1) quick = 'prev_month';
+		else if (state.stagePeriod === 'quarter' && state.stageOffset === 0) quick = 'this_quarter';
+		else if (state.stagePeriod === 'quarter' && state.stageOffset === 1) quick = 'prev_quarter';
+		else if (state.stagePeriod === 'year' && state.stageOffset === 0) quick = 'this_year';
+		else if (state.stagePeriod === 'year' && state.stageOffset === 1) quick = 'prev_year';
+		if (quick) {
+			$root.find('[data-report-period="' + quick + '"]').addClass('is-active');
+		}
 	}
 
 	function fallbackPeriodLabel() {
@@ -1728,11 +1742,25 @@
 			$root.find(map[zone] || '#mkAdminKpiOffline').removeAttr('hidden');
 			paintActiveStagePanel($root);
 		});
+		$root.on('click', '[data-report-period]', function () {
+			var key = String($(this).data('report-period') || 'this_month');
+			var map = {
+				this_month: ['month', 0],
+				prev_month: ['month', 1],
+				this_quarter: ['quarter', 0],
+				prev_quarter: ['quarter', 1],
+				this_year: ['year', 0],
+				prev_year: ['year', 1]
+			};
+			var picked = map[key] || map.this_month;
+			state.stagePeriod = picked[0];
+			state.stageOffset = picked[1];
+			hideDrilldown($root);
+			loadWidgets($root);
+		});
 		$root.on('click', '[data-stage-period]', function () {
 			state.stagePeriod = String($(this).data('stage-period') || 'month');
 			state.stageOffset = 0;
-			$root.find('[data-stage-period]').removeClass('is-active');
-			$(this).addClass('is-active');
 			hideDrilldown($root);
 			loadWidgets($root);
 		});

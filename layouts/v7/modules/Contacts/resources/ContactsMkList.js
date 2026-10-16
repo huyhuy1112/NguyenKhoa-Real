@@ -1685,6 +1685,76 @@
     return contactHasGd14(contact) ? "gd14" : "gd11";
   }
 
+  function answerLabel(lines) {
+    var prefer = ["Mức tiềm năng", "Điều kiện"];
+    var w, i, lab;
+    for (w = 0; w < prefer.length; w++) {
+      for (i = 0; i < lines.length; i++) {
+        lab = String((lines[i] && lines[i].label) || "");
+        if (lab.indexOf(prefer[w]) >= 0 && lines[i].value) return String(lines[i].value);
+      }
+    }
+    for (i = 0; i < lines.length; i++) {
+      if (lines[i] && String(lines[i].value || "").trim()) return String(lines[i].value);
+    }
+    return "Đáp án";
+  }
+
+  function classRowsOf(row) {
+    var gd = row && row.gd14 && typeof row.gd14 === "object" ? row.gd14 : {};
+    var rows = [];
+    var date = (row && (row.class_date || row.offline_class_date)) || gd.class_date || "";
+    var time = (row && (row.class_time || row.offline_class_time)) || gd.class_time || "";
+    var place = (row && (row.class_place || row.offline_class_place)) || gd.class_place || "";
+    if (date) rows.push(["Ngày học", date]);
+    if (time) rows.push(["Giờ học", time]);
+    if (place) rows.push(["Địa điểm", place]);
+    return rows;
+  }
+
+  function closeAnswerPop() {
+    var pop = document.getElementById("mk-answer-pop");
+    if (pop) pop.remove();
+  }
+
+  function openAnswerPop(btn, row) {
+    closeAnswerPop();
+    var lines = row && Array.isArray(row.verify_lines) ? row.verify_lines : [];
+    var classes = classRowsOf(row);
+    var html = '<div id="mk-answer-pop" class="mk-answer-pop" role="dialog">';
+    html += '<div class="mk-answer-pop__title">Đáp án từ lead</div>';
+    if (!lines.length) {
+      html += '<p class="mk-answer-pop__empty">Chưa có đáp án form.</p>';
+    }
+    lines.forEach(function (line) {
+      html += '<div class="mk-answer-pop__row"><span>' + esc(line.label || "") + "</span><strong>" + esc(line.value || "") + "</strong></div>";
+    });
+    if (classes.length) {
+      html += '<div class="mk-answer-pop__title">Lớp học</div>';
+      classes.forEach(function (pair) {
+        html += '<div class="mk-answer-pop__row"><span>' + esc(pair[0]) + "</span><strong>" + esc(pair[1]) + "</strong></div>";
+      });
+    }
+    html += "</div>";
+    document.body.insertAdjacentHTML("beforeend", html);
+    var pop = document.getElementById("mk-answer-pop");
+    var rect = btn.getBoundingClientRect();
+    pop.style.top = Math.min(rect.bottom + 6, window.innerHeight - 16) + "px";
+    pop.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - pop.offsetWidth - 8)) + "px";
+  }
+
+  function answerPillHtml(row) {
+    var lines = row && Array.isArray(row.verify_lines) ? row.verify_lines : [];
+    if (!lines.length && !classRowsOf(row).length) return "";
+    return (
+      '<button type="button" class="mk-leads-screen-pill mk-leads-screen-pill--ok mk-answer-pill" data-mk-answer="' +
+      esc(row.crmid || row.id) +
+      '">' +
+      esc(answerLabel(lines)) +
+      "</button>"
+    );
+  }
+
   function verifyOpenHtml(row) {
     var lines = row && Array.isArray(row.verify_lines) ? row.verify_lines : [];
     var compare = row && row.compare && typeof row.compare === "object" ? row.compare : {};
@@ -2158,6 +2228,7 @@
             ic("user") +
             '<span class="mk-leads-lead-text"><a class="mk-leads-name" href="' + detailUrl(c.crmid || c.id) + '">' + esc(c.name) + "</a>" +
             (c.title ? '<div class="mk-leads-sub">' + esc(c.title) + "</div>" : "") +
+            answerPillHtml(c) +
             verifyOpenHtml(c) +
             "</span></span></td>" +
             '<td class="mk-leads-td">' +
@@ -2521,6 +2592,25 @@
     });
 
     document.addEventListener("click", function (e) {
+      var answerBtn = e.target.closest && e.target.closest("[data-mk-answer]");
+      if (answerBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        var answerId = answerBtn.getAttribute("data-mk-answer");
+        var answerRow = findContact(answerId);
+        var openPop = document.getElementById("mk-answer-pop");
+        if (openPop && openPop.getAttribute("data-for") === String(answerId)) {
+          closeAnswerPop();
+        } else if (answerRow) {
+          openAnswerPop(answerBtn, answerRow);
+          var popped = document.getElementById("mk-answer-pop");
+          if (popped) popped.setAttribute("data-for", String(answerId));
+        }
+        return;
+      }
+      if (!e.target.closest || !e.target.closest("#mk-answer-pop")) {
+        closeAnswerPop();
+      }
       if (e.target.closest && e.target.closest("[data-mk-gd14-close]")) {
         closeComparePanel();
         return;

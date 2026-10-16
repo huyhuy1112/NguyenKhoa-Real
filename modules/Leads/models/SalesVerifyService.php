@@ -2056,7 +2056,8 @@ class Leads_SalesVerifyService {
 		}
 		$res = $adb->pquery(
 			'SELECT contact_id, verify_extra_json, eligibility_result, screening_result, potential_level,
-					form_c1, form_c2, form_c3, verify_c1, verify_c2, verify_c3
+					form_c1, form_c2, form_c3, verify_c1, verify_c2, verify_c3,
+					offline_class_date, offline_class_time, offline_class_place
 			 FROM bace_lead_profile
 			 WHERE contact_id IN (' . generateQuestionMarks($contactIds) . ')
 			 ORDER BY leadid DESC',
@@ -2080,6 +2081,9 @@ class Leads_SalesVerifyService {
 				'lines' => self::linesForLeadColumns($row),
 				'gd14' => self::gd14PublicState($extra),
 				'compare' => self::gd14CompareState($extra, $row),
+				'class_date' => isset($row['offline_class_date']) ? (string) $row['offline_class_date'] : '',
+				'class_time' => isset($row['offline_class_time']) ? (string) $row['offline_class_time'] : '',
+				'class_place' => isset($row['offline_class_place']) ? (string) $row['offline_class_place'] : '',
 			);
 		}
 		return $out;

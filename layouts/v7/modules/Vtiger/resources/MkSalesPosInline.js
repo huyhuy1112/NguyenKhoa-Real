@@ -1574,6 +1574,37 @@
 			}
 		});
 
+		$panel.on('click', '.mk-so-inline-detail__to-customer-btn', function (e) {
+			e.preventDefault();
+			e.stopPropagation();
+			var $btn = $(this);
+			var oppId = String($btn.attr('data-record-id') || recordId || '');
+			if (!oppId) return;
+			if (!(window.app && app.request && app.request.post)) {
+				window.alert('Không kết nối được máy chủ.');
+				return;
+			}
+			$btn.prop('disabled', true);
+			if (app.helper && app.helper.showProgress) app.helper.showProgress();
+			app.request.post({
+				data: { module: 'Potentials', action: 'ConvertToCustomer', record: oppId }
+			}).then(function (err, res) {
+				if (app.helper && app.helper.hideProgress) app.helper.hideProgress();
+				var payload = res && res.result ? res.result : res;
+				var failed = err || !payload || payload.success === false || !(payload.contact_id || (payload.result && payload.result.contact_id));
+				if (failed) {
+					$btn.prop('disabled', false);
+					var msg = (payload && payload.message) || (err && err.message) || 'Không chuyển được sang Khách hàng.';
+					window.alert(String(msg));
+					return;
+				}
+				if (app.helper && app.helper.showSuccessNotification) {
+					app.helper.showSuccessNotification({ message: 'Đã chuyển sang Khách hàng.' });
+				}
+				window.location.href = 'index.php?module=Contacts&view=List&app=SALES';
+			});
+		});
+
 		$panel.on('click', '.mk-so-inline-detail__save-btn', function (e) {
 			e.preventDefault();
 			e.stopPropagation();

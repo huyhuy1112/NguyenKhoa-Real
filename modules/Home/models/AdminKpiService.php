@@ -215,25 +215,30 @@ class Home_AdminKpiService {
 
 	public static function getCompanyOverview() {
 		$db = PearDatabase::getInstance();
-		$cal = self::businessCalendar($db);
-		$revenue = self::sumSoRevenueBetween($db, $cal['month_start'], $cal['month_end']);
-		$prevStart = date('Y-m-d 00:00:00', strtotime($cal['month_start'] . ' -1 month'));
-		$prevEnd = date('Y-m-d 23:59:59', strtotime($cal['month_start'] . ' -1 second'));
+		list($from, $to) = self::stageMonthBounds();
+		$label = self::stagePeriodNameOnly();
+		$savedOffset = self::$stageOffset;
+		self::$stageOffset = $savedOffset + 1;
+		list($prevStart, $prevEnd) = self::stageMonthBounds();
+		self::$stageOffset = $savedOffset;
+		$revenue = self::sumSoRevenueBetween($db, $from, $to);
 		$previous = self::sumSoRevenueBetween($db, $prevStart, $prevEnd);
 		$delta = $previous > 0
 			? round((($revenue - $previous) / $previous) * 100, 1) . '%'
 			: '0%';
-		$split = self::revenueByProduct('month');
+		$split = self::revenueByProduct(array('from' => $from, 'to' => $to));
 		$byKey = array();
 		foreach ((isset($split['items']) ? $split['items'] : array()) as $item) {
 			$byKey[$item['key']] = isset($item['amount']) ? (float) $item['amount'] : 0;
 		}
-		$payers = self::countPayingCustomers($cal['month_start'], $cal['month_end']);
+		$payers = self::countPayingCustomers($from, $to);
 		$avg = $payers > 0 ? self::formatMoney($revenue / $payers) : '0';
 		return array(
+			'period_label' => $label,
+			'period_revenue' => self::formatMoney($revenue),
 			'business' => array(
-				self::reportCard('Tổng giá trị bán trong tháng', self::formatMoney($revenue), 'Đơn chưa hủy', 'violet'),
-				self::reportCard('Biến động so với tháng trước', $delta, '', 'emerald'),
+				self::reportCard('Tổng giá trị bán · ' . $label, self::formatMoney($revenue), 'Đơn chưa hủy', 'violet'),
+				self::reportCard('Biến động so với kỳ trước', $delta, '', 'emerald'),
 				self::reportCard('Giá trị khóa học có phí', self::formatMoney(isset($byKey['course']) ? $byKey['course'] : 0), '', 'blue'),
 				self::reportCard('Giá trị nguyên liệu', self::formatMoney(isset($byKey['ingredient']) ? $byKey['ingredient'] : 0), '', 'amber'),
 				self::reportCard('Giá trị nhượng quyền', self::formatMoney(isset($byKey['franchise']) ? $byKey['franchise'] : 0), '', 'rose'),
@@ -243,7 +248,62 @@ class Home_AdminKpiService {
 				self::reportCard('Giá trị bình quân / khách', $avg, '', 'blue'),
 				self::reportCard('Mức đạt mục tiêu', 'Chưa đủ dữ liệu', 'Chưa có mục tiêu được duyệt trên CRM', 'amber'),
 			),
-			'courses' => self::courseOverviewCards($db, $cal['month_start'], $cal['month_end']),
+			'courses' => self::courseOverviewCards($db, $from, $to),
+		);
+	}
+
+	/**
+	 * Kỳ xem báo cáo: tháng/quý/năm này hoặc kỳ liền trước.
+	 * @return array{key:string,from:string,to:string,label:string,prev_from:string,prev_to:string}
+	 */
+	public static function reportPeriodBounds($key) {
+		$key = strtolower(trim((string) $key));
+		$allowed = array('this_month', 'prev_month', 'this_quarter', 'prev_quarter', 'this_year', 'prev_year');
+		if (!in_array($key, $allowed, true)) {
+			$key = 'this_month';
+		}
+		$year = (int) date('Y');
+		$month = (int) date('n');
+		$quarter = (int) ceil($month / 3);
+		if ($key === 'this_month' || $key === 'prev_month') {
+			$shift = $key === 'prev_month' ? 1 : 0;
+			$ts = strtotime(date('Y-m-01') . ' -' . $shift . ' months');
+			$prev = strtotime(date('Y-m-01', $ts) . ' -1 month');
+			return array(
+				'key' => $key,
+				'from' => date('Y-m-01 00:00:00', $ts),
+				'to' => date('Y-m-t 23:59:59', $ts),
+				'label' => 'Tháng ' . date('m/Y', $ts),
+				'prev_from' => date('Y-m-01 00:00:00', $prev),
+				'prev_to' => date('Y-m-t 23:59:59', $prev),
+			);
+		}
+		if ($key === 'this_quarter' || $key === 'prev_quarter') {
+			$idx = ($year * 4 + $quarter - 1) - ($key === 'prev_quarter' ? 1 : 0);
+			$yy = (int) floor($idx / 4);
+			$qq = ($idx % 4) + 1;
+			$start = ($qq - 1) * 3 + 1;
+			$prevIdx = $idx - 1;
+			$py = (int) floor($prevIdx / 4);
+			$pq = ($prevIdx % 4) + 1;
+			$pstart = ($pq - 1) * 3 + 1;
+			return array(
+				'key' => $key,
+				'from' => sprintf('%04d-%02d-01 00:00:00', $yy, $start),
+				'to' => date('Y-m-t 23:59:59', strtotime(sprintf('%04d-%02d-01', $yy, $start + 2))),
+				'label' => 'Quý ' . $qq . '/' . $yy,
+				'prev_from' => sprintf('%04d-%02d-01 00:00:00', $py, $pstart),
+				'prev_to' => date('Y-m-t 23:59:59', strtotime(sprintf('%04d-%02d-01', $py, $pstart + 2))),
+			);
+		}
+		$yy = $year - ($key === 'prev_year' ? 1 : 0);
+		return array(
+			'key' => $key,
+			'from' => $yy . '-01-01 00:00:00',
+			'to' => $yy . '-12-31 23:59:59',
+			'label' => 'Năm ' . $yy,
+			'prev_from' => ($yy - 1) . '-01-01 00:00:00',
+			'prev_to' => ($yy - 1) . '-12-31 23:59:59',
 		);
 	}
 
@@ -689,15 +749,16 @@ class Home_AdminKpiService {
 		);
 	}
 
-	public static function getRoleBoards($persona, $userId = 0) {
+	public static function getRoleBoards($persona, $userId = 0, $period = 'this_month') {
 		$persona = (string) $persona;
 		$userId = (int) $userId;
 		$db = PearDatabase::getInstance();
-		$cal = self::businessCalendar($db);
-		$from = $cal['month_start'];
-		$to = $cal['month_end'];
-		$prevStart = date('Y-m-d 00:00:00', strtotime($from . ' -1 month'));
-		$prevEnd = date('Y-m-d 23:59:59', strtotime($from . ' -1 second'));
+		$bounds = self::reportPeriodBounds($period);
+		$from = $bounds['from'];
+		$to = $bounds['to'];
+		$periodLabel = $bounds['label'];
+		$prevStart = $bounds['prev_from'];
+		$prevEnd = $bounds['prev_to'];
 		$ownOrders = $userId > 0 ? self::countOwnedOrders($userId) : 0;
 		$companyLines = self::monthOrderFacts($db, $from, $to, 0);
 		$ownLines = $userId > 0 ? self::monthOrderFacts($db, $from, $to, $userId) : $companyLines;
@@ -724,9 +785,9 @@ class Home_AdminKpiService {
 			'ceo' => array(
 				'title' => 'CEO',
 				'cards' => array(
-					self::reportCard('Doanh thu tháng', self::formatMoney($revenue), 'Tổng đơn chưa hủy', 'blue'),
+					self::reportCard('Doanh thu · ' . $periodLabel, self::formatMoney($revenue), 'Tổng đơn chưa hủy', 'blue'),
 					self::reportCard('Lãi gộp', self::formatMoney($margin), 'Doanh thu trừ giá vốn trên đơn', 'emerald'),
-					self::reportCard('Lead mới', (string) $newLeads, 'Hồ sơ tạo trong tháng', 'cyan'),
+					self::reportCard('Lead mới', (string) $newLeads, 'Hồ sơ tạo trong ' . $periodLabel, 'cyan'),
 					self::reportCard('Đơn theo kênh', $channels['label'], 'Nhượng quyền và bán lẻ theo mã khách', 'violet'),
 				),
 			),
@@ -735,8 +796,8 @@ class Home_AdminKpiService {
 				'cards' => array(
 					self::reportCard('Lead của tôi', (string) $myLeads, 'Hồ sơ chưa chuyển đổi', 'cyan'),
 					self::reportCard('Việc gọi đến hạn', (string) $callsDue, 'Cuộc gọi hoặc việc đến hạn hôm nay', 'amber'),
-					self::reportCard('Đơn của tôi trong tháng', (string) $ownOrders, '', 'blue'),
-					self::reportCard('Khách tôi phụ trách mua nguyên liệu', (string) $ownLines['ingredient_customers'], 'Khách có đơn nguyên liệu trong tháng', 'emerald'),
+					self::reportCard('Đơn của tôi trong ' . $periodLabel, (string) $ownOrders, '', 'blue'),
+					self::reportCard('Khách tôi phụ trách mua nguyên liệu', (string) $ownLines['ingredient_customers'], 'Khách có đơn nguyên liệu trong ' . $periodLabel, 'emerald'),
 					self::reportCard('Cảnh báo cần xử lý', (string) self::countOpenAlerts($db, $userId), 'Cảnh báo nguyên liệu chưa xong', 'amber'),
 					self::reportCard('Chuyển từ học sang mua nguyên liệu', (string) $ownLines['study_to_material'], 'Đã học và có đơn nguyên liệu', 'cyan'),
 					$tier === null
@@ -752,10 +813,10 @@ class Home_AdminKpiService {
 				'cards' => array(
 					self::reportCard('Kết quả theo nhân viên', $staff['value'], $staff['hint'], 'blue'),
 					self::reportCard('Lead tồn quá 7 ngày', (string) $agingLeads, 'Chưa chuyển đổi, tạo hơn 7 ngày', 'amber'),
-					self::reportCard('Tỉ lệ chốt giai đoạn 1.1', $gd11Rate, 'Đã tham gia / lead Offline trong tháng', 'emerald'),
-					self::reportCard('Tỉ lệ chốt lớp 990k', $gd14Rate, 'Đã tham gia / lead 990k trong tháng', 'cyan'),
+					self::reportCard('Tỉ lệ chốt giai đoạn 1.1', $gd11Rate, 'Đã tham gia / lead Offline trong ' . $periodLabel, 'emerald'),
+					self::reportCard('Tỉ lệ chốt lớp 990k', $gd14Rate, 'Đã tham gia / lead 990k trong ' . $periodLabel, 'cyan'),
 					self::reportCard('Nhiệm vụ quá hạn theo nhân viên', (string) $overdue['tasks'], $overdue['hint'], 'amber'),
-					self::reportCard('Khách lớn có rủi ro', (string) $risk, 'Khách mua nhiều nhưng không có đơn trong tháng', 'rose'),
+					self::reportCard('Khách lớn có rủi ro', (string) $risk, 'Khách mua nhiều nhưng không có đơn trong ' . $periodLabel, 'rose'),
 					self::reportCard('Khách / mặt hàng biến động nhiều nhất', $mover['value'], $mover['hint'], 'violet'),
 				),
 			),
@@ -765,7 +826,7 @@ class Home_AdminKpiService {
 					self::reportCard('Phải thu', $receivable === null ? 'Chưa đủ dữ liệu' : self::formatMoney($receivable), 'Số dư hóa đơn còn lại', 'blue'),
 					self::reportCard('Đơn đã thu, chưa giao xong', (string) self::countPaidNotDelivered($db), 'Hóa đơn đã thu, đơn chưa giao', 'emerald'),
 					self::reportCard('Chứng từ chưa hoàn tất', (string) self::countOpenVouchers($db), 'Đề nghị hóa đơn còn chờ', 'amber'),
-					self::reportCard('Chiết khấu đơn hàng', self::formatMoney($money['discount']), 'Chiết khấu trên đơn trong tháng', 'violet'),
+					self::reportCard('Chiết khấu đơn hàng', self::formatMoney($money['discount']), 'Chiết khấu trên đơn trong ' . $periodLabel, 'violet'),
 					self::reportCard('Quà theo hạng', 'Chưa đủ dữ liệu', '', 'rose'),
 				),
 			),
@@ -808,13 +869,17 @@ class Home_AdminKpiService {
 			$selected = array($key => $boards[$key]);
 		}
 		if (isset($selected['warehouse'])) {
-			$selected['warehouse']['goods'] = self::goodsReport($db);
+			$selected['warehouse']['goods'] = self::goodsReport($db, $from, $to);
+		}
+		foreach ($selected as $boardKey => $board) {
+			$selected[$boardKey]['period'] = $bounds['key'];
+			$selected[$boardKey]['period_label'] = $periodLabel;
 		}
 		if ($persona === 'admin' || $persona === 'ceo' || $persona === 'bgd') {
 			require_once 'modules/Reports/models/MktSheetReportService.php';
 			$sheet = array('error' => 'Chưa tải được báo cáo Marketing.', 'months' => array());
 			try {
-				$sheet = Reports_MktSheetReportService::payload($db);
+				$sheet = Reports_MktSheetReportService::payload($db, $from, $to);
 			} catch (Exception $e) {
 				$sheet['error'] = 'Chưa tải được báo cáo Marketing.';
 			}
@@ -822,6 +887,8 @@ class Home_AdminKpiService {
 				'title' => 'Marketing',
 				'cards' => array(),
 				'sheet' => $sheet,
+				'period' => $bounds['key'],
+				'period_label' => $periodLabel,
 			);
 		}
 		return $selected;
@@ -981,20 +1048,25 @@ class Home_AdminKpiService {
 	 *
 	 * @return array<string,mixed>|null
 	 */
-	protected static function goodsReport(PearDatabase $db) {
+	protected static function goodsReport(PearDatabase $db, $from = '', $to = '') {
 		$hasStock = self::tableExists($db, 'vtiger_warehouse_stock') && self::columnExists($db, 'vtiger_warehouse_stock', 'quantity');
 		$hasSales = self::tableExists($db, 'vtiger_inventoryproductrel') && self::tableExists($db, 'vtiger_salesorder');
 		if (!$hasStock && !$hasSales) {
 			return null;
 		}
 		$stockRows = $hasStock ? self::goodsStockRows($db) : array();
-		$daily = $hasSales ? self::goodsDailySales($db, 183) : array();
+		$daily = $hasSales ? self::goodsDailySales($db, 183, $from, $to) : array();
 		$sold30 = $hasSales ? self::goodsProductSales($db, 30) : array();
+		$soldPeriod = ($from !== '' && $to !== '')
+			? self::goodsProductSales($db, 30, $from, $to)
+			: $sold30;
 		$hasCost = false;
-		foreach ($sold30 as $row) {
-			if ((float) $row['cost'] > 0) {
-				$hasCost = true;
-				break;
+		foreach (array($sold30, $soldPeriod) as $saleSet) {
+			foreach ($saleSet as $row) {
+				if ((float) $row['cost'] > 0) {
+					$hasCost = true;
+					break 2;
+				}
 			}
 		}
 
@@ -1051,7 +1123,7 @@ class Home_AdminKpiService {
 			return $b['value'] <=> $a['value'];
 		});
 
-		$fast = array_values($sold30);
+		$fast = array_values($soldPeriod);
 		usort($fast, function ($a, $b) {
 			return $b['qty'] <=> $a['qty'];
 		});
@@ -1060,7 +1132,7 @@ class Home_AdminKpiService {
 			if ((float) $row['qty'] <= 0) {
 				continue;
 			}
-			$sale = isset($sold30[$row['key']]) ? $sold30[$row['key']] : null;
+			$sale = isset($soldPeriod[$row['key']]) ? $soldPeriod[$row['key']] : null;
 			$slow[] = array(
 				'name' => $row['name'],
 				'sku' => $row['sku'],
@@ -1086,9 +1158,9 @@ class Home_AdminKpiService {
 			),
 			'alerts' => $alerts,
 			'periods' => array(
-				'day' => self::goodsPeriodBuckets($daily, 'day', 14),
-				'week' => self::goodsPeriodBuckets($daily, 'week', 8),
-				'month' => self::goodsPeriodBuckets($daily, 'month', 6),
+				'day' => self::goodsPeriodBuckets($daily, 'day', $from !== '' ? 31 : 14),
+				'week' => self::goodsPeriodBuckets($daily, 'week', $from !== '' ? 16 : 8),
+				'month' => self::goodsPeriodBuckets($daily, 'month', $from !== '' ? 12 : 6),
 			),
 			'groups' => array_slice($groupList, 0, 8),
 			'stock_top_qty' => self::goodsTrimStock($byQty, 8),
@@ -1182,10 +1254,15 @@ class Home_AdminKpiService {
 		return '0';
 	}
 
-	protected static function goodsDailySales(PearDatabase $db, $days) {
+	protected static function goodsDailySales(PearDatabase $db, $days, $from = '', $to = '') {
 		list($notCancelSql, $excluded) = self::soNotCancelledSql('so');
-		$since = date('Y-m-d 00:00:00', strtotime('-' . (int) $days . ' days'));
+		$since = $from !== '' ? $from : date('Y-m-d 00:00:00', strtotime('-' . (int) $days . ' days'));
 		$params = array_merge($excluded, array($since));
+		$untilSql = '';
+		if ($to !== '') {
+			$untilSql = ' AND ce.createdtime <= ?';
+			$params[] = $to;
+		}
 		$net = self::goodsNetSql();
 		$r = $db->pquery(
 			"SELECT DATE(ce.createdtime) AS sale_date,
@@ -1194,7 +1271,7 @@ class Home_AdminKpiService {
 			 FROM vtiger_inventoryproductrel ip
 			 INNER JOIN vtiger_salesorder so ON so.salesorderid = ip.id
 			 INNER JOIN vtiger_crmentity ce ON ce.crmid = so.salesorderid AND ce.deleted = 0
-			 WHERE $notCancelSql AND ce.createdtime >= ?
+			 WHERE $notCancelSql AND ce.createdtime >= ? $untilSql
 			 GROUP BY DATE(ce.createdtime)
 			 ORDER BY sale_date ASC",
 			$params
@@ -1213,10 +1290,15 @@ class Home_AdminKpiService {
 		return $out;
 	}
 
-	protected static function goodsProductSales(PearDatabase $db, $days) {
+	protected static function goodsProductSales(PearDatabase $db, $days, $from = '', $to = '') {
 		list($notCancelSql, $excluded) = self::soNotCancelledSql('so');
-		$since = date('Y-m-d 00:00:00', strtotime('-' . (int) $days . ' days'));
+		$since = $from !== '' ? $from : date('Y-m-d 00:00:00', strtotime('-' . (int) $days . ' days'));
 		$params = array_merge($excluded, array($since));
+		$untilSql = '';
+		if ($to !== '') {
+			$untilSql = ' AND ce.createdtime <= ?';
+			$params[] = $to;
+		}
 		$net = self::goodsNetSql();
 		$cost = self::goodsCostSql();
 		$join = self::tableExists($db, 'vtiger_productsservices')
@@ -1235,7 +1317,7 @@ class Home_AdminKpiService {
 			 INNER JOIN vtiger_salesorder so ON so.salesorderid = ip.id
 			 INNER JOIN vtiger_crmentity ce ON ce.crmid = so.salesorderid AND ce.deleted = 0
 			 $join
-			 WHERE $notCancelSql AND ce.createdtime >= ?
+			 WHERE $notCancelSql AND ce.createdtime >= ? $untilSql
 			 GROUP BY ip.productid, $name, $sku",
 			$params
 		);
@@ -1864,7 +1946,13 @@ class Home_AdminKpiService {
 
 	protected static function revenueByProduct($period = 'month') {
 		$db = PearDatabase::getInstance();
-		list($from, $to) = self::periodBounds($period);
+		if (is_array($period) && !empty($period['from']) && !empty($period['to'])) {
+			$from = $period['from'];
+			$to = $period['to'];
+			$period = 'custom';
+		} else {
+			list($from, $to) = self::periodBounds($period);
+		}
 		list($notCancelSql, $excluded) = self::soNotCancelledSql('so');
 		$params = array_merge($excluded, array($from, $to));
 

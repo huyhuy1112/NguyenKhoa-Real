@@ -91,7 +91,11 @@ class Home_AdminKpiApi_Action extends Vtiger_Action_Controller {
 					$response->setResult(array(
 						'success' => true,
 						'persona' => $persona,
-						'boards' => Home_AdminKpiService::getRoleBoards($persona, (int) $user->getId()),
+						'boards' => Home_AdminKpiService::getRoleBoards(
+							$persona,
+							(int) $user->getId(),
+							(string) $request->get('report_period')
+						),
 					));
 					break;
 
@@ -104,9 +108,10 @@ class Home_AdminKpiApi_Action extends Vtiger_Action_Controller {
 						$amount,
 						(int) $user->getId()
 					);
+					$bounds = Home_AdminKpiService::reportPeriodBounds((string) $request->get('report_period'));
 					$response->setResult(array(
 						'success' => true,
-						'sheet' => Reports_MktSheetReportService::payload(),
+						'sheet' => Reports_MktSheetReportService::payload(null, $bounds['from'], $bounds['to']),
 					));
 					break;
 

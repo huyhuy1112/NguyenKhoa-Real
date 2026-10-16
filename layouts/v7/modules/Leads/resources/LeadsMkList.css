@@ -514,6 +514,50 @@ body[data-module="Leads"][data-view="List"][data-app="SALES"] .mk-so-page.mk-lea
 	color: #c2410c;
 	border: 1px solid #fed7aa;
 }
+button.mk-answer-pill {
+	cursor: pointer;
+	font-family: inherit;
+}
+.mk-answer-pop {
+	position: fixed;
+	z-index: 80;
+	width: min(320px, calc(100vw - 16px));
+	max-height: min(420px, calc(100vh - 24px));
+	overflow: auto;
+	background: #fff;
+	border: 1px solid #dbe3ee;
+	border-radius: 14px;
+	box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16);
+	padding: 10px 12px 12px;
+}
+.mk-answer-pop__title {
+	margin: 8px 0 6px;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: #64748b;
+}
+.mk-answer-pop__title:first-child { margin-top: 0; }
+.mk-answer-pop__row {
+	display: flex;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 6px 0;
+	border-top: 1px solid #f1f5f9;
+	font-size: 13px;
+	color: #334155;
+}
+.mk-answer-pop__row strong {
+	text-align: right;
+	color: #0f172a;
+	font-weight: 650;
+}
+.mk-answer-pop__empty {
+	margin: 0;
+	font-size: 13px;
+	color: #64748b;
+}
 .mk-leads-screen-pill--info {
 	background: #e0f2fe;
 	color: #0369a1;

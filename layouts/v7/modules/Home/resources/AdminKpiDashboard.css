@@ -1259,6 +1259,7 @@ button.mk-admin-kpi-stage-hit.is-open {
 
 .mk-admin-kpi-period-modes {
 	display: flex;
+	flex-wrap: wrap;
 	gap: 2px;
 	padding: 3px;
 	background: #f1f5f9;

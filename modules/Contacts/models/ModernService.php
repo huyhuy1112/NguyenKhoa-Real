@@ -134,6 +134,9 @@ class Contacts_ModernService {
 				$item['verify_lines'] = $gd14ByContact[$contactId]['lines'];
 				$item['gd14'] = $gd14ByContact[$contactId]['gd14'];
 				$item['compare'] = $gd14ByContact[$contactId]['compare'];
+				$item['class_date'] = isset($gd14ByContact[$contactId]['class_date']) ? $gd14ByContact[$contactId]['class_date'] : '';
+				$item['class_time'] = isset($gd14ByContact[$contactId]['class_time']) ? $gd14ByContact[$contactId]['class_time'] : '';
+				$item['class_place'] = isset($gd14ByContact[$contactId]['class_place']) ? $gd14ByContact[$contactId]['class_place'] : '';
 			} else {
 				$item['verify_lines'] = array();
 				$item['gd14'] = array();

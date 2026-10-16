@@ -6,6 +6,14 @@
 			<div class="mk-admin-kpi-kicker">Nguyên Khoa</div>
 			<h1 class="mk-admin-kpi-title">Bảng điều khiển quản trị</h1>
 			<p class="mk-admin-kpi-sub">Tổng quan chỉ số — bấm thẻ → xem tóm tắt → bấm số để mở danh sách</p>
+			<div class="mk-admin-kpi-period-modes" style="margin-top:12px">
+				<button type="button" class="mk-admin-kpi-mode-btn is-active" data-report-period="this_month">Tháng này</button>
+				<button type="button" class="mk-admin-kpi-mode-btn" data-report-period="prev_month">Tháng trước</button>
+				<button type="button" class="mk-admin-kpi-mode-btn" data-report-period="this_quarter">Quý này</button>
+				<button type="button" class="mk-admin-kpi-mode-btn" data-report-period="prev_quarter">Quý trước</button>
+				<button type="button" class="mk-admin-kpi-mode-btn" data-report-period="this_year">Năm này</button>
+				<button type="button" class="mk-admin-kpi-mode-btn" data-report-period="prev_year">Năm trước</button>
+			</div>
 		</header>
 
 		<div class="mk-admin-kpi-alerts" id="mkAdminKpiAlerts">
@@ -76,9 +84,12 @@
 			</div>
 			<div class="mk-admin-kpi-stagebar__period" id="mkAdminKpiStagePeriod">
 				<div class="mk-admin-kpi-period-modes">
-					<button type="button" class="mk-admin-kpi-mode-btn is-active" data-stage-period="month">Tháng</button>
-					<button type="button" class="mk-admin-kpi-mode-btn" data-stage-period="quarter">Quý</button>
-					<button type="button" class="mk-admin-kpi-mode-btn" data-stage-period="year">Năm</button>
+					<button type="button" class="mk-admin-kpi-mode-btn is-active" data-report-period="this_month">Tháng này</button>
+					<button type="button" class="mk-admin-kpi-mode-btn" data-report-period="prev_month">Tháng trước</button>
+					<button type="button" class="mk-admin-kpi-mode-btn" data-report-period="this_quarter">Quý này</button>
+					<button type="button" class="mk-admin-kpi-mode-btn" data-report-period="prev_quarter">Quý trước</button>
+					<button type="button" class="mk-admin-kpi-mode-btn" data-report-period="this_year">Năm này</button>
+					<button type="button" class="mk-admin-kpi-mode-btn" data-report-period="prev_year">Năm trước</button>
 				</div>
 				<div class="mk-admin-kpi-period-nav" role="group" aria-label="Chọn kỳ">
 					<button type="button" class="mk-admin-kpi-period-nav__btn" data-stage-nav="prev" title="Kỳ trước" aria-label="Kỳ trước">‹</button>
