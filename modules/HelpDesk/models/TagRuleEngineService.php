@@ -244,7 +244,11 @@ class HelpDesk_TagRuleEngineService {
 		if ($json === null || $json === '') {
 			return array();
 		}
-		$data = json_decode((string)$json, true);
+		$raw = (string) $json;
+		$data = json_decode($raw, true);
+		if (!is_array($data) && function_exists('decode_html')) {
+			$data = json_decode(decode_html($raw), true);
+		}
 		return is_array($data) ? self::sanitizeFieldConditions($data) : array();
 	}
 

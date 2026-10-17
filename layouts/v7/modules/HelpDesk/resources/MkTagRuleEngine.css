@@ -2765,6 +2765,45 @@ body[data-module="SupportFAQ"] .mk-sf-faq-page {
 	min-width: 220px;
 }
 
+.mk-tre-table--rules .mk-tre-chip--muted {
+	padding: 4px 12px;
+	font-size: 13px;
+	font-weight: 600;
+	background: #f1f5f9;
+	color: #334155;
+	border: 1px solid #e2e8f0;
+	box-shadow: none;
+}
+
+.mk-tre-if-line {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.mk-tre-if-mode {
+	font-size: 13px;
+	font-weight: 600;
+	color: #64748b;
+}
+
+.mk-tre-if-conds {
+	margin: 6px 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+.mk-tre-if-conds li {
+	font-size: 13px;
+	line-height: 1.45;
+	color: #334155;
+}
+
+.mk-tre-if-conds li + li {
+	margin-top: 2px;
+}
+
 /* Cảnh báo: full-bleed content, never show LISTS strip */
 body[data-module="SupportFAQ"][data-view="List"] .mk-sf-alerts-page #modnavigator,
 body[data-module="SupportFAQ"][data-view="List"] .mk-sf-alerts-page #sidebar-essentials,

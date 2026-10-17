@@ -1124,30 +1124,28 @@
 			}
 
 			return filtered.map(function (r) {
-				var bits = [];
-				(r.tag_ids || []).forEach(function (tid) {
-					bits.push(tagChip(tagMap[tid] ? tagMap[tid].name : '?'));
-				});
-				var hasDetail = bits.length > 0;
+				var tagsHtml = (r.tag_ids || []).map(function (tid) {
+					return tagChip(tagMap[tid] ? tagMap[tid].name : '?');
+				}).join('');
+				var lines = [];
 				(r.field_conditions || []).forEach(function (row) {
 					if (!fcRowIsShown(row)) return;
-					hasDetail = true;
-					bits.push('<span class="mk-tre-chip">' + esc(fcConditionText(row, tagMap)) + '</span>');
+					lines.push(fcConditionText(row, tagMap));
 				});
-				if (r.active_from) {
-					hasDetail = true;
-					bits.push('<span class="mk-tre-chip">Từ ' + esc(r.active_from) + '</span>');
+				if (r.active_from) lines.push('Từ ' + r.active_from);
+				if (r.active_until) lines.push('Đến ' + r.active_until);
+				var ifHtml = '<span class="mk-tre-muted">Chưa chọn điều kiện</span>';
+				if (tagsHtml || lines.length) {
+					ifHtml = '<div class="mk-tre-if-line">'
+						+ '<span class="mk-tre-if-mode">' + (r.condition_mode === 'OR' ? 'Hoặc' : 'Và') + '</span>'
+						+ (tagsHtml ? '<span class="mk-tre-chips">' + tagsHtml + '</span>' : '')
+						+ '</div>';
+					if (lines.length) {
+						ifHtml += '<ul class="mk-tre-if-conds">' + lines.map(function (text) {
+							return '<li>' + esc(text) + '</li>';
+						}).join('') + '</ul>';
+					}
 				}
-				if (r.active_until) {
-					hasDetail = true;
-					bits.push('<span class="mk-tre-chip">Đến ' + esc(r.active_until) + '</span>');
-				}
-				if (hasDetail) {
-					bits.unshift('<span class="mk-tre-chip">' + (r.condition_mode === 'OR' ? 'Hoặc' : 'Và') + '</span>');
-				}
-				var ifHtml = bits.length
-					? '<div class="mk-tre-chips">' + bits.join('') + '</div>'
-					: '<span class="mk-tre-muted">Chưa chọn điều kiện</span>';
 				var resultName = '';
 				if (r.result_tag) {
 					resultName = tagMap[r.result_tag] ? tagMap[r.result_tag].name : r.result_tag;
@@ -1156,11 +1154,10 @@
 				return ''
 					+ '<tr>'
 					+ '  <td><div class="mk-tre-rule-name">' + esc(r.name || r.status_label || '') + '</div></td>'
-					+ '  <td><div class="mk-tre-if"><span class="mk-tre-if__label">Nếu</span>' + ifHtml + '</div></td>'
-					+ '  <td><div class="mk-tre-then"><span class="mk-tre-then__label">Thì</span>'
-					+ '    <div class="mk-tre-then__text">' + esc(r.next_action || '—')
+					+ '  <td>' + ifHtml + '</td>'
+					+ '  <td><div class="mk-tre-then__text">' + esc(r.next_action || '—')
 					+ (resultName ? '<div class="mk-tre-rule-sub">Đổi sang tag ' + esc(resultName) + '</div>' : '')
-					+ '</div></div></td>'
+					+ '</div></td>'
 					+ '  <td><label class="mk-tre-switch"><input type="checkbox" class="js-tre-rule-toggle" data-id="' + esc(r.id) + '"' + (r.is_active ? ' checked' : '') + ' /><span class="mk-tre-switch__track"></span></label></td>'
 					+ '  <td class="mk-tre-actions">'
 					+ '    <button type="button" class="mk-tre-icon-btn js-tre-rule-edit" data-id="' + esc(r.id) + '" title="Sửa">' + ICONS.pencil + '</button>'
