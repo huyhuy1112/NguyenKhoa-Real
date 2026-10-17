@@ -253,6 +253,13 @@ class HelpDesk_TagRuleEngineService {
 	}
 
 	public static function sanitizeFieldConditions($rows) {
+		if (is_string($rows)) {
+			$decoded = json_decode($rows, true);
+			if (!is_array($decoded) && function_exists('decode_html')) {
+				$decoded = json_decode(decode_html($rows), true);
+			}
+			$rows = is_array($decoded) ? $decoded : array();
+		}
 		if (!is_array($rows)) {
 			return array();
 		}
@@ -277,6 +284,9 @@ class HelpDesk_TagRuleEngineService {
 				$op = $allowed[0];
 			}
 			$value = isset($row['value']) ? trim((string)$row['value']) : '';
+			if ($value !== '' && function_exists('decode_html')) {
+				$value = trim(decode_html($value));
+			}
 			if ($field === 'class_time' && $op === 'eq') {
 				$value = self::normalizeClock($value);
 				if ($value === '') {

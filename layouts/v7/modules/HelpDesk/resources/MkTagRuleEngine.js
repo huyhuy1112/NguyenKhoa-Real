@@ -366,6 +366,7 @@
 		var field = row.field || 'business_model';
 		var ops = fcOps(field);
 		var op = row.op || ops[0];
+		var value = row.value == null ? '' : String(row.value);
 		if (ops.indexOf(op) < 0) op = ops[0];
 		var fieldOpts = FC_FIELDS.map(function (pair) {
 			return '<option value="' + pair[0] + '"' + (field === pair[0] ? ' selected' : '') + '>' + pair[1] + '</option>';
@@ -374,28 +375,62 @@
 			return '<option value="' + o + '"' + (op === o ? ' selected' : '') + '>' + esc(fcOpLabel(o, field)) + '</option>';
 		}).join('');
 		return ''
-			+ '<div class="mk-tre-form-row js-tre-fc-row" style="margin-top:8px;align-items:end">'
+			+ '<div class="mk-tre-form-row js-tre-fc-row" style="margin-top:8px;align-items:end" data-fc-field="' + esc(field) + '" data-fc-value="' + esc(value) + '">'
 			+ '  <label class="mk-tre-field"><span>Trường</span><select class="mk-tre-input mk-tre-input--select" name="fc_field">' + fieldOpts + '</select></label>'
 			+ '  <label class="mk-tre-field"><span>So sánh</span><select class="mk-tre-input mk-tre-input--select" name="fc_op">' + opOpts + '</select></label>'
-			+ '  <label class="mk-tre-field"><span>Giá trị</span><span class="js-tre-fc-value">' + fcValueControl(field, op, row.value || '') + '</span></label>'
+			+ '  <label class="mk-tre-field"><span>Giá trị</span><span class="js-tre-fc-value">' + fcValueControl(field, op, value) + '</span></label>'
 			+ '  <input type="checkbox" name="fc_important" hidden' + (row.important ? ' checked' : '') + ' />'
 			+ '  <button type="button" class="mk-tre-btn mk-tre-btn--ghost js-tre-fc-del">Xoá</button>'
 			+ '</div>';
 	}
 
-	function fcSyncRow($row) {
-		var field = String($row.find('[name="fc_field"]').val() || 'business_model');
-		var op = String($row.find('[name="fc_op"]').val() || '');
-		var value = String($row.find('[name="fc_value"]').val() || '');
-		var ops = fcOps(field);
-		if (ops.indexOf(op) < 0) {
-			op = ops[0];
-			value = '';
+	function fcApplyRowValues($root) {
+		$root.find('.js-tre-fc-row').each(function () {
+			var $row = $(this);
+			var field = String($row.attr('data-fc-field') || $row.find('[name="fc_field"]').val() || '');
+			var value = $row.attr('data-fc-value');
+			if (value == null) value = '';
+			$row.find('[name="fc_field"]').val(field);
+			var op = String($row.find('[name="fc_op"]').val() || '');
+			$row.find('[name="fc_op"]').val(op);
+			var $sel = $row.find('[name="fc_value"]');
+			if ($sel.length && value !== '') $sel.val(value);
+		});
+	}
+
+	var fcSyncing = false;
+
+	function fcSyncRow($row, source) {
+		if (fcSyncing) return;
+		fcSyncing = true;
+		try {
+			var prevField = String($row.attr('data-fc-field') || '');
+			var field = String($row.find('[name="fc_field"]').val() || 'business_model');
+			var op = String($row.find('[name="fc_op"]').val() || '');
+			var value = String($row.find('[name="fc_value"]').val() || $row.attr('data-fc-value') || '');
+			var ops = fcOps(field);
+			if (source === 'field' && prevField && prevField !== field) {
+				value = '';
+			}
+			if (ops.indexOf(op) < 0) {
+				op = ops[0];
+				if (source === 'field') value = '';
+			}
+			if (field === 'class_time' && op !== 'eq') value = '';
+			$row.attr('data-fc-field', field);
+			$row.attr('data-fc-value', value);
+			var $op = $row.find('[name="fc_op"]');
+			$op.html(ops.map(function (o) {
+				return '<option value="' + o + '">' + esc(fcOpLabel(o, field)) + '</option>';
+			}).join(''));
+			$op.val(op);
+			var $slot = $row.find('.js-tre-fc-value');
+			$slot.html(fcValueControl(field, op, value));
+			var $sel = $slot.find('[name="fc_value"]');
+			if ($sel.length && value !== '') $sel.val(value);
+		} finally {
+			fcSyncing = false;
 		}
-		$row.find('[name="fc_op"]').html(ops.map(function (o) {
-			return '<option value="' + o + '"' + (o === op ? ' selected' : '') + '>' + esc(fcOpLabel(o, field)) + '</option>';
-		}).join(''));
-		$row.find('.js-tre-fc-value').html(fcValueControl(field, op, value));
 	}
 
 	function fcRowIsShown(row) {
@@ -1691,6 +1726,7 @@
 				+ '</button>';
 
 			this.openModal(isEdit ? 'Sửa rule' : 'Tạo rule mới', body, foot, { variant: 'rule' });
+			fcApplyRowValues($('#mk-tre-modal-body'));
 		},
 
 		openTagForm: function (tagId) {
@@ -1827,7 +1863,7 @@
 			data.field_conditions = [];
 			$('#mk-tre-modal-body .js-tre-fc-row').each(function () {
 				var $row = $(this);
-				var value = String($row.find('[name="fc_value"]').val() || '').trim();
+				var value = String($row.find('[name="fc_value"]').val() || $row.attr('data-fc-value') || '').trim();
 				var field = $row.find('[name="fc_field"]').val() || '';
 				var op = $row.find('[name="fc_op"]').val() || '';
 				if (!field) return;
@@ -2277,8 +2313,14 @@
 			$(document).on('click.mkTagRuleEngine', '.js-tre-fc-add', function () {
 				$('#mk-tre-modal-body .js-tre-fc-list').append(fcRowHtml({ field: 'business_model', op: 'eq', value: '' }));
 			});
-			$(document).on('change.mkTagRuleEngine', '#mk-tre-modal-body [name="fc_field"], #mk-tre-modal-body [name="fc_op"]', function () {
-				fcSyncRow($(this).closest('.js-tre-fc-row'));
+			$(document).on('change.mkTagRuleEngine', '#mk-tre-modal-body [name="fc_field"]', function () {
+				fcSyncRow($(this).closest('.js-tre-fc-row'), 'field');
+			});
+			$(document).on('change.mkTagRuleEngine', '#mk-tre-modal-body [name="fc_op"]', function () {
+				fcSyncRow($(this).closest('.js-tre-fc-row'), 'op');
+			});
+			$(document).on('change.mkTagRuleEngine', '#mk-tre-modal-body [name="fc_value"]', function () {
+				$(this).closest('.js-tre-fc-row').attr('data-fc-value', $(this).val() || '');
 			});
 			$(document).on('click.mkTagRuleEngine', '.js-tre-fc-del', function () {
 				var $list = $('#mk-tre-modal-body .js-tre-fc-list');
