@@ -1242,20 +1242,57 @@
 	color: #64748b;
 	font-size: 12px;
 }
-.mk-opps-class-add {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 6px;
-	align-items: center;
+.mk-opps-class-open {
+	align-self: flex-start;
 }
-.mk-opps-class-add select,
-.mk-opps-class-add input {
-	height: 32px;
+.mk-opps-class-modal {
+	position: fixed;
+	inset: 0;
+	z-index: 1200;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 16px;
+	background: rgba(15, 23, 42, 0.45);
+}
+.mk-opps-class-modal__card {
+	width: min(360px, 100%);
+	padding: 16px;
+	border-radius: 12px;
+	background: #fff;
+	box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
+}
+.mk-opps-class-modal__title {
+	margin-bottom: 12px;
+	font-size: 16px;
+	font-weight: 700;
+	color: #0f172a;
+}
+.mk-opps-class-modal__field {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	margin-bottom: 10px;
+	font-size: 12px;
+	font-weight: 600;
+	color: #475569;
+}
+.mk-opps-class-modal__field select,
+.mk-opps-class-modal__field input {
+	height: 36px;
 	border: 1px solid #cbd5e1;
 	border-radius: 8px;
-	padding: 0 8px;
+	padding: 0 10px;
 	background: #fff;
-	font-size: 13px;
+	font-size: 14px;
+	font-weight: 500;
+	color: #0f172a;
+}
+.mk-opps-class-modal__actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	margin-top: 4px;
 }
 .mk-opps-desk-match__class,
 .mk-opps-desk-match__note {

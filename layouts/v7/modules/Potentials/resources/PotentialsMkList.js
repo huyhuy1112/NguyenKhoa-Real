@@ -1694,25 +1694,44 @@
     });
     if (isAdminUser() && total < 4) {
       html +=
-        '<div class="mk-opps-class-add">' +
-        '<select data-mk-class-add-code="' +
+        '<button type="button" class="mk-opps-checkin__btn mk-opps-class-open" data-mk-class-open="' +
         esc(o.id) +
-        '" aria-label="Lớp học">' +
-        offlineCourseOptionsHtml() +
-        "</select>" +
-        '<input type="date" data-mk-class-add-date="' +
-        esc(o.id) +
-        '" aria-label="Ngày học" />' +
-        '<input type="time" data-mk-class-add-time="' +
-        esc(o.id) +
-        '" aria-label="Giờ học" />' +
-        '<button type="button" class="mk-opps-checkin__btn mk-opps-checkin__btn--ok" data-mk-class-add="' +
-        esc(o.id) +
-        '">Thêm lớp</button>' +
-        "</div>";
+        '">Thêm lớp</button>';
     }
     html += "</div>";
     return html;
+  }
+
+  function closeAddClassModal() {
+    var modal = document.getElementById("mk-opps-add-class-modal");
+    if (modal) modal.remove();
+  }
+
+  function openAddClassModal(oppId) {
+    closeAddClassModal();
+    var backdrop = document.createElement("div");
+    backdrop.id = "mk-opps-add-class-modal";
+    backdrop.className = "mk-opps-class-modal";
+    backdrop.innerHTML =
+      '<div class="mk-opps-class-modal__card" role="dialog" aria-modal="true" aria-label="Thêm lớp">' +
+      '<div class="mk-opps-class-modal__title">Thêm lớp</div>' +
+      '<label class="mk-opps-class-modal__field"><span>Lớp</span>' +
+      '<select data-mk-class-add-code>' +
+      offlineCourseOptionsHtml() +
+      "</select></label>" +
+      '<label class="mk-opps-class-modal__field"><span>Ngày</span>' +
+      '<input type="date" data-mk-class-add-date /></label>' +
+      '<label class="mk-opps-class-modal__field"><span>Giờ</span>' +
+      '<input type="time" data-mk-class-add-time /></label>' +
+      '<div class="mk-opps-class-modal__actions">' +
+      '<button type="button" class="mk-opps-checkin__btn" data-mk-class-add-cancel>Huỷ</button>' +
+      '<button type="button" class="mk-opps-checkin__btn mk-opps-checkin__btn--ok" data-mk-class-add="' +
+      esc(oppId) +
+      '">Lưu</button>' +
+      "</div></div>";
+    document.body.appendChild(backdrop);
+    var select = backdrop.querySelector("select");
+    if (select) select.focus();
   }
 
   function submitExtraClass(btn) {
@@ -1722,9 +1741,10 @@
     var wrap = btn.closest ? btn.closest(".mk-opps-checkin") : null;
     var payload = { op: "" };
     if (btn.hasAttribute("data-mk-class-add")) {
-      var codeEl = wrap ? wrap.querySelector("[data-mk-class-add-code]") : null;
-      var dateEl = wrap ? wrap.querySelector("[data-mk-class-add-date]") : null;
-      var timeEl = wrap ? wrap.querySelector("[data-mk-class-add-time]") : null;
+      var modal = document.getElementById("mk-opps-add-class-modal");
+      var codeEl = modal ? modal.querySelector("[data-mk-class-add-code]") : null;
+      var dateEl = modal ? modal.querySelector("[data-mk-class-add-date]") : null;
+      var timeEl = modal ? modal.querySelector("[data-mk-class-add-time]") : null;
       payload.op = "add";
       payload.code = codeEl ? codeEl.value : "";
       payload.date = dateEl ? dateEl.value : "";
@@ -1745,6 +1765,7 @@
     store
       .offlineClass(oid, payload)
       .then(function (res) {
+        closeAddClassModal();
         notifyOk((res && res.message) || "Đã cập nhật lớp.");
         renderAll();
       })
@@ -3019,6 +3040,23 @@
         e.preventDefault();
         e.stopPropagation();
         submitOfflineCheckin(checkinBtn.getAttribute("data-mk-opp-checkin"), checkinBtn);
+        return;
+      }
+      if (e.target && e.target.id === "mk-opps-add-class-modal") {
+        closeAddClassModal();
+        return;
+      }
+      var openClassBtn = e.target.closest && e.target.closest("[data-mk-class-open]");
+      if (openClassBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        openAddClassModal(openClassBtn.getAttribute("data-mk-class-open"));
+        return;
+      }
+      if (e.target.closest && e.target.closest("[data-mk-class-add-cancel]")) {
+        e.preventDefault();
+        e.stopPropagation();
+        closeAddClassModal();
         return;
       }
       var classBtn =
