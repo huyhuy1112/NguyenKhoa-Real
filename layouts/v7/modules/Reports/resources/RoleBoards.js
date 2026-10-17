@@ -106,7 +106,8 @@
 	}
 
 	function bindRoleSwitch(box) {
-		var sw = box.querySelector('.mk-role-switch');
+		var roleBtn = box.querySelector('[data-mk-role]');
+		var sw = roleBtn ? roleBtn.parentNode : null;
 		if (!sw) return;
 		sw.addEventListener('click', function (e) {
 			var btn = e.target.closest ? e.target.closest('[data-mk-role]') : null;

@@ -17,7 +17,7 @@
 			</div>
 			<div id="mkRoleReportsBody"><div class="mk-admin-kpi-detail-loading">Đang tải…</div></div>
 		</section>
-		<script type="text/javascript" src="{vresource_url('layouts/v7/modules/Reports/resources/RoleBoards.js')}?mk_v=20261016_period1"></script>
+		<script type="text/javascript" src="{vresource_url('layouts/v7/modules/Reports/resources/RoleBoards.js')}?mk_v=20261017_roleclick1"></script>
 	</div>
 </div>
 {/strip}
