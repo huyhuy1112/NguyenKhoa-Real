@@ -129,7 +129,8 @@
 	}
 
 	function ensureBootstrapped() {
-		// List.tpl inject MK_TAG_RULE_STATE SAU khi Store.js parse — luôn ưu tiên inject nếu có.
+		// Đã nạp rồi thì giữ bản vừa lưu. Không kéo lại JSON lúc mở trang.
+		if (ready) return;
 		if (global.MK_TAG_RULE_STATE && typeof global.MK_TAG_RULE_STATE === 'object') {
 			applyState(global.MK_TAG_RULE_STATE);
 		}

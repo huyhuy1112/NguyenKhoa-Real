@@ -2758,6 +2758,8 @@ body[data-module="SupportFAQ"] .mk-sf-faq-page {
 	}
 }
 
+.mk-tre-table--rules th:nth-child(2),
+.mk-tre-table--rules td:nth-child(2),
 .mk-tre-table--rules th:nth-child(3),
 .mk-tre-table--rules td:nth-child(3) {
 	min-width: 220px;

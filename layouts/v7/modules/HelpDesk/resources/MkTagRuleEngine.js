@@ -231,6 +231,204 @@
 		return String(sel || '').trim();
 	}
 
+	var FC_FIELDS = [
+		['tag', 'Tag'],
+		['business_model', 'Mô hình kinh doanh'],
+		['eligibility', 'Đủ điều kiện'],
+		['leadsource', 'Nguồn'],
+		['idle_days', 'Số ngày chưa chăm'],
+		['class_time', 'Giờ học'],
+		['r1', 'R1 — liên hệ lỗi'],
+		['r2', 'R2 — chưa chốt lịch'],
+		['r3', 'R3 — không đến lớp'],
+		['r4', 'R4 — không đủ điều kiện']
+	];
+	var FC_BUSINESS_MODELS = [
+		'Thuê hoặc có sẵn mặt bằng',
+		'Mở vỉa hè bán online',
+		'TS Topping',
+		'Xe đẩy',
+		'Cà phê máy lạnh',
+		'Cà phê sân vườn',
+		'TS Pha máy',
+		'Cà phê không gian mở',
+		'Cửa hàng',
+		'Online'
+	];
+	var FC_LEAD_SOURCES = [
+		['Facebook', 'Facebook'],
+		['Web Site', 'Web Site'],
+		['Other', 'Khác']
+	];
+
+	function fcFieldLabel(field) {
+		for (var i = 0; i < FC_FIELDS.length; i++) {
+			if (FC_FIELDS[i][0] === field) return FC_FIELDS[i][1];
+		}
+		return field || '';
+	}
+
+	function fcOps(field) {
+		if (field === 'idle_days' || field === 'r1' || field === 'r2' || field === 'r3' || field === 'r4') {
+			return ['>=', '>', '=', '<=', '<'];
+		}
+		if (field === 'class_time') return ['not_empty', 'empty', 'eq'];
+		if (field === 'tag') return ['has', 'not_has'];
+		return ['eq', 'neq', 'contains'];
+	}
+
+	function fcOpLabel(op, field) {
+		if (field === 'class_time' && op === 'eq') return 'Đúng giờ';
+		if (field === 'class_time' && op === 'not_empty') return 'Đã có giờ';
+		if (field === 'class_time' && op === 'empty') return 'Đang trống';
+		var map = { has: 'có', not_has: 'không có', eq: 'bằng', neq: 'khác', contains: 'chứa', not_empty: 'đã có', empty: 'đang trống', '>=': '≥', '>': '>', '=': '=', '<=': '≤', '<': '<' };
+		return map[op] || op;
+	}
+
+	function fcPadHour(n) {
+		return (n < 10 ? '0' : '') + n;
+	}
+
+	function fcClockChoices(current) {
+		var times = [];
+		var h;
+		for (h = 6; h <= 21; h++) {
+			times.push(fcPadHour(h) + ':00');
+			if (h < 21) times.push(fcPadHour(h) + ':30');
+		}
+		current = String(current || '');
+		if (current && times.indexOf(current) < 0) times.unshift(current);
+		return times;
+	}
+
+	function fcWithCurrent(options, current) {
+		current = String(current || '');
+		if (!current) return options;
+		for (var i = 0; i < options.length; i++) {
+			if (String(options[i].value) === current) return options;
+		}
+		return [{ value: current, label: current }].concat(options);
+	}
+
+	function fcValueOptions(field, current) {
+		var tags;
+		var numbers;
+		if (field === 'tag') {
+			tags = store.getTags();
+			return fcWithCurrent(tags.map(function (t) {
+				return { value: t.id, label: t.name };
+			}), current);
+		}
+		if (field === 'business_model') {
+			return fcWithCurrent(FC_BUSINESS_MODELS.map(function (label) {
+				return { value: label, label: label };
+			}), current);
+		}
+		if (field === 'eligibility') {
+			return fcWithCurrent([
+				{ value: 'du_dk', label: 'Đủ điều kiện' },
+				{ value: 'khong_du_dk', label: 'Không đủ điều kiện' }
+			], current);
+		}
+		if (field === 'leadsource') {
+			return fcWithCurrent(FC_LEAD_SOURCES.map(function (pair) {
+				return { value: pair[0], label: pair[1] };
+			}), current);
+		}
+		if (field === 'class_time') {
+			return fcClockChoices(current).map(function (t) {
+				return { value: t, label: t };
+			});
+		}
+		numbers = field === 'idle_days' ? [1, 2, 3, 5, 7, 14, 21, 30] : [1, 2, 3];
+		return fcWithCurrent(numbers.map(function (n) {
+			return { value: String(n), label: String(n) };
+		}), current);
+	}
+
+	function fcValueControl(field, op, value) {
+		var options;
+		var html;
+		value = value == null ? '' : String(value);
+		if (field === 'class_time' && op !== 'eq') {
+			return '<span class="mk-tre-muted">Không cần chọn giờ</span>';
+		}
+		options = fcValueOptions(field, value);
+		html = '<select class="mk-tre-input mk-tre-input--select" name="fc_value"><option value="">Chọn…</option>';
+		options.forEach(function (opt) {
+			html += '<option value="' + esc(opt.value) + '"' + (String(opt.value) === value ? ' selected' : '') + '>' + esc(opt.label) + '</option>';
+		});
+		return html + '</select>';
+	}
+
+	function fcRowHtml(row) {
+		row = row || { field: 'business_model', op: 'eq', value: '' };
+		var field = row.field || 'business_model';
+		var ops = fcOps(field);
+		var op = row.op || ops[0];
+		if (ops.indexOf(op) < 0) op = ops[0];
+		var fieldOpts = FC_FIELDS.map(function (pair) {
+			return '<option value="' + pair[0] + '"' + (field === pair[0] ? ' selected' : '') + '>' + pair[1] + '</option>';
+		}).join('');
+		var opOpts = ops.map(function (o) {
+			return '<option value="' + o + '"' + (op === o ? ' selected' : '') + '>' + esc(fcOpLabel(o, field)) + '</option>';
+		}).join('');
+		return ''
+			+ '<div class="mk-tre-form-row js-tre-fc-row" style="margin-top:8px;align-items:end">'
+			+ '  <label class="mk-tre-field"><span>Trường</span><select class="mk-tre-input mk-tre-input--select" name="fc_field">' + fieldOpts + '</select></label>'
+			+ '  <label class="mk-tre-field"><span>So sánh</span><select class="mk-tre-input mk-tre-input--select" name="fc_op">' + opOpts + '</select></label>'
+			+ '  <label class="mk-tre-field"><span>Giá trị</span><span class="js-tre-fc-value">' + fcValueControl(field, op, row.value || '') + '</span></label>'
+			+ '  <input type="checkbox" name="fc_important" hidden' + (row.important ? ' checked' : '') + ' />'
+			+ '  <button type="button" class="mk-tre-btn mk-tre-btn--ghost js-tre-fc-del">Xoá</button>'
+			+ '</div>';
+	}
+
+	function fcSyncRow($row) {
+		var field = String($row.find('[name="fc_field"]').val() || 'business_model');
+		var op = String($row.find('[name="fc_op"]').val() || '');
+		var value = String($row.find('[name="fc_value"]').val() || '');
+		var ops = fcOps(field);
+		if (ops.indexOf(op) < 0) {
+			op = ops[0];
+			value = '';
+		}
+		$row.find('[name="fc_op"]').html(ops.map(function (o) {
+			return '<option value="' + o + '"' + (o === op ? ' selected' : '') + '>' + esc(fcOpLabel(o, field)) + '</option>';
+		}).join(''));
+		$row.find('.js-tre-fc-value').html(fcValueControl(field, op, value));
+	}
+
+	function fcRowIsShown(row) {
+		if (!row || !row.field) return false;
+		if (row.field === 'class_time') {
+			if (row.op === 'eq') return !!String(row.value || '').trim();
+			return row.op === 'empty' || row.op === 'not_empty';
+		}
+		return !!String(row.value || '').trim();
+	}
+
+	function fcConditionText(row, tagMap) {
+		var field = row.field || '';
+		var op = row.op || '';
+		var value = row.value == null ? '' : String(row.value);
+		var name;
+		if (field === 'class_time') {
+			if (op === 'empty') return 'Giờ học đang trống';
+			if (op === 'eq') return 'Giờ học đúng ' + value;
+			return 'Giờ học đã có giờ';
+		}
+		if (field === 'tag') {
+			name = (tagMap && tagMap[value] && tagMap[value].name) ? tagMap[value].name : value;
+			return (op === 'not_has' ? 'Không có tag ' : 'Có tag ') + name;
+		}
+		if (field === 'eligibility') {
+			if (value === 'du_dk') value = 'Đủ điều kiện';
+			else if (value === 'khong_du_dk') value = 'Không đủ điều kiện';
+		}
+		if (field === 'leadsource' && value === 'Other') value = 'Khác';
+		return fcFieldLabel(field) + ' ' + fcOpLabel(op, field) + (value ? ' ' + value : '');
+	}
+
 	function ruleMatchesSearch(rule, q, tagMap) {
 		if (!q) return true;
 		var hay = [
@@ -241,6 +439,16 @@
 		(rule.tag_ids || []).forEach(function (tid) {
 			if (tagMap[tid]) hay += ' ' + String(tagMap[tid].name || '').toLowerCase();
 		});
+		if (rule.result_tag && tagMap[rule.result_tag]) {
+			hay += ' ' + String(tagMap[rule.result_tag].name || '').toLowerCase();
+		}
+		(rule.field_conditions || []).forEach(function (row) {
+			if (!fcRowIsShown(row)) return;
+			hay += ' ' + fcConditionText(row, tagMap).toLowerCase();
+		});
+		hay += rule.condition_mode === 'OR' ? ' hoặc' : ' và';
+		if (rule.active_from) hay += ' ' + String(rule.active_from);
+		if (rule.active_until) hay += ' ' + String(rule.active_until);
 		return hay.indexOf(q) >= 0;
 	}
 
@@ -912,49 +1120,47 @@
 			});
 
 			if (!filtered.length) {
-				return '<tr><td colspan="6" class="mk-tre-empty">' + (q ? 'Không tìm thấy rule phù hợp' : 'Chưa có rule nào') + '</td></tr>';
+				return '<tr><td colspan="5" class="mk-tre-empty">' + (q ? 'Không tìm thấy rule phù hợp' : 'Chưa có rule nào') + '</td></tr>';
 			}
 
 			return filtered.map(function (r) {
-				var tagHtml = (r.tag_ids || []).map(function (tid) {
-					return tagChip(tagMap[tid] ? tagMap[tid].name : '?');
-				}).join('');
-				if (!tagHtml) tagHtml = '<span class="mk-tre-muted">(chưa có tag)</span>';
-
-				var thenMeta = '';
-				if (r.require_note) {
-					thenMeta +=
-						'<span class="mk-tre-chip mk-tre-chip--warn">' +
-						ICONS.note +
-						' Bắt buộc ghi chú</span>';
+				var bits = [];
+				(r.tag_ids || []).forEach(function (tid) {
+					bits.push(tagChip(tagMap[tid] ? tagMap[tid].name : '?'));
+				});
+				var hasDetail = bits.length > 0;
+				(r.field_conditions || []).forEach(function (row) {
+					if (!fcRowIsShown(row)) return;
+					hasDetail = true;
+					bits.push('<span class="mk-tre-chip">' + esc(fcConditionText(row, tagMap)) + '</span>');
+				});
+				if (r.active_from) {
+					hasDetail = true;
+					bits.push('<span class="mk-tre-chip">Từ ' + esc(r.active_from) + '</span>');
 				}
-				if (r.alert_days != null && r.alert_days !== '') {
-					thenMeta +=
-						'<span class="mk-tre-chip mk-tre-chip--alert">' +
-						ICONS.clock +
-						' Cảnh báo ' +
-						esc(r.alert_days) +
-						' ngày</span>';
+				if (r.active_until) {
+					hasDetail = true;
+					bits.push('<span class="mk-tre-chip">Đến ' + esc(r.active_until) + '</span>');
 				}
-				if (r.condition_mode === 'OR') {
-					thenMeta += '<span class="mk-tre-chip">OR</span>';
+				if (hasDetail) {
+					bits.unshift('<span class="mk-tre-chip">' + (r.condition_mode === 'OR' ? 'Hoặc' : 'Và') + '</span>');
 				}
-				if (r.formula_metric && r.formula_value != null && r.formula_value !== '') {
-					thenMeta += '<span class="mk-tre-chip mk-tre-chip--warn">' + esc(r.formula_metric) + ' ' + esc(r.formula_op || '>=') + ' ' + esc(r.formula_value) + '</span>';
-				}
-				if ((r.important_tags || []).length) {
-					thenMeta += '<span class="mk-tre-chip">' + (r.important_tags || []).length + ' điều kiện quan trọng</span>';
+				var ifHtml = bits.length
+					? '<div class="mk-tre-chips">' + bits.join('') + '</div>'
+					: '<span class="mk-tre-muted">Chưa chọn điều kiện</span>';
+				var resultName = '';
+				if (r.result_tag) {
+					resultName = tagMap[r.result_tag] ? tagMap[r.result_tag].name : r.result_tag;
 				}
 
 				return ''
 					+ '<tr>'
-					+ '  <td><div class="mk-tre-rule-name">' + esc(r.status_label) + '</div><div class="mk-tre-rule-sub">' + esc(r.name) + '</div></td>'
-					+ '  <td><div class="mk-tre-if"><span class="mk-tre-if__label">Nếu</span><div class="mk-tre-chips">' + tagHtml + '</div></div></td>'
+					+ '  <td><div class="mk-tre-rule-name">' + esc(r.name || r.status_label || '') + '</div></td>'
+					+ '  <td><div class="mk-tre-if"><span class="mk-tre-if__label">Nếu</span>' + ifHtml + '</div></td>'
 					+ '  <td><div class="mk-tre-then"><span class="mk-tre-then__label">Thì</span>'
-					+ '    <div class="mk-tre-then__text">' + esc(r.next_action || '—') + (r.result_tag ? '<div class="mk-tre-rule-sub">Đổi sang tag ' + esc(tagMap[r.result_tag] ? tagMap[r.result_tag].name : r.result_tag) + '</div>' : '') + '</div>'
-					+ (thenMeta ? '<div class="mk-tre-then__meta mk-tre-chips">' + thenMeta + '</div>' : '')
-					+ '  </div></td>'
-					+ '  <td><span class="mk-tre-priority">' + esc(r.priority) + '</span></td>'
+					+ '    <div class="mk-tre-then__text">' + esc(r.next_action || '—')
+					+ (resultName ? '<div class="mk-tre-rule-sub">Đổi sang tag ' + esc(resultName) + '</div>' : '')
+					+ '</div></div></td>'
 					+ '  <td><label class="mk-tre-switch"><input type="checkbox" class="js-tre-rule-toggle" data-id="' + esc(r.id) + '"' + (r.is_active ? ' checked' : '') + ' /><span class="mk-tre-switch__track"></span></label></td>'
 					+ '  <td class="mk-tre-actions">'
 					+ '    <button type="button" class="mk-tre-icon-btn js-tre-rule-edit" data-id="' + esc(r.id) + '" title="Sửa">' + ICONS.pencil + '</button>'
@@ -982,13 +1188,13 @@
 				+ '  <div class="mk-tre-section__filterbar">'
 				+ '    <label class="mk-tre-search-field mk-tre-search-field--bar">'
 				+ '      <span class="mk-tre-search-field__icon" aria-hidden="true">' + ICONS.search + '</span>'
-				+ '      <input type="search" class="mk-tre-input mk-tre-input--search js-tre-rule-search" placeholder="Tìm rule theo tên, trạng thái, tag, hành động…" value="' + esc(this.ruleSearch) + '" autocomplete="off" />'
+				+ '      <input type="search" class="mk-tre-input mk-tre-input--search js-tre-rule-search" placeholder="Tìm theo tên, tag, điều kiện, việc cần làm…" value="' + esc(this.ruleSearch) + '" autocomplete="off" />'
 				+ '    </label>'
 				+ '  </div>'
 				+ '  <div class="mk-tre-section__body">'
 				+ '    <div class="mk-tre-table-wrap"><table class="mk-tre-table mk-tre-table--rules">'
 				+ '<thead><tr>'
-				+ '<th>Trạng thái</th><th>Nếu (tag AND)</th><th>Thì (hành động)</th><th>Priority</th><th>Active</th><th class="mk-tre-th-actions">Thao tác</th>'
+				+ '<th>Tên quy tắc</th><th>Nếu</th><th>Thì</th><th>Đang dùng</th><th class="mk-tre-th-actions">Thao tác</th>'
 				+ '</tr></thead>'
 				+ '<tbody class="js-tre-rules-tbody">' + this.renderRulesTableBody() + '</tbody>'
 				+ '</table></div>'
@@ -1406,49 +1612,6 @@
 			}).join('');
 
 			var selectedCount = selected.length;
-			var fcFields = [
-				['tag', 'Tag'],
-				['business_model', 'Mô hình kinh doanh'],
-				['eligibility', 'Đủ điều kiện'],
-				['leadsource', 'Nguồn'],
-				['idle_days', 'Số ngày chưa chăm'],
-				['class_time', 'Giờ học'],
-				['r1', 'R1 — liên hệ lỗi'],
-				['r2', 'R2 — chưa chốt lịch'],
-				['r3', 'R3 — không đến lớp'],
-				['r4', 'R4 — không đủ điều kiện']
-			];
-			function fcOps(field) {
-				if (field === 'idle_days' || field === 'r1' || field === 'r2' || field === 'r3' || field === 'r4') {
-					return ['>=', '>', '=', '<=', '<'];
-				}
-				if (field === 'class_time') return ['not_empty', 'empty'];
-				if (field === 'tag') return ['has', 'not_has'];
-				return ['eq', 'neq', 'contains'];
-			}
-			function fcOpLabel(op) {
-				var map = { has: 'có', not_has: 'không có', eq: 'bằng', neq: 'khác', contains: 'chứa', not_empty: 'đã có', empty: 'đang trống', '>=': '≥', '>': '>', '=': '=', '<=': '≤', '<': '<' };
-				return map[op] || op;
-			}
-			function fcRowHtml(row) {
-				row = row || { field: 'business_model', op: 'eq', value: '', important: false };
-				var fieldOpts = fcFields.map(function (pair) {
-					return '<option value="' + pair[0] + '"' + (row.field === pair[0] ? ' selected' : '') + '>' + pair[1] + '</option>';
-				}).join('');
-				var ops = fcOps(row.field);
-				if (ops.indexOf(row.op) < 0) row.op = ops[0];
-				var opOptsHtml = ops.map(function (o) {
-					return '<option value="' + o + '"' + (row.op === o ? ' selected' : '') + '>' + fcOpLabel(o) + '</option>';
-				}).join('');
-				return ''
-					+ '<div class="mk-tre-form-row js-tre-fc-row" style="margin-top:8px;align-items:end">'
-					+ '  <label class="mk-tre-field"><span>Trường</span><select class="mk-tre-input mk-tre-input--select" name="fc_field">' + fieldOpts + '</select></label>'
-					+ '  <label class="mk-tre-field"><span>So sánh</span><select class="mk-tre-input mk-tre-input--select" name="fc_op">' + opOptsHtml + '</select></label>'
-					+ '  <label class="mk-tre-field"><span>Giá trị</span><input class="mk-tre-input" name="fc_value" value="' + esc(row.value || '') + '" placeholder="VD: ca_phe_san_vuon hoặc 3" /></label>'
-					+ '  <input type="checkbox" name="fc_important" hidden' + (row.important ? ' checked' : '') + ' />'
-					+ '  <button type="button" class="mk-tre-btn mk-tre-btn--ghost js-tre-fc-del">Xoá</button>'
-					+ '</div>';
-			}
 			var fcSource = (rule.field_conditions && rule.field_conditions.length) ? rule.field_conditions : [{ field: 'business_model', op: 'eq', value: '', important: false }];
 			var fcRowsHtml = fcSource.map(fcRowHtml).join('');
 			var body = ''
@@ -1669,8 +1832,9 @@
 				var $row = $(this);
 				var value = String($row.find('[name="fc_value"]').val() || '').trim();
 				var field = $row.find('[name="fc_field"]').val() || '';
+				var op = $row.find('[name="fc_op"]').val() || '';
 				if (!field) return;
-				if (!value && field !== 'class_time') return;
+				if (!value && !(field === 'class_time' && (op === 'empty' || op === 'not_empty'))) return;
 				data.field_conditions.push({
 					field: field,
 					op: $row.find('[name="fc_op"]').val() || '',
@@ -2114,19 +2278,10 @@
 			});
 
 			$(document).on('click.mkTagRuleEngine', '.js-tre-fc-add', function () {
-				$('#mk-tre-modal-body .js-tre-fc-list').append(
-					'<div class="mk-tre-form-row js-tre-fc-row" style="margin-top:8px;align-items:end">'
-					+ '<label class="mk-tre-field"><span>Trường</span><select class="mk-tre-input mk-tre-input--select" name="fc_field">'
-					+ '<option value="tag">Tag</option><option value="business_model">Mô hình kinh doanh</option>'
-					+ '<option value="eligibility">Đủ điều kiện</option><option value="leadsource">Nguồn</option>'
-					+ '<option value="idle_days">Số ngày chưa chăm</option><option value="class_time">Giờ học</option>'
-					+ '<option value="r1">R1</option><option value="r2">R2</option><option value="r3">R3</option><option value="r4">R4</option>'
-					+ '</select></label>'
-					+ '<label class="mk-tre-field"><span>So sánh</span><select class="mk-tre-input mk-tre-input--select" name="fc_op"><option value="eq">bằng</option><option value="has">có</option><option value=">=">≥</option></select></label>'
-					+ '<label class="mk-tre-field"><span>Giá trị</span><input class="mk-tre-input" name="fc_value" placeholder="Giá trị" /></label>'
-					+ '<input type="checkbox" name="fc_important" hidden />'
-					+ '<button type="button" class="mk-tre-btn mk-tre-btn--ghost js-tre-fc-del">Xoá</button></div>'
-				);
+				$('#mk-tre-modal-body .js-tre-fc-list').append(fcRowHtml({ field: 'business_model', op: 'eq', value: '' }));
+			});
+			$(document).on('change.mkTagRuleEngine', '#mk-tre-modal-body [name="fc_field"], #mk-tre-modal-body [name="fc_op"]', function () {
+				fcSyncRow($(this).closest('.js-tre-fc-row'));
 			});
 			$(document).on('click.mkTagRuleEngine', '.js-tre-fc-del', function () {
 				var $list = $('#mk-tre-modal-body .js-tre-fc-list');

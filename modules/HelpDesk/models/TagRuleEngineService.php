@@ -266,14 +266,23 @@ class HelpDesk_TagRuleEngineService {
 			$op = isset($row['op']) ? trim((string)$row['op']) : '';
 			$allowed = $type === 'number'
 				? array('>=', '>', '=', '<=', '<')
-				: ($type === 'presence' ? array('empty', 'not_empty') : array('eq', 'neq', 'has', 'not_has', 'contains'));
+				: ($field === 'class_time'
+					? array('not_empty', 'empty', 'eq')
+					: ($type === 'presence' ? array('empty', 'not_empty') : array('eq', 'neq', 'has', 'not_has', 'contains')));
 			if (!in_array($op, $allowed, true)) {
 				$op = $allowed[0];
+			}
+			$value = isset($row['value']) ? trim((string)$row['value']) : '';
+			if ($field === 'class_time' && $op === 'eq') {
+				$value = self::normalizeClock($value);
+				if ($value === '') {
+					continue;
+				}
 			}
 			$out[] = array(
 				'field' => $field,
 				'op' => $op,
-				'value' => isset($row['value']) ? trim((string)$row['value']) : '',
+				'value' => $value,
 				'important' => !empty($row['important']),
 			);
 		}
@@ -342,8 +351,17 @@ class HelpDesk_TagRuleEngineService {
 			return array('pass' => $pass, 'warning' => false, 'message' => '');
 		}
 		if ($field === 'class_time') {
-			$present = isset($facts['class_time']) && trim((string)$facts['class_time']) !== '';
-			$pass = $op === 'empty' ? !$present : $present;
+			$raw = isset($facts['class_time']) ? trim((string)$facts['class_time']) : '';
+			$present = $raw !== '';
+			if ($op === 'empty') {
+				$pass = !$present;
+			} elseif ($op === 'eq') {
+				$want = self::normalizeClock($value);
+				$have = self::normalizeClock($raw);
+				$pass = $want !== '' && $have !== '' && $want === $have;
+			} else {
+				$pass = $present;
+			}
 			return array('pass' => $pass, 'warning' => false, 'message' => '');
 		}
 		$catalog = self::fieldCatalog();
@@ -2172,6 +2190,25 @@ class HelpDesk_TagRuleEngineService {
 			'value' => $value,
 			'message' => $message,
 		);
+	}
+
+	protected static function normalizeClock($raw) {
+		$raw = trim((string) $raw);
+		if ($raw === '') {
+			return '';
+		}
+		if (preg_match('/^(\d{1,2}):(\d{2})/', $raw, $m)) {
+			$hour = (int) $m[1];
+			$minute = (int) $m[2];
+			if ($hour >= 0 && $hour <= 23 && $minute >= 0 && $minute <= 59) {
+				return sprintf('%02d:%02d', $hour, $minute);
+			}
+		}
+		$ts = strtotime($raw);
+		if ($ts) {
+			return date('H:i', $ts);
+		}
+		return '';
 	}
 
 	protected static function compareNumber($value, $op, $threshold) {
