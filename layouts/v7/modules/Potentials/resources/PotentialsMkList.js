@@ -1643,63 +1643,62 @@
 
   function offlineExtraClassesHtml(o) {
     var extras = Array.isArray(o.offline_classes) ? o.offline_classes : [];
-    var hasPrimary = !!(o.offline_class_code || o.offline_class_date);
-    var total = (hasPrimary ? 1 : 0) + extras.length;
-    var html = '<div class="mk-opps-class-extra">';
-    extras.forEach(function (c) {
-      var title = c.label || c.code || "Lớp";
-      var when = [c.date, c.time].filter(Boolean).join(" · ");
-      var miss = Math.min(Number(c.miss) || 0, 3);
-      var stopped = Number(c.stopped) === 1;
-      var status = String(c.status || "");
-      var note = stopped
-        ? "Dừng lớp này · không gọi được 3/3"
-        : status === "da_tham_gia"
-          ? "Đã tham gia"
-          : status === "khong_tham_gia"
-            ? "Không tham gia · không gọi được " + miss + "/3"
-            : "Không gọi được " + miss + "/3";
+    if (!isAdminUser() && !extras.length) return "";
+    var label = extras.length ? "Các lớp học (" + extras.length + ")" : "Các lớp học";
+    return (
+      '<button type="button" class="mk-opps-checkin__btn mk-opps-class-open" data-mk-class-open="' +
+      esc(o.id) +
+      '">' +
+      esc(label) +
+      "</button>"
+    );
+  }
+
+  function extraClassRowHtml(o, c) {
+    var title = c.label || c.code || "Lớp";
+    var when = [c.date, c.time].filter(Boolean).join(" · ");
+    var miss = Math.min(Number(c.miss) || 0, 3);
+    var stopped = Number(c.stopped) === 1;
+    var status = String(c.status || "");
+    var note = stopped
+      ? "Dừng lớp này · không gọi được 3/3"
+      : status === "da_tham_gia"
+        ? "Đã tham gia"
+        : status === "khong_tham_gia"
+          ? "Không tham gia · không gọi được " + miss + "/3"
+          : "Không gọi được " + miss + "/3";
+    var html =
+      '<div class="mk-opps-class-row">' +
+      '<div class="mk-opps-class-row__title">' +
+      esc(title) +
+      "</div>" +
+      '<div class="mk-opps-class-row__meta">' +
+      esc(when || "Chưa có ngày") +
+      (c.place ? " · " + esc(String(c.place)) : "") +
+      " · " +
+      esc(note) +
+      "</div>";
+    if (isAdminUser() && !stopped && status !== "da_tham_gia") {
       html +=
-        '<div class="mk-opps-class-row">' +
-        '<div class="mk-opps-class-row__title">' +
-        esc(title) +
-        "</div>" +
-        '<div class="mk-opps-class-row__meta">' +
-        esc(when || "Chưa có ngày") +
-        (c.place ? " · " + esc(String(c.place)) : "") +
-        " · " +
-        esc(note) +
-        "</div>";
-      if (isAdminUser() && !stopped && status !== "da_tham_gia") {
-        html +=
-          '<div class="mk-opps-checkin__actions">' +
-          '<button type="button" class="mk-opps-checkin__btn mk-opps-checkin__btn--ok" data-mk-class-attend="da_tham_gia" data-slot="' +
-          esc(c.id) +
-          '" data-opp-id="' +
-          esc(o.id) +
-          '">Đã tham gia</button>' +
-          '<button type="button" class="mk-opps-checkin__btn mk-opps-checkin__btn--no" data-mk-class-attend="khong_tham_gia" data-slot="' +
-          esc(c.id) +
-          '" data-opp-id="' +
-          esc(o.id) +
-          '">Không tham gia</button>' +
-          '<button type="button" class="mk-opps-checkin__btn" data-mk-class-miss="1" data-slot="' +
-          esc(c.id) +
-          '" data-opp-id="' +
-          esc(o.id) +
-          '">Không gọi được</button>' +
-          "</div>";
-      }
-      html += "</div>";
-    });
-    if (isAdminUser() && total < 4) {
-      html +=
-        '<button type="button" class="mk-opps-checkin__btn mk-opps-class-open" data-mk-class-open="' +
+        '<div class="mk-opps-checkin__actions">' +
+        '<button type="button" class="mk-opps-checkin__btn mk-opps-checkin__btn--ok" data-mk-class-attend="da_tham_gia" data-slot="' +
+        esc(c.id) +
+        '" data-opp-id="' +
         esc(o.id) +
-        '">Thêm lớp</button>';
+        '">Đã tham gia</button>' +
+        '<button type="button" class="mk-opps-checkin__btn mk-opps-checkin__btn--no" data-mk-class-attend="khong_tham_gia" data-slot="' +
+        esc(c.id) +
+        '" data-opp-id="' +
+        esc(o.id) +
+        '">Không tham gia</button>' +
+        '<button type="button" class="mk-opps-checkin__btn" data-mk-class-miss="1" data-slot="' +
+        esc(c.id) +
+        '" data-opp-id="' +
+        esc(o.id) +
+        '">Không gọi được</button>' +
+        "</div>";
     }
-    html += "</div>";
-    return html;
+    return html + "</div>";
   }
 
   function closeAddClassModal() {
@@ -1707,31 +1706,56 @@
     if (modal) modal.remove();
   }
 
-  function openAddClassModal(oppId) {
+  function openClassListModal(oppId) {
+    var opp = getOpps().find(function (row) {
+      return String(row.id) === String(oppId);
+    });
+    if (!opp) return;
+    var extras = Array.isArray(opp.offline_classes) ? opp.offline_classes : [];
+    var hasPrimary = !!(opp.offline_class_code || opp.offline_class_date);
+    var total = (hasPrimary ? 1 : 0) + extras.length;
+    var list = extras.length
+      ? '<div class="mk-opps-class-modal__list">' +
+        extras
+          .map(function (c) {
+            return extraClassRowHtml(opp, c);
+          })
+          .join("") +
+        "</div>"
+      : '<p class="mk-opps-class-modal__empty">Chưa có lớp thêm.</p>';
+    var addForm = "";
+    if (isAdminUser() && total < 4) {
+      addForm =
+        '<div class="mk-opps-class-modal__add">' +
+        '<div class="mk-opps-class-modal__subtitle">Thêm lớp</div>' +
+        '<label class="mk-opps-class-modal__field"><span>Lớp</span>' +
+        '<select data-mk-class-add-code>' +
+        offlineCourseOptionsHtml() +
+        "</select></label>" +
+        '<label class="mk-opps-class-modal__field"><span>Ngày</span>' +
+        '<input type="date" data-mk-class-add-date /></label>' +
+        '<label class="mk-opps-class-modal__field"><span>Giờ</span>' +
+        '<input type="time" data-mk-class-add-time /></label>' +
+        '<div class="mk-opps-class-modal__actions">' +
+        '<button type="button" class="mk-opps-checkin__btn mk-opps-checkin__btn--ok" data-mk-class-add="' +
+        esc(oppId) +
+        '">Thêm lớp</button>' +
+        "</div></div>";
+    }
     closeAddClassModal();
     var backdrop = document.createElement("div");
     backdrop.id = "mk-opps-add-class-modal";
     backdrop.className = "mk-opps-class-modal";
     backdrop.innerHTML =
-      '<div class="mk-opps-class-modal__card" role="dialog" aria-modal="true" aria-label="Thêm lớp">' +
-      '<div class="mk-opps-class-modal__title">Thêm lớp</div>' +
-      '<label class="mk-opps-class-modal__field"><span>Lớp</span>' +
-      '<select data-mk-class-add-code>' +
-      offlineCourseOptionsHtml() +
-      "</select></label>" +
-      '<label class="mk-opps-class-modal__field"><span>Ngày</span>' +
-      '<input type="date" data-mk-class-add-date /></label>' +
-      '<label class="mk-opps-class-modal__field"><span>Giờ</span>' +
-      '<input type="time" data-mk-class-add-time /></label>' +
-      '<div class="mk-opps-class-modal__actions">' +
-      '<button type="button" class="mk-opps-checkin__btn" data-mk-class-add-cancel>Huỷ</button>' +
-      '<button type="button" class="mk-opps-checkin__btn mk-opps-checkin__btn--ok" data-mk-class-add="' +
-      esc(oppId) +
-      '">Lưu</button>' +
-      "</div></div>";
+      '<div class="mk-opps-class-modal__card" role="dialog" aria-modal="true" aria-label="Các lớp học">' +
+      '<div class="mk-opps-class-modal__head">' +
+      '<div class="mk-opps-class-modal__title">Các lớp học</div>' +
+      '<button type="button" class="mk-opps-class-modal__close" data-mk-class-add-cancel aria-label="Đóng">Đóng</button>' +
+      "</div>" +
+      list +
+      addForm +
+      "</div>";
     document.body.appendChild(backdrop);
-    var select = backdrop.querySelector("select");
-    if (select) select.focus();
   }
 
   function submitExtraClass(btn) {
@@ -1765,9 +1789,9 @@
     store
       .offlineClass(oid, payload)
       .then(function (res) {
-        closeAddClassModal();
         notifyOk((res && res.message) || "Đã cập nhật lớp.");
         renderAll();
+        openClassListModal(oid);
       })
       .catch(function (err) {
         btn.disabled = false;
@@ -3050,7 +3074,7 @@
       if (openClassBtn) {
         e.preventDefault();
         e.stopPropagation();
-        openAddClassModal(openClassBtn.getAttribute("data-mk-class-open"));
+        openClassListModal(openClassBtn.getAttribute("data-mk-class-open"));
         return;
       }
       if (e.target.closest && e.target.closest("[data-mk-class-add-cancel]")) {

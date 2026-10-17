@@ -1256,15 +1256,52 @@
 	background: rgba(15, 23, 42, 0.45);
 }
 .mk-opps-class-modal__card {
-	width: min(360px, 100%);
+	width: min(440px, 100%);
+	max-height: min(80vh, 640px);
+	overflow: auto;
 	padding: 16px;
 	border-radius: 12px;
 	background: #fff;
 	box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
 }
-.mk-opps-class-modal__title {
+.mk-opps-class-modal__head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
 	margin-bottom: 12px;
+}
+.mk-opps-class-modal__title {
 	font-size: 16px;
+	font-weight: 700;
+	color: #0f172a;
+}
+.mk-opps-class-modal__close {
+	border: 0;
+	background: transparent;
+	color: #64748b;
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+}
+.mk-opps-class-modal__list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin-bottom: 12px;
+}
+.mk-opps-class-modal__empty {
+	margin: 0 0 12px;
+	color: #64748b;
+	font-size: 13px;
+}
+.mk-opps-class-modal__add {
+	border-top: 1px solid #e2e8f0;
+	padding-top: 12px;
+}
+.mk-opps-class-modal__subtitle {
+	margin-bottom: 8px;
+	font-size: 13px;
 	font-weight: 700;
 	color: #0f172a;
 }
