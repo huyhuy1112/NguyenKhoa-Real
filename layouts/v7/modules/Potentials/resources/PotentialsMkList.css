@@ -1220,3 +1220,46 @@
 .mk-opps-seg-row[data-seg-group="product"] .mk-opps-seg-row__label {
 	color: #1d4ed8;
 }
+.mk-opps-class-extra {
+	margin-top: 8px;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+.mk-opps-class-row {
+	border: 1px solid #e2e8f0;
+	border-radius: 8px;
+	padding: 8px;
+	background: #f8fafc;
+}
+.mk-opps-class-row__title {
+	font-weight: 700;
+	font-size: 13px;
+	color: #0f172a;
+}
+.mk-opps-class-row__meta {
+	margin-top: 2px;
+	color: #64748b;
+	font-size: 12px;
+}
+.mk-opps-class-add {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	align-items: center;
+}
+.mk-opps-class-add select,
+.mk-opps-class-add input {
+	height: 32px;
+	border: 1px solid #cbd5e1;
+	border-radius: 8px;
+	padding: 0 8px;
+	background: #fff;
+	font-size: 13px;
+}
+.mk-opps-desk-match__class,
+.mk-opps-desk-match__note {
+	margin-top: 4px;
+	font-size: 12px;
+	color: #334155;
+}

@@ -22,7 +22,7 @@ class Potentials_ModernApi_Action extends Vtiger_Action_Controller {
 
 	public function validateRequest(Vtiger_Request $request) {
 		$mode = strtolower((string) $request->get('mode'));
-		if (in_array($mode, array('save_confirm_tag', 'save_inline_location', 'save_inline_phone', 'save_inline_business_model', 'save_tags', 'delete', 'last_touch_call_log', 'offline_checkin', 'offline_reschedule', 'offline_unreachable', 'online_edubit_provision', 'offline_oa_note', 'credential_save', 'edubit_sync_all', 'offline_desk_confirm', 'offline_gd11_apply'), true)) {
+		if (in_array($mode, array('save_confirm_tag', 'save_inline_location', 'save_inline_phone', 'save_inline_business_model', 'save_tags', 'delete', 'last_touch_call_log', 'offline_checkin', 'offline_class', 'offline_reschedule', 'offline_unreachable', 'online_edubit_provision', 'offline_oa_note', 'credential_save', 'edubit_sync_all', 'offline_desk_confirm', 'offline_gd11_apply'), true)) {
 			$request->validateWriteAccess();
 		}
 	}
@@ -178,6 +178,29 @@ class Potentials_ModernApi_Action extends Vtiger_Action_Controller {
 						'oa_qr' => isset($checkin['oa_qr']) ? $checkin['oa_qr'] : null,
 						'lead_id' => isset($checkin['lead_id']) ? (int) $checkin['lead_id'] : 0,
 					));
+					break;
+				case 'offline_class':
+					require_once 'modules/Leads/models/OfflineGd11Service.php';
+					$recordId = (int) $request->get('record');
+					if ($recordId <= 0) {
+						$recordId = (int) $request->get('id');
+					}
+					$payloadRaw = $request->get('payload');
+					$payload = array();
+					if (is_string($payloadRaw) && $payloadRaw !== '') {
+						$decoded = json_decode($payloadRaw, true);
+						if (is_array($decoded)) {
+							$payload = $decoded;
+						}
+					} elseif (is_array($payloadRaw)) {
+						$payload = $payloadRaw;
+					}
+					$op = isset($payload['op']) ? $payload['op'] : $request->get('op');
+					$saved = Leads_OfflineGd11Service::mutateClassesFromPotential($recordId, $op, $payload, $userId);
+					if (empty($saved['success'])) {
+						throw new Exception(isset($saved['error']) ? $saved['error'] : 'Không lưu lớp');
+					}
+					$response->setResult($saved);
 					break;
 				case 'offline_gd11_apply':
 					require_once 'modules/Leads/models/OfflineGd11Service.php';

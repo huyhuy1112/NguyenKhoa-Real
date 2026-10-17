@@ -211,6 +211,10 @@ class Leads_OfflineGd11Step2Service {
 		if ($classDate !== '') {
 			Leads_OfflineGd11Service::setClassDatePublic($leadId, $classDate);
 		}
+		$classCode = isset($payload['class_code']) ? $payload['class_code'] : '';
+		if (Leads_OfflineGd11Service::normalizeCourseCode($classCode) !== '') {
+			Leads_OfflineGd11Service::setClassCode($leadId, $classCode);
+		}
 		$now = date('Y-m-d H:i:s');
 		$adb->pquery(
 			'UPDATE bace_lead_profile SET

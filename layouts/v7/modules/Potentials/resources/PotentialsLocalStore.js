@@ -202,6 +202,26 @@
         return res;
       });
     },
+    offlineClass: function (id, payload) {
+      var oid = String(id || "");
+      return apiRequest("offline_class", {
+        record: oid,
+        payload: JSON.stringify(payload || {}),
+      }).then(function (res) {
+        var patch = {};
+        if (res && Array.isArray(res.offline_classes)) {
+          patch.offline_classes = res.offline_classes;
+        }
+        if (res && res.offline_class_code != null) {
+          patch.offline_class_code = res.offline_class_code;
+        }
+        if (res && res.offline_class_label != null) {
+          patch.offline_class_label = res.offline_class_label;
+        }
+        root.PotentialsLocalStore.patchOpportunity(oid, patch);
+        return res;
+      });
+    },
     /** Bước 3 — lấy / làm mới QR OA + trạng thái zalo_user_id (per Opp — legacy) */
     offlineOaQr: function (id) {
       return apiRequest("offline_oa_qr", { record: String(id || "") });

@@ -1999,6 +1999,13 @@
         "— Chọn —"
       ) +
       "</label>" +
+      '<label class="mk-leads-verify-field"><span>Lớp học</span>' +
+      '<select class="mk-leads-verify-select" data-mk-verify="class_code">' +
+      '<option value="">Chọn lớp</option>' +
+      '<option value="pcthcb"' + (lead.offline_class_code === "pcthcb" ? " selected" : "") + ">PCTHCB</option>" +
+      '<option value="pcth"' + (lead.offline_class_code === "pcth" ? " selected" : "") + ">PCTH</option>" +
+      '<option value="mqbb"' + (lead.offline_class_code === "mqbb" ? " selected" : "") + ">MQBB</option>" +
+      "</select></label>" +
       '<label class="mk-leads-verify-field"><span>Ngày học (nếu đã xác nhận)</span>' +
       '<input type="date" class="mk-leads-verify-select" data-mk-verify="class_date" value="' +
       esc(lead.offline_class_date || "") +
@@ -2640,6 +2647,7 @@
       change_reason: get("change_reason"),
       schedule_outcome: get("schedule_outcome"),
       class_date: get("class_date"),
+      class_code: get("class_code"),
     };
   }
 
@@ -2934,9 +2942,11 @@
       return el ? String(el.value || "").trim() : "";
     };
     var classDateEl = panel ? panel.querySelector('[data-mk-verify="class_date"]') : null;
+    var classCodeEl = panel ? panel.querySelector('[data-mk-verify="class_code"]') : null;
     var payload = {
       action: action,
       class_date: classDateEl ? classDateEl.value || "" : lead.offline_class_date || "",
+      class_code: classCodeEl ? classCodeEl.value || "" : lead.offline_class_code || "",
       class_time: get("class_time"),
       class_place: get("class_place"),
       zalo_user_id: get("zalo_user_id"),
@@ -3134,6 +3144,7 @@
     if (btn) btn.disabled = true;
     setListVerifyMsg("", "");
     var classDateEl = panel ? panel.querySelector('[data-mk-verify="class_date"]') : null;
+    var classCodeEl = panel ? panel.querySelector('[data-mk-verify="class_code"]') : null;
     app.request
       .post({
         data: {
@@ -3145,6 +3156,7 @@
           payload: JSON.stringify({
             action: action,
             class_date: classDateEl ? classDateEl.value || "" : "",
+            class_code: classCodeEl ? classCodeEl.value || "" : "",
           }),
         },
       })
@@ -3295,6 +3307,16 @@
     } else if (!scheduleOnly) {
       if (!payload.c1 || !payload.c2 || !payload.c3) {
         setListVerifyMsg("Vui lòng chọn đủ C1, C2, C3.", "");
+        return;
+      }
+    }
+    if (!online && payload.schedule_outcome === "da_xac_nhan_lich") {
+      if (!payload.class_date) {
+        setListVerifyMsg("Đã xác nhận lịch học thì chọn ngày học.", "");
+        return;
+      }
+      if (!payload.class_code) {
+        setListVerifyMsg("Đã xác nhận lịch học thì chọn lớp: PCTHCB, PCTH hoặc MQBB.", "");
         return;
       }
     }

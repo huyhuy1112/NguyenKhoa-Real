@@ -200,6 +200,8 @@ class Leads_OfflineGd11Service {
 			'offline_class_date' => "DATE DEFAULT NULL",
 			'offline_checked_in_at' => "DATETIME NULL",
 			'offline_post_noshow_miss' => "TINYINT(1) NOT NULL DEFAULT 0",
+			'offline_class_code' => "VARCHAR(16) DEFAULT NULL",
+			'offline_classes_json' => "TEXT DEFAULT NULL",
 			'offline_oa_scanned_at' => "DATETIME NULL",
 			'offline_oa_scan_note' => "VARCHAR(255) DEFAULT NULL",
 		);
@@ -661,6 +663,10 @@ class Leads_OfflineGd11Service {
 				if ($classDate !== '') {
 					self::setClassDate($leadId, $classDate);
 				}
+				$classCode = isset($result['class_code']) ? $result['class_code'] : '';
+				if (self::normalizeCourseCode($classCode) !== '') {
+					self::setClassCode($leadId, $classCode);
+				}
 				self::setNextActionHint($leadId, self::STATUS_DA_XN_LICH, $classDate);
 				$out['status'] = self::STATUS_DA_XN_LICH;
 				$out['calendar'] = self::createFollowUpTask(
@@ -803,6 +809,9 @@ class Leads_OfflineGd11Service {
 		if ($status === self::STATUS_DA_XN_LICH && $classDate !== '') {
 			self::setClassDate($leadId, $classDate);
 		}
+		if ($status === self::STATUS_DA_XN_LICH && self::normalizeCourseCode(isset($payload['class_code']) ? $payload['class_code'] : '') !== '') {
+			self::setClassCode($leadId, $payload['class_code']);
+		}
 		if ($status === self::STATUS_DA_THAM_GIA) {
 			self::setCheckedInAt($leadId, date('Y-m-d H:i:s'));
 		} elseif ($status === self::STATUS_KHONG_THAM_GIA) {
@@ -914,6 +923,9 @@ class Leads_OfflineGd11Service {
 			'offline_preclass_confirm' => !empty($row['offline_preclass_confirm']) ? 1 : 0,
 			'offline_class_date' => (!empty($row['offline_class_date']) && $row['offline_class_date'] !== '0000-00-00')
 				? (string) $row['offline_class_date'] : '',
+			'offline_class_code' => self::normalizeCourseCode(isset($row['offline_class_code']) ? $row['offline_class_code'] : ''),
+			'offline_class_label' => self::courseLabel(isset($row['offline_class_code']) ? $row['offline_class_code'] : ''),
+			'offline_classes' => self::decodeClasses(isset($row['offline_classes_json']) ? $row['offline_classes_json'] : ''),
 			'offline_checked_in_at' => (!empty($row['offline_checked_in_at']) && $row['offline_checked_in_at'] !== '0000-00-00 00:00:00')
 				? date('c', strtotime((string) $row['offline_checked_in_at'])) : '',
 			'zalo_user_id' => isset($row['zalo_user_id']) ? trim((string) $row['zalo_user_id']) : '',
@@ -976,6 +988,7 @@ class Leads_OfflineGd11Service {
 				lp.offline_r1_hen_goi, lp.offline_r1_khong_nghe, lp.offline_r1_sai_tt,
 				lp.offline_r2_schedule, lp.offline_r3_class, lp.offline_r4_transfer,
 				lp.offline_post_noshow_miss, lp.offline_preclass_confirm, lp.offline_class_date,
+				lp.offline_class_code, lp.offline_classes_json,
 				lp.offline_class_time, lp.offline_class_place, lp.offline_checked_in_at,
 				lp.zalo_user_id, lp.offline_oa_scanned_at, lp.offline_oa_scan_note
 			 FROM vtiger_crmentityrel rel
@@ -986,6 +999,7 @@ class Leads_OfflineGd11Service {
 				lp.offline_r1_hen_goi, lp.offline_r1_khong_nghe, lp.offline_r1_sai_tt,
 				lp.offline_r2_schedule, lp.offline_r3_class, lp.offline_r4_transfer,
 				lp.offline_post_noshow_miss, lp.offline_preclass_confirm, lp.offline_class_date,
+				lp.offline_class_code, lp.offline_classes_json,
 				lp.offline_class_time, lp.offline_class_place, lp.offline_checked_in_at,
 				lp.zalo_user_id, lp.offline_oa_scanned_at, lp.offline_oa_scan_note
 			 FROM vtiger_crmentityrel rel
@@ -1016,6 +1030,8 @@ class Leads_OfflineGd11Service {
 					'offline_post_noshow_miss' => $adb->query_result($res, $i, 'offline_post_noshow_miss'),
 					'offline_preclass_confirm' => $adb->query_result($res, $i, 'offline_preclass_confirm'),
 					'offline_class_date' => $adb->query_result($res, $i, 'offline_class_date'),
+					'offline_class_code' => $adb->query_result($res, $i, 'offline_class_code'),
+					'offline_classes_json' => $adb->query_result($res, $i, 'offline_classes_json'),
 					'offline_class_time' => $adb->query_result($res, $i, 'offline_class_time'),
 					'offline_class_place' => $adb->query_result($res, $i, 'offline_class_place'),
 					'offline_checked_in_at' => $adb->query_result($res, $i, 'offline_checked_in_at'),
@@ -2089,6 +2105,427 @@ class Leads_OfflineGd11Service {
 		);
 	}
 
+	/** PCTHCB, PCTH, MQBB — tối đa 4 lớp / khách. */
+	public static function courseCatalog() {
+		return array(
+			'pcthcb' => 'PCTHCB',
+			'pcth' => 'PCTH',
+			'mqbb' => 'MQBB',
+		);
+	}
+
+	public static function normalizeCourseCode($code) {
+		$code = strtolower(trim((string) $code));
+		$aliases = array(
+			'pcthcb' => 'pcthcb',
+			'pcth_cb' => 'pcthcb',
+			'pcth-cb' => 'pcthcb',
+			'pcth' => 'pcth',
+			'mqbb' => 'mqbb',
+		);
+		return isset($aliases[$code]) ? $aliases[$code] : '';
+	}
+
+	public static function courseLabel($code) {
+		$cat = self::courseCatalog();
+		$code = self::normalizeCourseCode($code);
+		return isset($cat[$code]) ? $cat[$code] : '';
+	}
+
+	public static function setClassCode($leadId, $code) {
+		$code = self::normalizeCourseCode($code);
+		if ((int) $leadId <= 0 || $code === '') {
+			return;
+		}
+		self::installSchema();
+		$adb = PearDatabase::getInstance();
+		$adb->pquery(
+			'UPDATE bace_lead_profile SET offline_class_code = ?, modified_at = ? WHERE leadid = ?',
+			array($code, date('Y-m-d H:i:s'), (int) $leadId)
+		);
+	}
+
+	public static function decodeClasses($json) {
+		if (is_array($json)) {
+			$rows = $json;
+		} else {
+			$raw = trim((string) $json);
+			$rows = $raw === '' ? array() : json_decode($raw, true);
+		}
+		if (!is_array($rows)) {
+			return array();
+		}
+		$out = array();
+		foreach ($rows as $row) {
+			if (!is_array($row)) {
+				continue;
+			}
+			$code = self::normalizeCourseCode(isset($row['code']) ? $row['code'] : '');
+			if ($code === '') {
+				continue;
+			}
+			$date = isset($row['date']) ? trim((string) $row['date']) : '';
+			if ($date !== '' && $date !== '0000-00-00') {
+				$ts = strtotime($date);
+				$date = $ts ? date('Y-m-d', $ts) : '';
+			} else {
+				$date = '';
+			}
+			$slot = isset($row['id']) ? preg_replace('/[^a-zA-Z0-9_-]/', '', (string) $row['id']) : '';
+			$out[] = array(
+				'id' => substr($slot, 0, 16),
+				'code' => $code,
+				'label' => self::courseLabel($code),
+				'date' => $date,
+				'time' => isset($row['time']) ? substr(trim((string) $row['time']), 0, 8) : '',
+				'place' => isset($row['place']) ? substr(trim((string) $row['place']), 0, 180) : '',
+				'checked_in_at' => isset($row['checked_in_at']) ? trim((string) $row['checked_in_at']) : '',
+				'miss' => isset($row['miss']) ? max(0, min(3, (int) $row['miss'])) : 0,
+				'stopped' => !empty($row['stopped']) ? 1 : 0,
+				'status' => isset($row['status']) ? trim((string) $row['status']) : '',
+			);
+			if (count($out) >= 4) {
+				break;
+			}
+		}
+		return $out;
+	}
+
+	protected static function writeClasses($leadId, array $classes) {
+		$adb = PearDatabase::getInstance();
+		$adb->pquery(
+			'UPDATE bace_lead_profile SET offline_classes_json = ?, modified_at = ? WHERE leadid = ?',
+			array(json_encode(array_values($classes), JSON_UNESCAPED_UNICODE), date('Y-m-d H:i:s'), (int) $leadId)
+		);
+	}
+
+	protected static function loadClassRow($leadId) {
+		self::installSchema();
+		$adb = PearDatabase::getInstance();
+		$res = $adb->pquery(
+			'SELECT offline_class_code, offline_class_date, offline_class_time, offline_class_place,
+			        offline_checked_in_at, offline_status, offline_classes_json, potential_id
+			 FROM bace_lead_profile WHERE leadid = ?',
+			array((int) $leadId)
+		);
+		if (!$res || $adb->num_rows($res) < 1) {
+			return null;
+		}
+		return array(
+			'offline_class_code' => $adb->query_result($res, 0, 'offline_class_code'),
+			'offline_class_date' => $adb->query_result($res, 0, 'offline_class_date'),
+			'offline_class_time' => $adb->query_result($res, 0, 'offline_class_time'),
+			'offline_class_place' => $adb->query_result($res, 0, 'offline_class_place'),
+			'offline_checked_in_at' => $adb->query_result($res, 0, 'offline_checked_in_at'),
+			'offline_status' => $adb->query_result($res, 0, 'offline_status'),
+			'offline_classes_json' => $adb->query_result($res, 0, 'offline_classes_json'),
+			'potential_id' => $adb->query_result($res, 0, 'potential_id'),
+		);
+	}
+
+	public static function classesForLead($leadId) {
+		$row = self::loadClassRow($leadId);
+		if (!$row) {
+			return array();
+		}
+		return self::classCardsFromRow($row);
+	}
+
+	protected static function classCardsFromRow(array $row) {
+		$primaryDate = isset($row['offline_class_date']) ? trim((string) $row['offline_class_date']) : '';
+		if ($primaryDate === '0000-00-00') {
+			$primaryDate = '';
+		}
+		$primaryCode = self::normalizeCourseCode(isset($row['offline_class_code']) ? $row['offline_class_code'] : '');
+		$cards = array();
+		if ($primaryCode !== '' || $primaryDate !== '') {
+			$label = self::courseLabel($primaryCode);
+			$cards[] = array(
+				'label' => $label !== '' ? $label : 'Lớp chính',
+				'code' => $primaryCode,
+				'date' => $primaryDate,
+				'time' => isset($row['offline_class_time']) ? trim((string) $row['offline_class_time']) : '',
+				'place' => isset($row['offline_class_place']) ? trim((string) $row['offline_class_place']) : '',
+				'status' => isset($row['offline_status']) ? trim((string) $row['offline_status']) : '',
+				'primary' => 1,
+			);
+		}
+		foreach (self::decodeClasses(isset($row['offline_classes_json']) ? $row['offline_classes_json'] : '') as $c) {
+			$cards[] = array(
+				'id' => $c['id'],
+				'label' => $c['label'],
+				'code' => $c['code'],
+				'date' => $c['date'],
+				'time' => $c['time'],
+				'place' => $c['place'],
+				'status' => $c['status'],
+				'miss' => $c['miss'],
+				'stopped' => $c['stopped'],
+				'checked_in_at' => $c['checked_in_at'],
+				'primary' => 0,
+			);
+		}
+		return $cards;
+	}
+
+	public static function addExtraClass($leadId, $code, $date, $time = '', $place = '') {
+		$leadId = (int) $leadId;
+		$code = self::normalizeCourseCode($code);
+		if ($leadId <= 0 || $code === '') {
+			return array('success' => false, 'error' => 'Chọn lớp PCTHCB, PCTH hoặc MQBB.');
+		}
+		$ts = strtotime((string) $date);
+		if (!$ts) {
+			return array('success' => false, 'error' => 'Chọn ngày học.');
+		}
+		$date = date('Y-m-d', $ts);
+		$row = self::loadClassRow($leadId);
+		if (!$row) {
+			return array('success' => false, 'error' => 'Chưa có hồ sơ Offline.');
+		}
+		$primaryCode = self::normalizeCourseCode($row['offline_class_code']);
+		$primaryDate = trim((string) $row['offline_class_date']);
+		if ($primaryDate === '0000-00-00') {
+			$primaryDate = '';
+		}
+		$hasPrimary = ($primaryCode !== '' || $primaryDate !== '');
+		$classes = self::decodeClasses($row['offline_classes_json']);
+		if (($hasPrimary ? 1 : 0) + count($classes) >= 4) {
+			return array('success' => false, 'error' => 'Mỗi khách tối đa 4 lớp.');
+		}
+		foreach ($classes as $c) {
+			if ($c['code'] === $code && $c['date'] === $date) {
+				return array('success' => false, 'error' => 'Lớp này đã có trong danh sách.');
+			}
+		}
+		if ($hasPrimary && $primaryCode === $code && $primaryDate === $date) {
+			return array('success' => false, 'error' => 'Lớp này đã là lớp chính.');
+		}
+		$classes[] = array(
+			'id' => substr(md5($leadId . '|' . $code . '|' . $date . '|' . microtime(true)), 0, 10),
+			'code' => $code,
+			'label' => self::courseLabel($code),
+			'date' => $date,
+			'time' => substr(trim((string) $time), 0, 8),
+			'place' => substr(trim((string) $place), 0, 180),
+			'checked_in_at' => '',
+			'miss' => 0,
+			'stopped' => 0,
+			'status' => '',
+		);
+		self::writeClasses($leadId, $classes);
+		return array(
+			'success' => true,
+			'offline_classes' => $classes,
+			'message' => 'Đã thêm ' . self::courseLabel($code),
+		);
+	}
+
+	public static function attendExtraClass($leadId, $slotId, $action) {
+		$leadId = (int) $leadId;
+		$slotId = trim((string) $slotId);
+		$action = strtolower(trim((string) $action));
+		if (!in_array($action, array('da_tham_gia', 'khong_tham_gia'), true)) {
+			return array('success' => false, 'error' => 'Action không hợp lệ');
+		}
+		$row = self::loadClassRow($leadId);
+		if (!$row) {
+			return array('success' => false, 'error' => 'Chưa có hồ sơ Offline.');
+		}
+		$classes = self::decodeClasses($row['offline_classes_json']);
+		$found = false;
+		foreach ($classes as $i => $c) {
+			if ((string) $c['id'] !== $slotId) {
+				continue;
+			}
+			$found = true;
+			if (!empty($c['stopped'])) {
+				return array('success' => false, 'error' => 'Lớp này đã dừng vì 3 lần không gọi được.');
+			}
+			if ($c['status'] === 'da_tham_gia') {
+				return array('success' => false, 'error' => 'Lớp này đã điểm danh · không chọn lại.');
+			}
+			$classes[$i]['status'] = $action;
+			if ($action === 'da_tham_gia') {
+				$classes[$i]['checked_in_at'] = date('Y-m-d H:i:s');
+			}
+			break;
+		}
+		if (!$found) {
+			return array('success' => false, 'error' => 'Không thấy lớp.');
+		}
+		self::writeClasses($leadId, $classes);
+		return array('success' => true, 'offline_classes' => $classes);
+	}
+
+	public static function missExtraClass($leadId, $slotId) {
+		$leadId = (int) $leadId;
+		$slotId = trim((string) $slotId);
+		$row = self::loadClassRow($leadId);
+		if (!$row) {
+			return array('success' => false, 'error' => 'Chưa có hồ sơ Offline.');
+		}
+		$classes = self::decodeClasses($row['offline_classes_json']);
+		$found = false;
+		$message = '';
+		foreach ($classes as $i => $c) {
+			if ((string) $c['id'] !== $slotId) {
+				continue;
+			}
+			$found = true;
+			if (!empty($c['stopped'])) {
+				return array('success' => false, 'error' => 'Lớp này đã dừng vì 3 lần không gọi được.');
+			}
+			if ($c['status'] === 'da_tham_gia') {
+				return array('success' => false, 'error' => 'Lớp này đã điểm danh.');
+			}
+			$miss = min(3, (int) $c['miss'] + 1);
+			$classes[$i]['miss'] = $miss;
+			if ($miss >= 3) {
+				$classes[$i]['stopped'] = 1;
+				$message = 'Đủ 3 lần không gọi được — dừng riêng lớp ' . $c['label'] . '.';
+			} else {
+				$message = 'Không gọi được ' . $miss . '/3 · ' . $c['label'];
+			}
+			break;
+		}
+		if (!$found) {
+			return array('success' => false, 'error' => 'Không thấy lớp.');
+		}
+		self::writeClasses($leadId, $classes);
+		return array(
+			'success' => true,
+			'offline_classes' => $classes,
+			'message' => $message,
+		);
+	}
+
+	/**
+	 * Quét QR / nhập SĐT: chỉ điểm danh lớp có ngày học là hôm nay.
+	 * Lớp khác trên cùng hồ sơ giữ nguyên.
+	 */
+	public static function checkInRegisteredToday($leadId, $potentialId = 0, $userId = null) {
+		$leadId = (int) $leadId;
+		$potentialId = (int) $potentialId;
+		if ($leadId <= 0) {
+			return array('success' => false, 'error' => 'Thiếu lead');
+		}
+		$row = self::loadClassRow($leadId);
+		if (!$row) {
+			return array('success' => false, 'error' => 'Không có hồ sơ');
+		}
+		if ($potentialId <= 0) {
+			$potentialId = (int) $row['potential_id'];
+		}
+		$today = date('Y-m-d');
+		$primaryDate = trim((string) $row['offline_class_date']);
+		if ($primaryDate === '0000-00-00') {
+			$primaryDate = '';
+		}
+		$primaryCode = self::normalizeCourseCode($row['offline_class_code']);
+		$primaryLabel = self::courseLabel($primaryCode);
+		if ($primaryLabel === '') {
+			$primaryLabel = 'Lớp chính';
+		}
+		$status = trim((string) $row['offline_status']);
+		$checked = trim((string) $row['offline_checked_in_at']);
+		$classes = self::decodeClasses($row['offline_classes_json']);
+		$checkedNow = array();
+		$already = array();
+
+		if ($primaryDate === $today) {
+			$checkedDay = ($checked !== '' && strpos($checked, '0000-00-00') !== 0) ? substr($checked, 0, 10) : '';
+			if ($status === self::STATUS_DA_THAM_GIA || $checkedDay === $today) {
+				$already[] = $primaryLabel;
+			} elseif ($potentialId > 0) {
+				$hit = self::checkinFromPotential(
+					$potentialId,
+					'da_tham_gia',
+					$userId ? $userId : 1,
+					array('skip_admin_check' => true)
+				);
+				if (!empty($hit['success'])) {
+					$checkedNow[] = $primaryLabel;
+				} elseif (!empty($hit['locked'])) {
+					$already[] = $primaryLabel;
+				}
+			}
+		}
+
+		$changed = false;
+		foreach ($classes as $i => $c) {
+			if ($c['date'] !== $today || !empty($c['stopped'])) {
+				continue;
+			}
+			$label = $c['label'] !== '' ? $c['label'] : $c['code'];
+			$day = $c['checked_in_at'] !== '' ? substr($c['checked_in_at'], 0, 10) : '';
+			if ($c['status'] === 'da_tham_gia' || $day === $today) {
+				$already[] = $label;
+				continue;
+			}
+			$classes[$i]['status'] = 'da_tham_gia';
+			$classes[$i]['checked_in_at'] = date('Y-m-d H:i:s');
+			$checkedNow[] = $label;
+			$changed = true;
+		}
+		if ($changed) {
+			self::writeClasses($leadId, $classes);
+			$row['offline_classes_json'] = json_encode($classes, JSON_UNESCAPED_UNICODE);
+		}
+		return array(
+			'success' => true,
+			'checked_now' => $checkedNow,
+			'already' => $already,
+			'classes' => self::classCardsFromRow($row),
+			'no_class_today' => (!$checkedNow && !$already) ? 1 : 0,
+		);
+	}
+
+	public static function mutateClassesFromPotential($potentialId, $op, array $payload, $userId = null) {
+		global $current_user;
+		$potentialId = (int) $potentialId;
+		if ($potentialId <= 0) {
+			return array('success' => false, 'error' => 'Thiếu opportunity id');
+		}
+		$isAdmin = !empty($current_user->is_admin) && $current_user->is_admin === 'on';
+		if (!$isAdmin) {
+			return array('success' => false, 'error' => 'Chỉ Admin được ghi nhận lớp.');
+		}
+		require_once 'modules/Leads/models/ConvertService.php';
+		$leadId = (int) Leads_ConvertService::getLinkedLeadIdByPotential($potentialId);
+		if ($leadId <= 0) {
+			return array('success' => false, 'error' => 'Opp chưa gắn Lead Offline');
+		}
+		$op = strtolower(trim((string) $op));
+		if ($op === 'add') {
+			$saved = self::addExtraClass(
+				$leadId,
+				isset($payload['code']) ? $payload['code'] : '',
+				isset($payload['date']) ? $payload['date'] : '',
+				isset($payload['time']) ? $payload['time'] : '',
+				isset($payload['place']) ? $payload['place'] : ''
+			);
+		} elseif ($op === 'attend') {
+			$saved = self::attendExtraClass(
+				$leadId,
+				isset($payload['slot']) ? $payload['slot'] : '',
+				isset($payload['action']) ? $payload['action'] : ''
+			);
+		} elseif ($op === 'miss') {
+			$saved = self::missExtraClass($leadId, isset($payload['slot']) ? $payload['slot'] : '');
+		} else {
+			return array('success' => false, 'error' => 'Thao tác lớp không hợp lệ');
+		}
+		if (empty($saved['success'])) {
+			return $saved;
+		}
+		$row = self::loadClassRow($leadId);
+		$saved['offline_class_code'] = $row ? self::normalizeCourseCode($row['offline_class_code']) : '';
+		$saved['offline_class_label'] = $row ? self::courseLabel($row['offline_class_code']) : '';
+		$saved['offline_classes'] = isset($saved['offline_classes']) ? $saved['offline_classes'] : array();
+		return $saved;
+	}
+
 	protected static function syncStatusTags($leadId, $statusTag, $userId = null) {
 		global $current_user;
 		if ($userId === null && !empty($current_user->id)) {
@@ -2206,6 +2643,7 @@ class Leads_OfflineGd11Service {
 			$m['status_label'] = isset($labels[$st]) ? $labels[$st] : $st;
 			$m['detail_url'] = 'index.php?module=Potentials&view=Detail&record='
 				. (int) $m['potential_id'] . '&app=SALES';
+			$m['classes'] = self::classesForLead(isset($m['lead_id']) ? (int) $m['lead_id'] : 0);
 		}
 		unset($m);
 
@@ -2231,11 +2669,33 @@ class Leads_OfflineGd11Service {
 			);
 		}
 		if (count($matches) === 1) {
+			$auto = self::checkInRegisteredToday(
+				isset($matches[0]['lead_id']) ? (int) $matches[0]['lead_id'] : 0,
+				isset($matches[0]['potential_id']) ? (int) $matches[0]['potential_id'] : 0
+			);
+			$name = isset($matches[0]['name']) ? $matches[0]['name'] : '';
+			$checkedNow = isset($auto['checked_now']) && is_array($auto['checked_now']) ? $auto['checked_now'] : array();
+			$already = isset($auto['already']) && is_array($auto['already']) ? $auto['already'] : array();
+			if (!empty($auto['classes'])) {
+				$matches[0]['classes'] = $auto['classes'];
+			}
+			if ($checkedNow) {
+				$message = $name . ' · đã điểm danh ' . implode(', ', $checkedNow);
+				$matches[0]['skip_confirm'] = 1;
+			} elseif ($already) {
+				$message = $name . ' · đã điểm danh hôm nay (' . implode(', ', $already) . ')';
+				$matches[0]['skip_confirm'] = 1;
+			} elseif (!empty($auto['no_class_today'])) {
+				$message = $name . ' · hôm nay không có lớp đã đăng ký';
+			} else {
+				$message = 'Đã tìm thấy Opp — bấm Xác nhận tham gia';
+			}
+			$matches[0]['checkin_message'] = $message;
 			return array(
 				'success' => true,
 				'result' => 'matched',
 				'phone' => $displayPhone,
-				'message' => 'Đã tìm thấy Opp — bấm Xác nhận tham gia',
+				'message' => $message,
 				'matches' => $matches,
 				'opportunity' => $matches[0],
 			);
@@ -2587,29 +3047,40 @@ class Leads_OfflineGd11Service {
 				// best-effort
 			}
 		}
-		$checkin = self::checkinFromPotential(
-			(int) $hit['potential_id'],
-			'da_tham_gia',
-			1,
-			array('skip_admin_check' => true)
-		);
-		if (empty($checkin['success'])) {
-			$err = isset($checkin['error']) ? $checkin['error'] : 'Check-in thất bại';
+		$auto = self::checkInRegisteredToday((int) $hit['lead_id'], (int) $hit['potential_id'], 1);
+		$checkedNow = isset($auto['checked_now']) && is_array($auto['checked_now']) ? $auto['checked_now'] : array();
+		$already = isset($auto['already']) && is_array($auto['already']) ? $auto['already'] : array();
+		$classes = isset($auto['classes']) ? $auto['classes'] : array();
+		if (!empty($auto['no_class_today'])) {
+			$note = $hit['name'] . ' — hôm nay không có lớp đã đăng ký';
 			self::writeDeskCheckinLog(
 				$norm !== '' ? $norm : $phone,
 				$oaUserId,
-				'error',
+				'matched',
 				(int) $hit['potential_id'],
 				(int) $hit['lead_id'],
 				$hit['name'],
-				$err
+				$note
 			);
 			return array(
-				'success' => false,
-				'result' => 'error',
-				'error' => $err,
+				'success' => true,
+				'result' => 'matched',
+				'message' => $note,
 				'potential_id' => (int) $hit['potential_id'],
+				'lead_id' => (int) $hit['lead_id'],
+				'opp_name' => $hit['name'],
+				'classes' => $classes,
+				'checked_in' => false,
 			);
+		}
+		if ($checkedNow) {
+			$note = 'Đã điểm danh ' . implode(', ', $checkedNow);
+			$tagNote = self::markAttendedTags((int) $hit['lead_id'], (int) $hit['potential_id'], $oaUserId);
+			if ($tagNote !== '') {
+				$note .= ' · ' . $tagNote;
+			}
+		} else {
+			$note = 'Đã điểm danh hôm nay' . ($already ? ': ' . implode(', ', $already) : '');
 		}
 		self::writeDeskCheckinLog(
 			$norm !== '' ? $norm : $phone,
@@ -2618,17 +3089,18 @@ class Leads_OfflineGd11Service {
 			(int) $hit['potential_id'],
 			(int) $hit['lead_id'],
 			$hit['name'],
-			'QR khớp · Đã Có tham gia'
+			$note
 		);
-		$tagNote = self::markAttendedTags((int) $hit['lead_id'], (int) $hit['potential_id'], $oaUserId);
 		return array(
 			'success' => true,
 			'result' => 'matched',
-			'message' => 'QR khớp · Đã Có tham gia' . ($tagNote !== '' ? ' · ' . $tagNote : ''),
+			'message' => $note,
 			'potential_id' => (int) $hit['potential_id'],
 			'lead_id' => (int) $hit['lead_id'],
 			'opp_name' => $hit['name'],
-			'checkin' => $checkin,
+			'classes' => $classes,
+			'checked_in' => $checkedNow ? true : false,
+			'already' => $already,
 		);
 	}
 

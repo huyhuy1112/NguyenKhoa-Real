@@ -170,7 +170,7 @@ class Leads_ModernService {
 			p.edubit_renew_count, p.edubit_expiry_reason, p.edubit_progress_pct, p.edubit_last_error,
 			p.offline_status, p.offline_r1_contact, p.offline_r1_hen_goi, p.offline_r1_khong_nghe, p.offline_r1_sai_tt,
 			p.offline_r2_schedule, p.offline_r3_class, p.offline_r4_transfer,
-			p.offline_preclass_confirm, p.offline_class_date, p.offline_class_time, p.offline_class_place,
+			p.offline_preclass_confirm, p.offline_class_date, p.offline_class_code, p.offline_classes_json, p.offline_class_time, p.offline_class_place,
 			p.offline_step2_entered_at, p.offline_step2_sent, p.offline_checked_in_at,
 			p.offline_oa_scanned_at, p.offline_oa_scan_note';
 	}
@@ -199,9 +199,15 @@ class Leads_ModernService {
 		}
 		$preview = $limit > 0;
 		self::$composeDetailed = false;
-		if (!self::schemaWarm('leads_list')) {
+		if (!self::schemaWarm('leads_list_cls1')) {
 			self::installSchema($adb);
-			self::markSchemaWarm('leads_list');
+			try {
+				require_once 'modules/Leads/models/OfflineGd11Service.php';
+				Leads_OfflineGd11Service::installSchema();
+			} catch (Exception $e) {
+				// class columns are best-effort until the next list
+			}
+			self::markSchemaWarm('leads_list_cls1');
 		}
 		if (!$preview) {
 			self::ensureModernProfilesForAliveLeads();

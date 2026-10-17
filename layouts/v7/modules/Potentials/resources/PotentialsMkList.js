@@ -938,7 +938,11 @@
       st === "offline_da_xac_nhan_lich" ||
       st === "offline_hen_lich_lai"
     ) {
-      bits.push("Không gọi được " + Math.min(miss, 3) + "/3");
+      bits.push(
+        (o.offline_class_label ? "Không gọi được (lớp chính) " : "Không gọi được ") +
+          Math.min(miss, 3) +
+          "/3"
+      );
     }
     if (!bits.length) return "";
     return (
@@ -981,11 +985,22 @@
     var classPlace = o.offline_class_place ? String(o.offline_class_place).trim() : "";
     var zaloId = o.zalo_user_id ? String(o.zalo_user_id).trim() : "";
     var willCome = Number(o.offline_preclass_confirm) === 1;
+    var course = String(o.offline_class_label || "").trim();
     var parts = [];
-    if (classDate || classTime) {
+    if (course) {
       parts.push(
         '<span class="mk-opps-checkin__meta-item">' +
           '<span class="mk-opps-checkin__meta-k">Lớp</span> ' +
+          esc(course) +
+          "</span>"
+      );
+    }
+    if (classDate || classTime) {
+      parts.push(
+        '<span class="mk-opps-checkin__meta-item">' +
+          '<span class="mk-opps-checkin__meta-k">' +
+          (course ? "Ngày" : "Lớp") +
+          "</span> " +
           esc([classDate, classTime].filter(Boolean).join(" · ")) +
           "</span>"
       );
@@ -1613,7 +1628,130 @@
     } else {
       html += '<div class="mk-opps-checkin__hint">Chỉ Admin ghi nhận</div>';
     }
+    html += offlineExtraClassesHtml(o);
     return html + "</div>";
+  }
+
+  function offlineCourseOptionsHtml() {
+    return (
+      '<option value="">Chọn lớp</option>' +
+      '<option value="pcthcb">PCTHCB</option>' +
+      '<option value="pcth">PCTH</option>' +
+      '<option value="mqbb">MQBB</option>'
+    );
+  }
+
+  function offlineExtraClassesHtml(o) {
+    var extras = Array.isArray(o.offline_classes) ? o.offline_classes : [];
+    var hasPrimary = !!(o.offline_class_code || o.offline_class_date);
+    var total = (hasPrimary ? 1 : 0) + extras.length;
+    var html = '<div class="mk-opps-class-extra">';
+    extras.forEach(function (c) {
+      var title = c.label || c.code || "Lớp";
+      var when = [c.date, c.time].filter(Boolean).join(" · ");
+      var miss = Math.min(Number(c.miss) || 0, 3);
+      var stopped = Number(c.stopped) === 1;
+      var status = String(c.status || "");
+      var note = stopped
+        ? "Dừng lớp này · không gọi được 3/3"
+        : status === "da_tham_gia"
+          ? "Đã tham gia"
+          : status === "khong_tham_gia"
+            ? "Không tham gia · không gọi được " + miss + "/3"
+            : "Không gọi được " + miss + "/3";
+      html +=
+        '<div class="mk-opps-class-row">' +
+        '<div class="mk-opps-class-row__title">' +
+        esc(title) +
+        "</div>" +
+        '<div class="mk-opps-class-row__meta">' +
+        esc(when || "Chưa có ngày") +
+        (c.place ? " · " + esc(String(c.place)) : "") +
+        " · " +
+        esc(note) +
+        "</div>";
+      if (isAdminUser() && !stopped && status !== "da_tham_gia") {
+        html +=
+          '<div class="mk-opps-checkin__actions">' +
+          '<button type="button" class="mk-opps-checkin__btn mk-opps-checkin__btn--ok" data-mk-class-attend="da_tham_gia" data-slot="' +
+          esc(c.id) +
+          '" data-opp-id="' +
+          esc(o.id) +
+          '">Đã tham gia</button>' +
+          '<button type="button" class="mk-opps-checkin__btn mk-opps-checkin__btn--no" data-mk-class-attend="khong_tham_gia" data-slot="' +
+          esc(c.id) +
+          '" data-opp-id="' +
+          esc(o.id) +
+          '">Không tham gia</button>' +
+          '<button type="button" class="mk-opps-checkin__btn" data-mk-class-miss="1" data-slot="' +
+          esc(c.id) +
+          '" data-opp-id="' +
+          esc(o.id) +
+          '">Không gọi được</button>' +
+          "</div>";
+      }
+      html += "</div>";
+    });
+    if (isAdminUser() && total < 4) {
+      html +=
+        '<div class="mk-opps-class-add">' +
+        '<select data-mk-class-add-code="' +
+        esc(o.id) +
+        '" aria-label="Lớp học">' +
+        offlineCourseOptionsHtml() +
+        "</select>" +
+        '<input type="date" data-mk-class-add-date="' +
+        esc(o.id) +
+        '" aria-label="Ngày học" />' +
+        '<input type="time" data-mk-class-add-time="' +
+        esc(o.id) +
+        '" aria-label="Giờ học" />' +
+        '<button type="button" class="mk-opps-checkin__btn mk-opps-checkin__btn--ok" data-mk-class-add="' +
+        esc(o.id) +
+        '">Thêm lớp</button>' +
+        "</div>";
+    }
+    html += "</div>";
+    return html;
+  }
+
+  function submitExtraClass(btn) {
+    if (!btn || !store || !store.offlineClass) return;
+    var oid = btn.getAttribute("data-opp-id") || btn.getAttribute("data-mk-class-add") || "";
+    if (!oid) return;
+    var wrap = btn.closest ? btn.closest(".mk-opps-checkin") : null;
+    var payload = { op: "" };
+    if (btn.hasAttribute("data-mk-class-add")) {
+      var codeEl = wrap ? wrap.querySelector("[data-mk-class-add-code]") : null;
+      var dateEl = wrap ? wrap.querySelector("[data-mk-class-add-date]") : null;
+      var timeEl = wrap ? wrap.querySelector("[data-mk-class-add-time]") : null;
+      payload.op = "add";
+      payload.code = codeEl ? codeEl.value : "";
+      payload.date = dateEl ? dateEl.value : "";
+      payload.time = timeEl ? timeEl.value : "";
+      if (!payload.code || !payload.date) {
+        notifyErr("Chọn lớp và ngày học trước khi thêm.");
+        return;
+      }
+    } else if (btn.hasAttribute("data-mk-class-attend")) {
+      payload.op = "attend";
+      payload.slot = btn.getAttribute("data-slot") || "";
+      payload.action = btn.getAttribute("data-mk-class-attend") || "";
+    } else if (btn.hasAttribute("data-mk-class-miss")) {
+      payload.op = "miss";
+      payload.slot = btn.getAttribute("data-slot") || "";
+    }
+    btn.disabled = true;
+    store
+      .offlineClass(oid, payload)
+      .then(function (res) {
+        notifyOk((res && res.message) || "Đã cập nhật lớp.");
+        renderAll();
+      })
+      .catch(function (err) {
+        btn.disabled = false;
+        notifyErr((err && err.message) || (typeof err === "string" ? err : "") || "Không lưu lớp được.");
+      });
   }
 
   function submitOfflineReschedule(action, btn) {
@@ -1768,10 +1906,26 @@
             esc(m.phone || "—") +
             " · " +
             esc(m.status_label || m.offline_status || "") +
-            "</div></div>" +
-            '<button type="button" class="mk-opps-desk-confirm" data-mk-desk-confirm="' +
-            esc(String(m.potential_id)) +
-            '">Xác nhận tham gia</button>' +
+            "</div>" +
+            (Array.isArray(m.classes)
+              ? m.classes
+                  .map(function (c) {
+                    var line = [c.label, c.date, c.time].filter(Boolean).join(" · ");
+                    return line
+                      ? '<div class="mk-opps-desk-match__class">' + esc(line) + "</div>"
+                      : "";
+                  })
+                  .join("")
+              : "") +
+            (m.checkin_message
+              ? '<div class="mk-opps-desk-match__note">' + esc(m.checkin_message) + "</div>"
+              : "") +
+            "</div>" +
+            (Number(m.skip_confirm) === 1
+              ? ""
+              : '<button type="button" class="mk-opps-desk-confirm" data-mk-desk-confirm="' +
+                esc(String(m.potential_id)) +
+                '">Xác nhận tham gia</button>') +
             "</li>"
           );
         })
@@ -2865,6 +3019,15 @@
         e.preventDefault();
         e.stopPropagation();
         submitOfflineCheckin(checkinBtn.getAttribute("data-mk-opp-checkin"), checkinBtn);
+        return;
+      }
+      var classBtn =
+        e.target.closest &&
+        e.target.closest("[data-mk-class-attend],[data-mk-class-miss],[data-mk-class-add]");
+      if (classBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        submitExtraClass(classBtn);
         return;
       }
       if (e.target.closest && e.target.closest("[data-mk-oa-qr-close]")) {

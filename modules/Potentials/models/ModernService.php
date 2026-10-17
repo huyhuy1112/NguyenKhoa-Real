@@ -50,7 +50,7 @@ class Potentials_ModernService {
 		}
 		$adb = PearDatabase::getInstance();
 		require_once 'modules/Leads/models/ModernService.php';
-		if (!Leads_ModernService::schemaWarm('opps_list')) {
+		if (!Leads_ModernService::schemaWarm('opps_list_cls1')) {
 			self::ensureProfileSchema($adb);
 			try {
 				Leads_ModernService::installSchema($adb);
@@ -69,7 +69,7 @@ class Potentials_ModernService {
 			} catch (Exception $e) {
 				// online/edubit columns best-effort
 			}
-			Leads_ModernService::markSchemaWarm('opps_list');
+			Leads_ModernService::markSchemaWarm('opps_list_cls1');
 		}
 		list($ownerSql, $ownerParams) = Leads_ModernService::ownerFilterSql('ce', $userId);
 		$sql = "SELECT p.potentialid, p.potentialname, p.sales_stage, p.closingdate, p.amount,
@@ -88,7 +88,7 @@ class Potentials_ModernService {
 				lp.offline_status, lp.offline_r1_contact, lp.offline_r1_hen_goi, lp.offline_r1_khong_nghe, lp.offline_r1_sai_tt,
 				lp.offline_r2_schedule, lp.offline_r3_class, lp.offline_r4_transfer,
 				lp.offline_post_noshow_miss,
-				lp.offline_preclass_confirm, lp.offline_class_date, lp.offline_checked_in_at,
+				lp.offline_preclass_confirm, lp.offline_class_date, lp.offline_class_code, lp.offline_classes_json, lp.offline_checked_in_at,
 				lp.offline_class_time, lp.offline_class_place, lp.zalo_user_id,
 				lp.offline_oa_scanned_at, lp.offline_oa_scan_note,
 				lp.online_status, lp.eligibility_result, lp.screening_result, lp.potential_level,
@@ -255,7 +255,7 @@ class Potentials_ModernService {
 		try {
 			require_once 'modules/Leads/models/OfflineGd11Service.php';
 			require_once 'modules/Leads/models/ModernService.php';
-			if (!Leads_ModernService::schemaWarm('opps_list')) {
+			if (!Leads_ModernService::schemaWarm('opps_list_cls1')) {
 				Leads_OfflineGd11Service::installSchema();
 			}
 			$offline = Leads_OfflineGd11Service::profileBlock($row, false);

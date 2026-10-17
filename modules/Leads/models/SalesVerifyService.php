@@ -981,16 +981,21 @@ class Leads_SalesVerifyService {
 			: '';
 		$schedule = isset($payload['schedule_outcome']) ? trim((string) $payload['schedule_outcome']) : '';
 		$classDate = isset($payload['class_date']) ? trim((string) $payload['class_date']) : '';
+		$classCode = isset($payload['class_code']) ? trim((string) $payload['class_code']) : '';
 		$offlineMeta = null;
 		if ($elig === 'du_dk' && $schedule === 'da_xac_nhan_lich') {
 			if ($classDate === '') {
 				throw new Exception('Đã xác nhận lịch học thì cần ngày học.');
 			}
 			require_once 'modules/Leads/models/OfflineGd11Service.php';
+			if (Leads_OfflineGd11Service::normalizeCourseCode($classCode) === '') {
+				throw new Exception('Đã xác nhận lịch học thì chọn lớp: PCTHCB, PCTH hoặc MQBB.');
+			}
 			$offlineMeta = Leads_OfflineGd11Service::onSalesVerified($leadId, array(
 				'eligibility_result' => 'du_dk',
 				'schedule_outcome' => 'da_xac_nhan_lich',
 				'class_date' => $classDate,
+				'class_code' => $classCode,
 			), $userId);
 		}
 		$fresh = Leads_ModernService::getLead((string) $leadId, $userId);
@@ -1323,9 +1328,24 @@ class Leads_SalesVerifyService {
 			if (!empty($payload['class_date'])) {
 				$result['class_date'] = $payload['class_date'];
 			}
+			if (!empty($payload['class_code'])) {
+				$result['class_code'] = $payload['class_code'];
+			}
+			if ($scheduleOutcome === 'da_xac_nhan_lich') {
+				if (empty($result['class_date'])) {
+					throw new Exception('Đã xác nhận lịch học thì cần ngày học.');
+				}
+				if (Leads_OfflineGd11Service::normalizeCourseCode(isset($result['class_code']) ? $result['class_code'] : '') === '') {
+					throw new Exception('Đã xác nhận lịch học thì chọn lớp: PCTHCB, PCTH hoặc MQBB.');
+				}
+			}
 			$offlineMeta = Leads_OfflineGd11Service::onSalesVerified($leadId, $result, $userId);
 		} catch (Exception $e) {
-			$offlineMeta = array('error' => $e->getMessage());
+			$msg = $e->getMessage();
+			if (strpos($msg, 'chọn lớp') !== false || strpos($msg, 'ngày học') !== false) {
+				return array('success' => false, 'error' => $msg);
+			}
+			$offlineMeta = array('error' => $msg);
 		}
 
 		$fresh = Leads_ModernService::getLead((string) $leadId, $userId);
